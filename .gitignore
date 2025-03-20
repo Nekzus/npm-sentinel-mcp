@@ -42,10 +42,3 @@ coverage/
 
 # Mac files
 .DS_Store
-
-# Yarn
-yarn.lock
-.yarn-integrity
-
-# npm lock file (using yarn)
-package-lock.json
