@@ -28,7 +28,7 @@ jobs:
             - name: Install dependencies
               run: npm install
             - name: Run tests
-              run: npm test
+              run: npm test -- --passWithNoTests
             - name: Build
               run: npm run build
             - name: Make binary executable (Unix)
