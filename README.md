@@ -1,40 +1,101 @@
 # @nekzus/mcp-server
 
-![License](https://img.shields.io/npm/l/@nekzus/mcp-server)
-![Version](https://img.shields.io/npm/v/@nekzus/mcp-server)
-![Downloads](https://img.shields.io/npm/dt/@nekzus/mcp-server)
-![Node](https://img.shields.io/node/v/@nekzus/mcp-server)
-
-A professional Model Context Protocol (MCP) server implementation providing
-extensible utility functions and tools. This server serves as a personal toolset
-that can be expanded with various functionalities.
+A Model Context Protocol (MCP) server that provides utility tools for
+development and testing. This implementation is built on top of the official MCP
+SDK and offers an extensible architecture for adding new tools.
 
 ## 🌟 Features
 
-- 🎯 Type-safe implementation with TypeScript
-- 🚀 Modern ESM support
-- 🛠️ Extensible architecture
-- 🔒 Strong typing and error handling
-- 📦 Easy to integrate
-- 🧪 Comprehensive testing
-- 📚 Detailed documentation
+- 🔄 MCP Protocol Implementation
+- 🛠️ Integrated Utility Tools
+- 📝 Schema Validation with Zod
+- 🚀 ESM Support
+- 🔒 Strict TypeScript Types
+- 🧩 Extensible Architecture for New Tools
 
 ## 📦 Installation
 
 ```bash
-# Using npm
+# Global installation (recommended for CLI usage)
+npm install -g @nekzus/mcp-server
+
+# Local installation
 npm install @nekzus/mcp-server
-
-# Using yarn
-yarn add @nekzus/mcp-server
-
-# Using pnpm
-pnpm add @nekzus/mcp-server
 ```
 
-## 🚀 Quick Start
+## 🛠️ Available Tools
 
-### As a standalone server
+### 1. greeting
+
+Generates a personalized greeting message.
+
+**Parameters:**
+
+- `name` (string): Recipient's name
+
+**Example:**
+
+```typescript
+// Result: 👋 Hello John! Welcome to the MCP server!
+{
+    name: "John";
+}
+```
+
+### 2. card
+
+Gets a random card from a standard poker deck.
+
+**Parameters:**
+
+- No parameters required
+
+**Example:**
+
+```typescript
+// Result: 🎴 You drew: Ace of ♠️ Spades
+{}
+```
+
+### 3. datetime
+
+Gets the current date and time for a specific timezone.
+
+**Parameters:**
+
+- `timeZone` (string, optional): Timezone identifier (e.g., "America/New_York")
+- `locale` (string, optional): Locale identifier (e.g., "en-US")
+
+**Example:**
+
+```typescript
+// Result: 
+// 🗓️ Date: March 20, 2024
+// ⏰ Time: 7:25:25 PM
+// 🌍 Timezone: America/New_York
+{
+  timeZone: "America/New_York",
+  locale: "en-US"
+}
+```
+
+## 🚀 Usage
+
+### As MCP Server
+
+1. **Global Installation:**
+
+```bash
+npm install -g @nekzus/mcp-server
+```
+
+2. **Execution:**
+
+```bash
+npx @nekzus/mcp-server
+```
+
+### As a Dependency
 
 ```typescript
 import { McpUtilityServer } from "@nekzus/mcp-server";
@@ -43,52 +104,11 @@ const server = new McpUtilityServer();
 server.start();
 ```
 
-### Using individual tools
-
-```typescript
-import { cardTool, greetingTool } from "@nekzus/mcp-server";
-
-// Using the greeting tool
-const greeting = await greetingTool.handler({ name: "John" });
-console.log(greeting.content[0].text); // "Hello John from the MCP server!"
-
-// Using the card tool
-const card = await cardTool.handler();
-console.log(card.content[0].text); // "Your card is: Ace of ♠️ Spades"
-```
-
-## 🛠️ Available Tools
-
-### getSayHello
-
-Generates a personalized greeting message.
-
-**Parameters:**
-
-- `name` (string): Name of the recipient
-
-**Example:**
-
-```typescript
-/getSayHello name="John"
-```
-
-### getRandomCard
-
-Randomly selects a card from a standard 52-card poker deck.
-
-**Example:**
-
-```typescript
-/getRandomCard
-```
-
 ## 🔧 Development
 
 ```bash
-# Clone the repository
+# Clone repository
 git clone https://github.com/nekzus/mcp-server.git
-cd mcp-server
 
 # Install dependencies
 npm install
@@ -99,65 +119,42 @@ npm run dev
 # Build
 npm run build
 
-# Run tests
-npm test
-
-# Lint
-npm run lint
-
-# Format code
-npm run format
+# Run
+npm start
 ```
 
-## 📝 Environment Variables
-
-Create a `.env` file in the root directory:
-
-```env
-# Server Configuration
-PORT=3000
-NODE_ENV=development
-
-# Add your custom environment variables here
-```
-
-## 🏗️ Project Structure
+## 📁 Project Structure
 
 ```
-@nekzus/mcp-server/
-├── src/                  # Source code
-│   ├── types/           # Type definitions
-│   ├── utils/           # Utility functions
-│   ├── tools/           # MCP tools implementations
-│   └── index.ts         # Main entry point
-├── tests/               # Test files
-├── dist/                # Compiled code
-└── docs/                # Documentation
+src/
+├── types/          # Type definitions
+│   └── index.ts    # Shared types
+├── utils/          # Utilities
+│   ├── cards.ts    # Card functions
+│   ├── datetime.ts # Date/time functions
+│   └── schema.ts   # Schema conversion
+├── tools/          # Tool implementations
+│   └── index.ts    # Tools registry
+└── index.ts        # Main entry point
 ```
 
-## 📚 API Documentation
+## 🔍 Technical Details
 
-Detailed API documentation is available in the [docs](./docs) directory.
+- **Transport:** Uses `StdioServerTransport` for communication
+- **Validation:** Converts JSON schemas to Zod for input validation
+- **Types:** Fully typed implementation with TypeScript
+- **Error Handling:** Robust error handling and resource cleanup
+- **Signals:** Handles SIGTERM and SIGINT signals for graceful shutdown
 
-## 🤝 Contributing
+## 📄 License
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+MIT © [nekzus]
 
-## 📜 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
-for details.
-
-## 🙋‍♂️ Author
+## 👤 Author
 
 **Nekzus**
 
 - GitHub: [@nekzus](https://github.com/nekzus)
-- NPM: [@nekzus](https://www.npmjs.com/~nekzus)
 
 ## 🌟 Support
 

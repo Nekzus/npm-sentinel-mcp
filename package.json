@@ -1,6 +1,6 @@
 {
   "name": "@nekzus/mcp-server",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "description": "Personal MCP Server implementation providing extensible utility functions and tools for development and testing purposes",
   "type": "module",
   "main": "dist/index.js",
@@ -20,6 +20,8 @@
     "test": "jest",
     "lint": "eslint . --ext .ts",
     "format": "prettier --write \"src/**/*.ts\"",
+    "commit": "git-cz",
+    "semantic-release": "semantic-release --branches main",
     "prepare": "npm run build",
     "prepublishOnly": "npm test && npm run lint",
     "preversion": "npm run lint",
@@ -36,6 +38,16 @@
   ],
   "author": "nekzus",
   "license": "MIT",
+  "directories": {
+    "lib": "dist",
+    "bin": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "files": [
+      "dist",
+      "README.md",
+      "LICENSE"
+    ]
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/nekzus/mcp-server.git"
@@ -46,22 +58,32 @@
   "homepage": "https://github.com/nekzus/mcp-server#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.7.0",
-    "dotenv": "16.4.5",
-    "zod": "3.22.4"
+    "dotenv": "16.4.7",
+    "zod": "3.24.2"
   },
   "devDependencies": {
-    "@types/jest": "29.5.12",
-    "@types/node": "20.11.24",
-    "@typescript-eslint/eslint-plugin": "7.1.1",
-    "@typescript-eslint/parser": "7.1.1",
-    "eslint": "8.57.0",
+    "semantic-release": "24.2.3",
+    "cz-conventional-changelog": "3.3.0",
+    "@types/jest": "29.5.14",
+    "@types/node": "22.13.10",
+    "@typescript-eslint/eslint-plugin": "8.27.0",
+    "@typescript-eslint/parser": "8.27.0",
+    "eslint": "9.22.0",
     "jest": "29.7.0",
-    "prettier": "3.2.5",
-    "ts-jest": "29.1.2",
-    "tsx": "4.7.1",
-    "typescript": "5.3.3"
+    "prettier": "3.5.3",
+    "ts-jest": "29.2.6",
+    "tsx": "4.19.3",
+    "typescript": "5.8.2"
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
