@@ -7,17 +7,16 @@ on:
     push:
         branches: [main]
     pull_request:
-        branches: (*)
+        branches: '*'
 
 jobs:
-    quality:
+    test:
         runs-on: ${{matrix.os}}
 
         strategy:
             matrix:
-                node-version: [15.x, 17.x, 18.x, 20.x]
+                node-version: [20.8.1]
                 os: [ubuntu-latest, windows-latest]
-                # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
         steps:
             - uses: actions/checkout@v4
@@ -25,22 +24,39 @@ jobs:
               uses: actions/setup-node@v4
               with:
                   node-version: ${{matrix.node-version}}
-            - run: npm ci
+                  cache: 'npm'
+            - name: Install dependencies
+              run: npm install
+            - name: Run tests
+              run: npm test
+            - name: Build
+              run: npm run build
+            - name: Make binary executable (Unix)
+              if: runner.os != 'Windows'
+              run: chmod +x dist/index.js
+            - name: Test binary execution
+              run: node dist/index.js --version
 
     publish:
         permissions:
             contents: write
         runs-on: ubuntu-latest
         if: ${{github.ref == 'refs/heads/main'}}
-        needs: [quality]
+        needs: [test]
         steps:
             - uses: actions/checkout@v4
-            - name: Use Node.js ${{matrix.node-version}}
+            - name: Use Node.js
               uses: actions/setup-node@v4
               with:
-                  node-version: ${{matrix.node-version}}
-            - run: npm ci
-            - run: npm run semantic-release
+                  node-version: '20.8.1'
+                  registry-url: 'https://registry.npmjs.org'
+                  cache: 'npm'
+            - name: Install dependencies
+              run: npm install
+            - run: npm run build
+            - name: Make binary executable
+              run: chmod +x dist/index.js
+            - name: Publish to NPM
+              run: npm publish --access public
               env:
-                  NPM_TOKEN: ${{secrets.NPM_TOKEN}}
-                  GH_TOKEN: ${{secrets.GH_TOKEN}}
+                  NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
