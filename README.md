@@ -1,8 +1,18 @@
-# @nekzus/mcp-server
+# MCP Server
 
-A Model Context Protocol (MCP) server that provides utility tools for
-development and testing. This implementation is built on top of the official MCP
-SDK and offers an extensible architecture for adding new tools.
+[![Github Workflow](https://github.com/nekzus/mcp-server/actions/workflows/publish.yml/badge.svg?event=push)](https://github.com/Nekzus/mcp-server/actions/workflows/publish.yml)
+[![npm-version](https://img.shields.io/npm/v/@nekzus/mcp-server.svg)](https://www.npmjs.com/package/@nekzus/mcp-server)
+[![npm-month](https://img.shields.io/npm/dm/@nekzus/mcp-server.svg)](https://www.npmjs.com/package/@nekzus/mcp-server)
+[![npm-total](https://img.shields.io/npm/dt/@nekzus/mcp-server.svg?style=flat)](https://www.npmjs.com/package/@nekzus/mcp-server)
+[![Donate](https://img.shields.io/badge/donate-paypal-blue.svg?style=flat-square)](https://paypal.me/maseortega)
+
+<div align="center">
+
+**A Model Context Protocol (MCP) server that provides utility tools for
+development and testing** </br>_This implementation is built on top of the
+official MCP SDK and offers an extensible architecture for adding new tools_
+
+</div>
 
 ## 🌟 Features
 
@@ -38,7 +48,7 @@ Generates a personalized greeting message.
 ```typescript
 // Result: 👋 Hello John! Welcome to the MCP server!
 {
-    name: "John";
+  name: "John";
 }
 ```
 

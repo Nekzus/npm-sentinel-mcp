@@ -1,6 +1,6 @@
 {
   "name": "@nekzus/mcp-server",
-  "version": "0.0.0",
+  "version": "0.0.0-development",
   "description": "Personal MCP Server implementation providing extensible utility functions and tools for development and testing purposes",
   "type": "module",
   "main": "dist/index.js",
@@ -21,7 +21,7 @@
     "lint": "eslint . --ext .ts",
     "format": "prettier --write \"src/**/*.ts\"",
     "commit": "git-cz",
-    "semantic-release": "semantic-release --branches main",
+    "semantic-release": "semantic-release",
     "prepare": "npm run build",
     "prepublishOnly": "npm test && npm run lint",
     "preversion": "npm run lint",
@@ -50,19 +50,19 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nekzus/mcp-server.git"
+    "url": "https://github.com/Nekzus/mcp-server.git"
   },
   "bugs": {
-    "url": "https://github.com/nekzus/mcp-server/issues"
+    "url": "https://github.com/Nekzus/mcp-server/issues"
   },
-  "homepage": "https://github.com/nekzus/mcp-server#readme",
+  "homepage": "https://github.com/Nekzus/mcp-server#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.7.0",
     "dotenv": "16.4.7",
     "zod": "3.24.2"
   },
   "devDependencies": {
-    "semantic-release": "24.2.3",
+    "semantic-release": "^24.2.3",
     "cz-conventional-changelog": "3.3.0",
     "@types/jest": "29.5.14",
     "@types/node": "22.13.10",
