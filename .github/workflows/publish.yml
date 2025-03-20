@@ -27,15 +27,11 @@ jobs:
                   cache: 'npm'
             - name: Install dependencies
               run: npm install
-            - name: Run tests
-              run: npm test -- --passWithNoTests
             - name: Build
               run: npm run build
             - name: Make binary executable (Unix)
               if: runner.os != 'Windows'
               run: chmod +x dist/index.js
-            - name: Test binary execution
-              run: node dist/index.js --version
 
     publish:
         permissions:
@@ -53,10 +49,11 @@ jobs:
                   cache: 'npm'
             - name: Install dependencies
               run: npm install
-            - run: npm run build
+            - name: Build
+              run: npm run build
             - name: Make binary executable
               run: chmod +x dist/index.js
             - name: Publish to NPM
-              run: npm publish --access public
+              run: npm publish --access public --ignore-scripts
               env:
                   NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}

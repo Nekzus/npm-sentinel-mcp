@@ -1,8 +1,7 @@
 {
     "env": {
         "es2022": true,
-        "node": true,
-        "jest": true
+        "node": true
     },
     "extends": [
         "eslint:recommended",
@@ -39,7 +38,6 @@
                     "error"
                 ]
             }
-        ],
-        "no-unused-vars": "off"
+        ]
     }
 }
