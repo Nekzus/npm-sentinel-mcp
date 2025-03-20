@@ -1,0 +1,41 @@
+# Source
+src/
+
+# Tests
+__tests__/
+*.test.ts
+*.spec.ts
+coverage/
+
+# Config files
+.eslintrc
+.prettierrc
+.gitignore
+.npmignore
+tsconfig.json
+jest.config.js
+
+# Editor directories
+.idea/
+.vscode/
+
+# Logs
+logs/
+*.log
+
+# Environment variables
+.env*
+
+# Git files
+.git/
+.github/
+
+# Documentation files (except README)
+docs/
+CONTRIBUTING.md
+CHANGELOG.md
+
+# Development tools
+nodemon.json
+.eslintignore
+.prettierignore 
