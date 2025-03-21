@@ -26,6 +26,8 @@ jobs:
               with:
                   node-version: ${{matrix.node-version}}
             - run: npm ci
+            - run: npm run lint
+            - run: npm run build
 
     publish:
         permissions:
@@ -35,12 +37,17 @@ jobs:
         needs: [quality]
         steps:
             - uses: actions/checkout@v4
+              with:
+                fetch-depth: 0
             - name: Use Node.js ${{matrix.node-version}}
               uses: actions/setup-node@v4
               with:
                   node-version: ${{matrix.node-version}}
+                  registry-url: 'https://registry.npmjs.org'
             - run: npm ci
-            - run: npm run semantic-release
+            - run: npm run build
+            - name: Semantic Release
+              run: npx semantic-release --no-ci
               env:
+                  GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
                   NPM_TOKEN: ${{secrets.NPM_TOKEN}}
-                  GH_TOKEN: ${{secrets.GH_TOKEN}}
