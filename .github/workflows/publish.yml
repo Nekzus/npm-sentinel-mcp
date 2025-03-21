@@ -7,7 +7,7 @@ on:
     push:
         branches: [main]
     pull_request:
-        branches: ["*"]
+        branches: (*)
 
 jobs:
     quality:
@@ -15,7 +15,7 @@ jobs:
 
         strategy:
             matrix:
-                node-version: [20.9.0]
+                node-version: [15.x, 17.x, 18.x, 20.x]
                 os: [ubuntu-latest, windows-latest]
                 # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
@@ -25,11 +25,7 @@ jobs:
               uses: actions/setup-node@v4
               with:
                   node-version: ${{matrix.node-version}}
-                  cache: "npm"
-            - name: Install dependencies
-              run: npm install
-            - name: Run CI checks
-              run: npm run ci
+            - run: npm ci
 
     publish:
         permissions:
@@ -39,20 +35,12 @@ jobs:
         needs: [quality]
         steps:
             - uses: actions/checkout@v4
-              with:
-                  fetch-depth: 0
-            - name: Use Node.js
+            - name: Use Node.js ${{matrix.node-version}}
               uses: actions/setup-node@v4
               with:
-                  node-version: "20.9.0"
-                  registry-url: "https://registry.npmjs.org"
-                  cache: "npm"
-            - name: Install dependencies
-              run: npm install
-            - name: Build
-              run: npm run build
-            - name: Semantic Release
-              run: npm run semantic-release
+                  node-version: ${{matrix.node-version}}
+            - run: npm ci
+            - run: npm run semantic-release
               env:
-                  GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
                   NPM_TOKEN: ${{secrets.NPM_TOKEN}}
+                  GH_TOKEN: ${{secrets.GH_TOKEN}}
