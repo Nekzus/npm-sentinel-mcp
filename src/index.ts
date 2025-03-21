@@ -36,6 +36,23 @@ export class McpUtilityServer {
 
 		this.transport = new StdioServerTransport();
 		this.tools = availableTools;
+
+		// Registrar el método tools/list
+		this.server.setRequestHandler(
+			z.object({
+				method: z.literal('tools/list'),
+				params: z.object({}).optional(),
+			}),
+			async () => {
+				return {
+					tools: this.tools.map((tool) => ({
+						name: tool.name,
+						description: tool.description,
+						schema: tool.inputSchema,
+					})),
+				};
+			},
+		);
 	}
 
 	private registerTool(tool: Tool): void {
@@ -43,13 +60,18 @@ export class McpUtilityServer {
 			console.log(`[Tool Registration] Registering tool: ${tool.name}`);
 			const zodSchema = schemaConverter.toZod(tool.inputSchema as JsonSchema);
 			const handler = tool.handler as ToolHandler;
+
+			// Registrar el método de la herramienta
 			this.server.setRequestHandler(
 				z.object({
-					method: z.literal(`tool/${tool.name}`),
-					params: zodSchema,
+					method: z.literal('tool'),
+					params: z.object({
+						name: z.literal(tool.name),
+						arguments: zodSchema,
+					}),
 				}),
-				async (args, extra) => {
-					const result = await handler(args, extra);
+				async (request) => {
+					const result = await handler(request.params.arguments, {});
 					return {
 						content: [
 							{
