@@ -20,7 +20,7 @@ export class McpUtilityServer {
 	constructor() {
 		this.server = new McpServer(
 			{
-				name: 'nekzus-mcp',
+				name: 'mcp-server-nekzus',
 				version: '1.0.0',
 				description:
 					'MCP Server implementation providing utility functions and tools for development and testing',
