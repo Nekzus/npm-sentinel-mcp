@@ -6,12 +6,10 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "@nekzus/mcp-server": "dist/index.js"
+    "mcp-server": "dist/index.js"
   },
   "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
+    "dist"
   ],
   "scripts": {
     "build": "tsc && shx chmod +x dist/*.js",
@@ -38,16 +36,6 @@
   ],
   "author": "nekzus",
   "license": "MIT",
-  "directories": {
-    "lib": "dist",
-    "bin": "dist/index.js",
-    "types": "dist/index.d.ts",
-    "files": [
-      "dist",
-      "README.md",
-      "LICENSE"
-    ]
-  },
   "repository": {
     "type": "git",
     "url": "https://github.com/Nekzus/mcp-server.git"
@@ -58,7 +46,6 @@
   "homepage": "https://github.com/Nekzus/mcp-server#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.7.0",
-    "@nekzus/mcp-server": "1.0.10",
     "dotenv": "16.4.7",
     "zod": "3.24.2"
   },
