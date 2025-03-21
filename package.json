@@ -3,11 +3,11 @@
   "version": "0.0.0-development",
   "description": "Personal MCP Server implementation providing extensible utility functions and tools for development and testing purposes",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "bin": {
-    "mcp-server": "dist/index.js",
-    "@nekzus/mcp-server": "dist/index.js"
+    "mcp-server": "./dist/index.js",
+    "@nekzus/mcp-server": "./dist/index.js"
   },
   "files": [
     "dist"
