@@ -45,11 +45,8 @@ export class McpUtilityServer {
 			const handler = tool.handler as ToolHandler;
 			this.server.setRequestHandler(
 				z.object({
-					method: z.literal('tool'),
-					params: z.object({
-						name: z.literal(tool.name),
-						schema: zodSchema,
-					}),
+					method: z.literal(`tool/${tool.name}`),
+					params: zodSchema,
 				}),
 				async (args, extra) => {
 					const result = await handler(args, extra);
