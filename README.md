@@ -23,16 +23,6 @@ official MCP SDK and offers an extensible architecture for adding new tools_
 - 🔒 Strict TypeScript Types
 - 🧩 Extensible Architecture for New Tools
 
-## 📦 Installation
-
-```bash
-# Global installation (recommended for CLI usage)
-npm install -g @nekzus/mcp-server
-
-# Local installation
-npm install @nekzus/mcp-server
-```
-
 ## 🛠️ Available Tools
 
 ### 1. greeting
