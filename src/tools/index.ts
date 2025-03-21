@@ -1,9 +1,9 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import type { TextContent, Tool } from '@modelcontextprotocol/sdk/types.js';
 import { getRandomCard } from '../utils/cards.js';
 import { getCurrentDateTime } from '../utils/datetime.js';
 
-type RequestHandlerExtra = Parameters<McpServer['tool']>[3];
+type RequestHandlerExtra = Parameters<Server['setRequestHandler']>[1];
 type HandlerResponse = { content: TextContent[]; _meta?: unknown; isError?: boolean };
 type JsonSchema = { type: 'object'; properties?: Record<string, unknown>; required?: string[] };
 

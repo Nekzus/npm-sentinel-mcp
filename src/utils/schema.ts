@@ -3,6 +3,7 @@ import { z } from 'zod';
 export interface JsonSchemaProperty {
 	type: string;
 	description?: string;
+	items?: JsonSchemaProperty;
 	[key: string]: unknown;
 }
 
@@ -13,18 +14,25 @@ export interface JsonSchema {
 	[key: string]: unknown;
 }
 
-const convertProperty = (prop: JsonSchemaProperty): z.ZodType => {
+function convertProperty(prop: JsonSchemaProperty): z.ZodType {
 	switch (prop.type) {
 		case 'string':
-			return prop.description ? z.string().describe(prop.description) : z.string();
+			return z.string();
 		case 'number':
 			return z.number();
 		case 'boolean':
 			return z.boolean();
+		case 'array':
+			if (!prop.items) {
+				throw new Error('Array schema must have items property');
+			}
+			return z.array(convertProperty(prop.items));
+		case 'object':
+			return z.record(z.string(), z.unknown());
 		default:
 			return z.unknown();
 	}
-};
+}
 
 export const schemaConverter = {
 	toZod: (schema: JsonSchema): z.ZodObject<Record<string, z.ZodType>> => {

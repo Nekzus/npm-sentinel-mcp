@@ -12,7 +12,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc && shx chmod +x dist/index.js && shx cp dist/index.js dist/cli.js",
+    "build": "tsc && shx chmod +x dist/*.js",
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
     "test": "jest --passWithNoTests",

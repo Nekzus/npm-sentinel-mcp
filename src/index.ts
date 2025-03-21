@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import 'dotenv/config';
+import { z } from 'zod';
 import availableTools from './tools/index.js';
 import { type JsonSchema, schemaConverter } from './utils/schema.js';
 
@@ -13,14 +14,14 @@ type ToolHandler = (
 ) => Promise<unknown>;
 
 export class McpUtilityServer {
-	private readonly server: McpServer;
+	private readonly server: Server;
 	private readonly transport: StdioServerTransport;
 	private readonly tools: readonly Tool[];
 
 	constructor() {
-		this.server = new McpServer(
+		this.server = new Server(
 			{
-				name: 'mcp-server',
+				name: '@nekzus/mcp-server',
 				version: '1.0.0',
 				description:
 					'MCP Server implementation providing utility functions and tools for development and testing',
@@ -42,17 +43,26 @@ export class McpUtilityServer {
 			console.log(`[Tool Registration] Registering tool: ${tool.name}`);
 			const zodSchema = schemaConverter.toZod(tool.inputSchema as JsonSchema);
 			const handler = tool.handler as ToolHandler;
-			this.server.tool(tool.name, tool.description || '', zodSchema.shape, async (args, extra) => {
-				const result = await handler(args, extra);
-				return {
-					content: [
-						{
-							type: 'text',
-							text: JSON.stringify(result),
-						},
-					],
-				};
-			});
+			this.server.setRequestHandler(
+				z.object({
+					method: z.literal('tool'),
+					params: z.object({
+						name: z.literal(tool.name),
+						schema: zodSchema,
+					}),
+				}),
+				async (args, extra) => {
+					const result = await handler(args, extra);
+					return {
+						content: [
+							{
+								type: 'text',
+								text: JSON.stringify(result),
+							},
+						],
+					};
+				},
+			);
 			console.log(`[Tool Registration] Successfully registered: ${tool.name}`);
 		} catch (error) {
 			console.error(`[Tool Registration] Failed to register tool ${tool.name}:`, error);
