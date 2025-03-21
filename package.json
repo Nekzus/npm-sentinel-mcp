@@ -1,6 +1,6 @@
 {
   "name": "@nekzus/mcp-server",
-  "version": "1.0.0",
+  "version": "0.0.0-development",
   "description": "Personal MCP Server implementation providing extensible utility functions and tools for development and testing purposes",
   "type": "module",
   "main": "dist/index.js",
