@@ -14,7 +14,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && shx chmod +x dist/*.js",
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
     "test": "jest --passWithNoTests",
@@ -25,7 +25,8 @@
     "semantic-release": "semantic-release --branches main",
     "prepare": "npm run build",
     "watch": "tsc --watch",
-    "ci": "npm run check && npm run build && npm test"
+    "ci": "npm run check && npm run build && npm test",
+    "postinstall": "npm run build && shx chmod +x dist/*.js"
   },
   "keywords": [
     "mcp",
@@ -57,6 +58,7 @@
   "homepage": "https://github.com/Nekzus/mcp-server#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.7.0",
+    "@nekzus/mcp-server": "1.0.10",
     "dotenv": "16.4.7",
     "zod": "3.24.2"
   },
@@ -72,10 +74,10 @@
     "cz-conventional-changelog": "3.3.0",
     "jest": "^29.7.0",
     "semantic-release": "24.2.3",
+    "shx": "0.4.0",
     "ts-jest": "29.2.6",
     "tsx": "4.19.3",
-    "typescript": "5.8.2",
-    "shx": "0.4.0"
+    "typescript": "5.8.2"
   },
   "engines": {
     "node": "^18.18.0 || ^20.9.0 || >=21.1.0"
