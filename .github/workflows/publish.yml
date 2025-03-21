@@ -7,16 +7,17 @@ on:
     push:
         branches: [main]
     pull_request:
-        branches: '*'
+        branches: ['*']
 
 jobs:
-    test:
+    quality:
         runs-on: ${{matrix.os}}
 
         strategy:
             matrix:
                 node-version: [20.9.0]
                 os: [ubuntu-latest, windows-latest]
+                # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
 
         steps:
             - uses: actions/checkout@v4
@@ -24,36 +25,22 @@ jobs:
               uses: actions/setup-node@v4
               with:
                   node-version: ${{matrix.node-version}}
-                  cache: 'npm'
-            - name: Install dependencies
-              run: npm install
-            - name: Build
-              run: npm run build
-            - name: Make binary executable (Unix)
-              if: runner.os != 'Windows'
-              run: chmod +x dist/index.js
+            - run: npm ci
 
     publish:
         permissions:
             contents: write
         runs-on: ubuntu-latest
         if: ${{github.ref == 'refs/heads/main'}}
-        needs: [test]
+        needs: [quality]
         steps:
             - uses: actions/checkout@v4
-            - name: Use Node.js
+            - name: Use Node.js ${{matrix.node-version}}
               uses: actions/setup-node@v4
               with:
-                  node-version: '20.9.0'
-                  registry-url: 'https://registry.npmjs.org'
-                  cache: 'npm'
-            - name: Install dependencies
-              run: npm install
-            - name: Build
-              run: npm run build
-            - name: Make binary executable
-              run: chmod +x dist/index.js
-            - name: Publish to NPM
-              run: npm publish --access public --ignore-scripts
+                  node-version: ${{matrix.node-version}}
+            - run: npm ci
+            - run: npm run semantic-release
               env:
-                  NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
+                  NPM_TOKEN: ${{secrets.NPM_TOKEN}}
+                  GH_TOKEN: ${{secrets.GH_TOKEN}}
