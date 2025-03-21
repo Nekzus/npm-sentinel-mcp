@@ -1,11 +1,15 @@
-import type { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import type { TextContent, Tool } from '@modelcontextprotocol/sdk/types.js';
+import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { getRandomCard } from '../utils/cards.js';
 import { getCurrentDateTime } from '../utils/datetime.js';
 
-type RequestHandlerExtra = Parameters<Server['setRequestHandler']>[1];
-type HandlerResponse = { content: TextContent[]; _meta?: unknown; isError?: boolean };
-type JsonSchema = { type: 'object'; properties?: Record<string, unknown>; required?: string[] };
+interface ToolResponse {
+	content: Array<{
+		type: string;
+		text: string;
+		data?: unknown;
+	}>;
+	isError?: boolean;
+}
 
 export const greetingTool: Tool = {
 	name: 'greeting',
@@ -16,11 +20,8 @@ export const greetingTool: Tool = {
 			name: { type: 'string', description: 'Name of the recipient for the greeting' },
 		},
 		required: ['name'],
-	} as JsonSchema,
-	handler: async (
-		args: { name: string },
-		_extra: RequestHandlerExtra,
-	): Promise<HandlerResponse> => {
+	},
+	handler: async (args: { name: string }): Promise<ToolResponse> => {
 		try {
 			return {
 				content: [
@@ -51,11 +52,8 @@ export const cardTool: Tool = {
 		type: 'object',
 		properties: {},
 		required: [],
-	} as JsonSchema,
-	handler: async (
-		_args: Record<string, never>,
-		_extra: RequestHandlerExtra,
-	): Promise<HandlerResponse> => {
+	},
+	handler: async (): Promise<ToolResponse> => {
 		try {
 			const card = getRandomCard();
 			return {
@@ -82,31 +80,28 @@ export const cardTool: Tool = {
 
 export const dateTimeTool: Tool = {
 	name: 'datetime',
-	description: 'Get current date and time for a specific timezone and locale',
+	description: 'Get the current date and time for a specific timezone',
 	inputSchema: {
 		type: 'object',
 		properties: {
 			timeZone: {
 				type: 'string',
-				description: 'Timezone identifier (e.g., America/New_York, Europe/London, Asia/Tokyo)',
+				description: 'Timezone identifier (e.g., "America/New_York")',
 			},
 			locale: {
 				type: 'string',
-				description: 'Locale identifier (e.g., en-US, es-ES, fr-FR)',
+				description: 'Locale identifier (e.g., "en-US")',
 			},
 		},
-	} as JsonSchema,
-	handler: async (
-		args: { timeZone?: string; locale?: string },
-		_extra: RequestHandlerExtra,
-	): Promise<HandlerResponse> => {
+	},
+	handler: async (args: { timeZone?: string; locale?: string }): Promise<ToolResponse> => {
 		try {
-			const { date, time, timeZone } = getCurrentDateTime(args);
+			const { date, time, timezone } = getCurrentDateTime(args.timeZone, args.locale);
 			return {
 				content: [
 					{
 						type: 'text',
-						text: `🗓️ Date: ${date}\n⏰ Time: ${time}\n🌍 Timezone: ${timeZone}`,
+						text: `🗓️ Date: ${date}\n⏰ Time: ${time}\n🌍 Timezone: ${timezone}`,
 					},
 				],
 			};
@@ -115,7 +110,7 @@ export const dateTimeTool: Tool = {
 				content: [
 					{
 						type: 'text',
-						text: 'Error retrieving date and time information',
+						text: 'Error getting date and time',
 					},
 				],
 				isError: true,
@@ -124,6 +119,4 @@ export const dateTimeTool: Tool = {
 	},
 };
 
-// Export all available tools
-const availableTools = [greetingTool, cardTool, dateTimeTool] as const;
-export default availableTools;
+export default [greetingTool, cardTool, dateTimeTool] as const;

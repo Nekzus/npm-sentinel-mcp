@@ -1,37 +1,35 @@
-interface DateTimeOptions {
-	timeZone?: string;
-	locale?: string;
-}
-
 interface DateTimeResult {
 	date: string;
 	time: string;
-	timeZone: string;
+	timezone: string;
 }
 
-export function getCurrentDateTime(options: DateTimeOptions = {}): DateTimeResult {
-	const { timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone, locale = 'en-US' } = options;
+export function getCurrentDateTime(timeZone?: string, locale?: string): DateTimeResult {
+	try {
+		const now = new Date();
+		const defaultTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+		const options: Intl.DateTimeFormatOptions = {
+			timeZone: timeZone || defaultTimeZone,
+			dateStyle: 'full',
+			timeStyle: 'medium',
+		};
 
-	const now = new Date();
+		const formatter = new Intl.DateTimeFormat(locale || 'en-US', options);
+		const [datePart, timePart] = formatter.format(now).split(' at ');
 
-	const dateFormatter = new Intl.DateTimeFormat(locale, {
-		timeZone,
-		year: 'numeric',
-		month: 'long',
-		day: 'numeric',
-	});
-
-	const timeFormatter = new Intl.DateTimeFormat(locale, {
-		timeZone,
-		hour: '2-digit',
-		minute: '2-digit',
-		second: '2-digit',
-		hour12: true,
-	});
-
-	return {
-		date: dateFormatter.format(now),
-		time: timeFormatter.format(now),
-		timeZone,
-	};
+		return {
+			date: datePart,
+			time: timePart,
+			timezone: timeZone || defaultTimeZone,
+		};
+	} catch (error) {
+		console.error('[DateTime] Error formatting date and time:', error);
+		const now = new Date();
+		const defaultTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+		return {
+			date: now.toLocaleDateString(),
+			time: now.toLocaleTimeString(),
+			timezone: defaultTimeZone,
+		};
+	}
 }

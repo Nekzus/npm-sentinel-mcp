@@ -2,16 +2,25 @@
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import type { Tool } from '@modelcontextprotocol/sdk/types.js';
+import {
+	CallToolRequestSchema,
+	ListToolsRequestSchema,
+	type Tool,
+} from '@modelcontextprotocol/sdk/types.js';
 import 'dotenv/config';
-import { z } from 'zod';
 import availableTools from './tools/index.js';
-import { type JsonSchema, schemaConverter } from './utils/schema.js';
 
-type ToolHandler = (
-	args: Record<string, unknown>,
-	extra: Record<string, unknown>,
-) => Promise<unknown>;
+// Definición de tipos
+interface ToolResponse {
+	content: Array<{
+		type: string;
+		text: string;
+		data?: unknown;
+	}>;
+	isError?: boolean;
+}
+
+type ToolHandler = (args: Record<string, unknown>) => Promise<ToolResponse>;
 
 export class McpUtilityServer {
 	private readonly server: Server;
@@ -37,69 +46,63 @@ export class McpUtilityServer {
 		this.transport = new StdioServerTransport();
 		this.tools = availableTools;
 
-		// Registrar el método tools/list
-		this.server.setRequestHandler(
-			z.object({
-				method: z.literal('tools/list'),
-				params: z.object({}).optional(),
-			}),
-			async () => {
+		// Configurar los manejadores de solicitudes
+		this.setupRequestHandlers();
+	}
+
+	private setupRequestHandlers(): void {
+		// Listar herramientas disponibles
+		this.server.setRequestHandler(ListToolsRequestSchema, async () => ({
+			tools: this.tools,
+		}));
+
+		// Manejar llamadas a herramientas
+		this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
+			const { name, arguments: args = {} } = request.params;
+
+			try {
+				const tool = this.tools.find((t) => t.name === name);
+				if (!tool) {
+					throw new Error(`Tool not found: ${name}`);
+				}
+
+				const handler = tool.handler as ToolHandler;
+				const result = await handler(args);
+
 				return {
-					tools: this.tools.map((tool) => ({
-						name: tool.name,
-						description: tool.description,
-						schema: tool.inputSchema,
-					})),
-				};
-			},
-		);
-	}
+					content: result.content.map((content) => {
+						const mappedContent = {
+							type: content.type,
+							text:
+								typeof content.text === 'string'
+									? content.text
+									: JSON.stringify(content.text, null, 2),
+						};
 
-	private registerTool(tool: Tool): void {
-		try {
-			console.log(`[Tool Registration] Registering tool: ${tool.name}`);
-			const zodSchema = schemaConverter.toZod(tool.inputSchema as JsonSchema);
-			const handler = tool.handler as ToolHandler;
+						if (content.data !== undefined) {
+							return { ...mappedContent, data: content.data };
+						}
 
-			// Registrar el método de la herramienta
-			this.server.setRequestHandler(
-				z.object({
-					method: z.literal('tool'),
-					params: z.object({
-						name: z.literal(tool.name),
-						arguments: zodSchema,
+						return mappedContent;
 					}),
-				}),
-				async (request) => {
-					const result = await handler(request.params.arguments, {});
-					return {
-						content: [
-							{
-								type: 'text',
-								text: JSON.stringify(result),
-							},
-						],
-					};
-				},
-			);
-			console.log(`[Tool Registration] Successfully registered: ${tool.name}`);
-		} catch (error) {
-			console.error(`[Tool Registration] Failed to register tool ${tool.name}:`, error);
-			throw error;
-		}
-	}
-
-	private initializeTools(): void {
-		console.log(`[Server] Initializing ${this.tools.length} tools...`);
-		for (const tool of this.tools) {
-			this.registerTool(tool);
-		}
-		console.log('[Server] Tool initialization completed successfully');
+					isError: result.isError,
+				};
+			} catch (error) {
+				return {
+					content: [
+						{
+							type: 'text',
+							text: error instanceof Error ? error.message : String(error),
+						},
+					],
+					isError: true,
+				};
+			}
+		});
 	}
 
 	public async start(): Promise<void> {
 		try {
-			this.initializeTools();
 			await this.server.connect(this.transport);
 			console.log('[Server] MCP Utility Server is running');
 			console.log('[Server] Available tools:', this.tools.map((t) => t.name).join(', '));
