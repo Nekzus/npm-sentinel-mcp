@@ -22,7 +22,7 @@
     "lint": "biome lint --write ./src",
     "check": "biome check --apply ./src",
     "commit": "git-cz",
-    "semantic-release": "semantic-release",
+    "semantic-release": "semantic-release --branches main",
     "prepare": "npm run build",
     "ci": "npm run check && npm run build && npm test"
   },
