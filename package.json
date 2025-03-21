@@ -6,13 +6,15 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "nekzus-mcp": "dist/index.js"
+    "@nekzus/mcp-server": "./dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
-    "build": "tsc && shx chmod +x dist/*.js",
+    "build": "tsc",
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
     "test": "jest --passWithNoTests",
@@ -23,8 +25,7 @@
     "semantic-release": "semantic-release --branches main",
     "prepare": "npm run build",
     "watch": "tsc --watch",
-    "ci": "npm run check && npm run build && npm test",
-    "postinstall": "npm run build && shx chmod +x dist/*.js"
+    "ci": "npm run check && npm run build && npm test"
   },
   "keywords": [
     "mcp",
@@ -36,6 +37,16 @@
   ],
   "author": "nekzus",
   "license": "MIT",
+  "directories": {
+    "lib": "dist",
+    "bin": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "files": [
+      "dist",
+      "README.md",
+      "LICENSE"
+    ]
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/Nekzus/mcp-server.git"
