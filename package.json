@@ -3,16 +3,12 @@
   "version": "0.0.0-development",
   "description": "Personal MCP Server implementation providing extensible utility functions and tools for development and testing purposes",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "bin": "./dist/index.js",
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
-  ],
+  "main": "dist/index.js",
+  "bin": {
+    "mcp-server": "dist/index.js"
+  },
   "scripts": {
-    "build": "tsc && shx chmod +x dist/index.js",
+    "build": "tsc && shx chmod +x dist/*.js",
     "dev": "tsx src/index.ts",
     "start": "node dist/index.js",
     "test": "jest --passWithNoTests",
@@ -22,8 +18,7 @@
     "commit": "git-cz",
     "semantic-release": "semantic-release --branches main",
     "prepare": "npm run build",
-    "watch": "tsc --watch",
-    "ci": "npm run check && npm run build && npm test"
+    "watch": "tsc --watch"
   },
   "keywords": [
     "mcp",
@@ -45,8 +40,7 @@
   "homepage": "https://github.com/Nekzus/mcp-server#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.7.0",
-    "dotenv": "16.4.7",
-    "zod": "3.24.2"
+    "dotenv": "16.4.7"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
@@ -64,9 +58,6 @@
     "ts-jest": "29.2.6",
     "tsx": "4.19.3",
     "typescript": "5.8.2"
-  },
-  "engines": {
-    "node": "^18.18.0 || ^20.9.0 || >=21.1.0"
   },
   "config": {
     "commitizen": {
