@@ -6,7 +6,8 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "mcp-server": "./dist/index.js"
+    "mcp-server": "dist/index.js",
+    "@nekzus/mcp-server": "dist/index.js"
   },
   "files": [
     "dist"
@@ -23,8 +24,7 @@
     "semantic-release": "semantic-release --branches main",
     "prepare": "npm run build",
     "watch": "tsc --watch",
-    "ci": "npm run check && npm run build && npm test",
-    "postinstall": "npm run build && shx chmod +x dist/*.js"
+    "ci": "npm run check && npm run build && npm test"
   },
   "keywords": [
     "mcp",
