@@ -2,12 +2,11 @@
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import type { CallToolResult, Tool } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
-import 'dotenv/config';
 
-// Available tools definition
-const TOOLS: Tool[] = [
+// Define the tools once to avoid repetition
+const TOOLS = [
 	{
 		name: 'greeting',
 		description: 'Generate a personalized greeting message for the specified person',
@@ -137,7 +136,7 @@ async function handleToolCall(name: string, args: any): Promise<CallToolResult> 
 				content: [
 					{
 						type: 'text',
-						text: `Error: Unknown tool '${name}'`,
+						text: `Unknown tool: ${name}`,
 					},
 				],
 				isError: true,
@@ -148,7 +147,7 @@ async function handleToolCall(name: string, args: any): Promise<CallToolResult> 
 // Server configuration
 const server = new Server(
 	{
-		name: '@nekzus/mcp-server',
+		name: '@nekzus/server-nekzus',
 		version: '0.1.0',
 		description: 'MCP Server implementation for development',
 	},
@@ -159,17 +158,14 @@ const server = new Server(
 	},
 );
 
-// Request handlers configuration
-server.setRequestHandler(ListToolsRequestSchema, async () => {
-	return {
-		tools: TOOLS,
-	};
-});
+// Setup request handlers
+server.setRequestHandler(ListToolsRequestSchema, async () => ({
+	tools: TOOLS,
+}));
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-	const { name, arguments: args } = request.params;
-	return handleToolCall(name, args ?? {});
-});
+server.setRequestHandler(CallToolRequestSchema, async (request) =>
+	handleToolCall(request.params.name, request.params.arguments ?? {}),
+);
 
 // Server startup
 async function runServer() {
@@ -178,10 +174,6 @@ async function runServer() {
 		await server.connect(transport);
 		console.log('[Server] MCP Server is running');
 		console.log('[Server] Available tools:', TOOLS.map((t) => t.name).join(', '));
-
-		// Termination signal handlers
-		process.on('SIGTERM', () => cleanup());
-		process.on('SIGINT', () => cleanup());
 
 		// Handle stdin close
 		process.stdin.on('close', () => {
@@ -194,7 +186,7 @@ async function runServer() {
 	}
 }
 
-// Cleanup function for server shutdown
+// Cleanup function
 async function cleanup() {
 	try {
 		await server.close();
@@ -207,4 +199,4 @@ async function cleanup() {
 }
 
 // Start the server
-runServer();
+runServer().catch(console.error);
