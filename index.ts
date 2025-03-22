@@ -4,6 +4,7 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import 'dotenv/config';
 
 // Define the tools once to avoid repetition
 const TOOLS = [
@@ -147,7 +148,7 @@ async function handleToolCall(name: string, args: any): Promise<CallToolResult> 
 // Server configuration
 const server = new Server(
 	{
-		name: '@nekzus/server-nekzus',
+		name: '@nekzus/mcp-server',
 		version: '0.1.0',
 		description: 'MCP Server implementation for development',
 	},
