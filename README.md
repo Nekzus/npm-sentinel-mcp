@@ -79,6 +79,129 @@ Gets the current date and time for a specific timezone.
 }
 ```
 
+### 4. calculator
+
+Performs mathematical calculations with support for basic and advanced operations.
+
+**Parameters:**
+
+- `expression` (string): Mathematical expression (e.g., "2 + 2 * 3")
+- `precision` (number, optional): Decimal places in the result (default: 2)
+
+**Example:**
+
+```typescript
+// Result: 8
+{
+  expression: "2 + 2 * 3"
+}
+```
+
+### 5. passwordGen
+
+Generates secure passwords with customizable options.
+
+**Parameters:**
+
+- `length` (number, optional): Password length (default: 16)
+- `includeNumbers` (boolean, optional): Include numbers (default: true)
+- `includeSymbols` (boolean, optional): Include special characters (default: true)
+- `includeUppercase` (boolean, optional): Include uppercase letters (default: true)
+
+**Example:**
+
+```typescript
+// Result: 4v7&9G8$
+{
+  length: 16,
+  includeNumbers: true,
+  includeSymbols: true,
+  includeUppercase: true
+}
+```
+
+### 6. qrGen
+
+Generates QR codes for text or URLs.
+
+**Parameters:**
+
+- `text` (string): Text or URL to encode
+- `size` (number, optional): Size in pixels (default: 200)
+- `dark` (string, optional): Dark module color (default: "#000000")
+- `light` (string, optional): Light module color (default: "#ffffff")
+
+**Example:**
+
+```typescript
+// Result: QR code for "https://example.com"
+{
+  text: "https://example.com"
+}
+```
+
+### 7. kitchenConvert
+
+Converts between common kitchen measurements and weights, including volume-to-weight conversions based on specific ingredients.
+
+**Parameters:**
+
+- `value` (number): Value to convert
+- `from` (string): Source unit (e.g., "cup", "tbsp", "g", "oz", "ml")
+- `to` (string): Target unit (e.g., "cup", "tbsp", "g", "oz", "ml")
+- `ingredient` (string, optional): Ingredient for accurate volume-to-weight conversions
+
+**Supported Units:**
+
+*Volume:*
+- ml (milliliters)
+- l (liters)
+- cup (US cup)
+- tbsp (tablespoon)
+- tsp (teaspoon)
+- floz (fluid ounce)
+
+*Weight:*
+- g (grams)
+- kg (kilograms)
+- oz (ounces)
+- lb (pounds)
+
+**Supported Ingredients:**
+- water
+- milk
+- flour
+- sugar
+- brown sugar
+- salt
+- butter
+- oil
+- honey
+- maple syrup
+
+**Examples:**
+
+```typescript
+// Simple volume conversion
+// Result: 🔄 Conversion Result:
+// • 1 cup = 236.59 ml
+{
+  value: 1,
+  from: "cup",
+  to: "ml"
+}
+
+// Volume to weight conversion with ingredient
+// Result: 🔄 Conversion Result:
+// • 1 cup of flour = 140.25 g
+{
+  value: 1,
+  from: "cup",
+  to: "g",
+  ingredient: "flour"
+}
+```
+
 ## 🚀 Usage
 
 ### As MCP Server
