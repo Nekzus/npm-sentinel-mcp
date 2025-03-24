@@ -569,22 +569,52 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 	tools: TOOLS,
 }));
 
-server.setRequestHandler(CallToolRequestSchema, async (request) =>
-	handleToolCall(request.params.name, request.params.arguments ?? {}),
-);
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+	const result = await handleToolCall(request.params.name, request.params.arguments ?? {});
+	return result;
+});
 
 // Server startup
 async function runServer() {
 	try {
 		const transport = new StdioServerTransport();
+
+		// Handle messages directly
+		process.stdin.on('data', async (data) => {
+			try {
+				const message = JSON.parse(data.toString());
+				if (message.method === 'tools/call') {
+					const result = await handleToolCall(message.params.name, message.params.arguments ?? {});
+					const response = {
+						jsonrpc: '2.0',
+						result,
+						id: message.id,
+					};
+					process.stdout.write(`${JSON.stringify(response)}\n`);
+				}
+			} catch (error) {
+				log('[Server] Error processing message:', error);
+			}
+		});
+
 		await server.connect(transport);
 		log('[Server] MCP Server is running');
 		log('[Server] Available tools:', TOOLS.map((t) => t.name).join(', '));
 
 		// Handle stdin close
-		process.stdin.on('close', () => {
+		process.stdin.on('close', async () => {
 			log('[Server] Input stream closed');
-			cleanup();
+			await cleanup();
+		});
+
+		// Add signal handlers for graceful shutdown
+		process.on('SIGINT', async () => {
+			log('[Server] Received SIGINT signal');
+			await cleanup();
+		});
+		process.on('SIGTERM', async () => {
+			log('[Server] Received SIGTERM signal');
+			await cleanup();
 		});
 	} catch (error) {
 		log('[Server] Failed to start MCP Server:', error);
