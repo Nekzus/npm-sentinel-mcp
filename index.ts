@@ -6,8 +6,17 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import 'dotenv/config';
 
-// Logger function that uses stderr
-const log = (...args: any[]) => console.error(...args);
+// Logger function that uses stderr - only for critical errors
+const log = (...args: any[]) => {
+	// Filter out server status messages
+	const message = args[0];
+	if (
+		typeof message === 'string' &&
+		(!message.startsWith('[Server]') || message.includes('error') || message.includes('Error'))
+	) {
+		console.error(...args);
+	}
+};
 
 // Define the tools once to avoid repetition
 const TOOLS = [
@@ -570,69 +579,64 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
 }));
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-	const result = await handleToolCall(request.params.name, request.params.arguments ?? {});
-	return result;
+	return handleToolCall(request.params.name, request.params.arguments ?? {});
 });
 
-// Server startup
+// Server startup with improved error handling
 async function runServer() {
-	try {
-		const transport = new StdioServerTransport();
+	const transport = new StdioServerTransport();
 
-		// Handle messages directly
+	// Handle cleanup gracefully
+	const cleanup = async () => {
+		try {
+			await server.close();
+			process.exit(0);
+		} catch {
+			process.exit(1);
+		}
+	};
+
+	try {
+		// Handle direct messages
 		process.stdin.on('data', async (data) => {
 			try {
 				const message = JSON.parse(data.toString());
 				if (message.method === 'tools/call') {
 					const result = await handleToolCall(message.params.name, message.params.arguments ?? {});
-					const response = {
-						jsonrpc: '2.0',
-						result,
-						id: message.id,
-					};
-					process.stdout.write(`${JSON.stringify(response)}\n`);
+					process.stdout.write(
+						`${JSON.stringify({
+							jsonrpc: '2.0',
+							result,
+							id: message.id,
+						})}\n`,
+					);
 				}
 			} catch (error) {
-				log('[Server] Error processing message:', error);
+				if (error instanceof Error) {
+					process.stdout.write(
+						`${JSON.stringify({
+							jsonrpc: '2.0',
+							error: {
+								code: -32000,
+								message: error.message,
+							},
+						})}\n`,
+					);
+				}
 			}
 		});
 
+		// Connect transport
 		await server.connect(transport);
-		log('[Server] MCP Server is running');
-		log('[Server] Available tools:', TOOLS.map((t) => t.name).join(', '));
 
-		// Handle stdin close
-		process.stdin.on('close', async () => {
-			log('[Server] Input stream closed');
-			await cleanup();
-		});
-
-		// Add signal handlers for graceful shutdown
-		process.on('SIGINT', async () => {
-			log('[Server] Received SIGINT signal');
-			await cleanup();
-		});
-		process.on('SIGTERM', async () => {
-			log('[Server] Received SIGTERM signal');
-			await cleanup();
-		});
-	} catch (error) {
-		log('[Server] Failed to start MCP Server:', error);
-		process.exit(1);
-	}
-}
-
-// Cleanup function
-async function cleanup() {
-	try {
-		await server.close();
-		log('[Server] MCP Server stopped gracefully');
-		process.exit(0);
-	} catch (error) {
-		log('[Server] Error during cleanup:', error);
+		// Setup signal handlers
+		process.stdin.on('close', cleanup);
+		process.on('SIGINT', cleanup);
+		process.on('SIGTERM', cleanup);
+	} catch {
 		process.exit(1);
 	}
 }
 
 // Start the server
-runServer().catch((error) => log('[Server] Unhandled error:', error));
+runServer();
