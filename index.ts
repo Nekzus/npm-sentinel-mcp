@@ -553,7 +553,7 @@ async function handleToolCall(name: string, args: any): Promise<CallToolResult> 
 // Server configuration
 const server = new Server(
 	{
-		name: '@nekzus/mcp-server',
+		name: 'nekzus-mcp',
 		version: '0.1.0',
 		description: 'MCP Server implementation for development',
 	},
