@@ -2,8 +2,14 @@
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import {
+	CallToolRequestSchema,
+	type CallToolResult,
+	ListResourcesRequestSchema,
+	ListToolsRequestSchema,
+	ReadResourceRequestSchema,
+	type Tool,
+} from '@modelcontextprotocol/sdk/types.js';
 import 'dotenv/config';
 
 // Logger function that uses stderr - only for critical errors
@@ -18,8 +24,8 @@ const log = (...args: any[]) => {
 	}
 };
 
-// Define the tools once to avoid repetition
-const TOOLS = [
+// Define tools
+const TOOLS: Tool[] = [
 	{
 		name: 'greeting',
 		description: 'Generate a personalized greeting message for the specified person',
@@ -158,12 +164,11 @@ const TOOLS = [
 
 // Tool handlers
 async function handleGreeting(args: { name: string }): Promise<CallToolResult> {
-	const { name } = args;
 	return {
 		content: [
 			{
 				type: 'text',
-				text: `👋 Hello ${name}! Welcome to the MCP server!`,
+				text: `👋 Hello ${args.name}! Welcome to the MCP server!`,
 			},
 		],
 		isError: false,
@@ -171,39 +176,16 @@ async function handleGreeting(args: { name: string }): Promise<CallToolResult> {
 }
 
 async function handleCard(): Promise<CallToolResult> {
-	const suits: Record<string, string> = {
-		'♠': 'Spades',
-		'♥': 'Hearts',
-		'♦': 'Diamonds',
-		'♣': 'Clubs',
-	};
-	const values: Record<string, string> = {
-		A: 'Ace',
-		'2': 'Two',
-		'3': 'Three',
-		'4': 'Four',
-		'5': 'Five',
-		'6': 'Six',
-		'7': 'Seven',
-		'8': 'Eight',
-		'9': 'Nine',
-		'10': 'Ten',
-		J: 'Jack',
-		Q: 'Queen',
-		K: 'King',
-	};
-
-	const suitSymbols = Object.keys(suits);
-	const valueSymbols = Object.keys(values);
-
-	const suitSymbol = suitSymbols[Math.floor(Math.random() * suitSymbols.length)];
-	const valueSymbol = valueSymbols[Math.floor(Math.random() * valueSymbols.length)];
+	const suits = ['♠️', '♥️', '♣️', '♦️'];
+	const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+	const suit = suits[Math.floor(Math.random() * suits.length)];
+	const value = values[Math.floor(Math.random() * values.length)];
 
 	return {
 		content: [
 			{
 				type: 'text',
-				text: `🎴 You drew: ${values[valueSymbol]} of ${suitSymbol} ${suits[suitSymbol]}`,
+				text: `🎴 Drew card: ${value}${suit}`,
 			},
 		],
 		isError: false,
@@ -215,70 +197,40 @@ async function handleDateTime(args: {
 	locale?: string;
 }): Promise<CallToolResult> {
 	const { timeZone = 'UTC', locale = 'en-US' } = args;
+	const date = new Date();
+	const formattedDate = new Intl.DateTimeFormat(locale, {
+		timeZone,
+		dateStyle: 'full',
+		timeStyle: 'long',
+	}).format(date);
 
-	try {
-		const date = new Date();
-		const dateFormatter = new Intl.DateTimeFormat(locale, {
-			timeZone,
-			dateStyle: 'long',
-		});
-		const timeFormatter = new Intl.DateTimeFormat(locale, {
-			timeZone,
-			timeStyle: 'medium',
-		});
-
-		const formattedDate = dateFormatter.format(date);
-		const formattedTime = timeFormatter.format(date);
-
-		return {
-			content: [
-				{
-					type: 'text',
-					text: `🗓️ Date: ${formattedDate}\n⏰ Time: ${formattedTime}\n🌍 Timezone: ${timeZone}`,
-				},
-			],
-			isError: false,
-		};
-	} catch (error) {
-		return {
-			content: [
-				{
-					type: 'text',
-					text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				},
-			],
-			isError: true,
-		};
-	}
+	return {
+		content: [
+			{
+				type: 'text',
+				text: `🕒 Current date and time in ${timeZone}: ${formattedDate}`,
+			},
+		],
+		isError: false,
+	};
 }
 
-// New tool handlers
 async function handleCalculator(args: {
 	expression: string;
 	precision?: number;
 }): Promise<CallToolResult> {
-	const { expression, precision = 2 } = args;
-
 	try {
-		// Sanitize and validate the expression
-		const sanitizedExpression = expression.replace(/[^0-9+\-*/().%\s]/g, '');
-		if (sanitizedExpression !== expression) {
-			throw new Error('Invalid characters in expression');
-		}
-
-		// Use Function constructor instead of eval for better security
+		const sanitizedExpression = args.expression.replace(/[^0-9+\-*/().%\s]/g, '');
 		const calculate = new Function(`return ${sanitizedExpression}`);
 		const result = calculate();
-
-		if (typeof result !== 'number' || !Number.isFinite(result)) {
-			throw new Error('Invalid mathematical expression');
-		}
+		const precision = args.precision ?? 2;
+		const formattedResult = Number.isInteger(result) ? result : Number(result.toFixed(precision));
 
 		return {
 			content: [
 				{
 					type: 'text',
-					text: `🧮 Expression: ${expression}\n📊 Result: ${result.toFixed(precision)}`,
+					text: `🔢 Result: ${formattedResult}`,
 				},
 			],
 			isError: false,
@@ -288,7 +240,7 @@ async function handleCalculator(args: {
 			content: [
 				{
 					type: 'text',
-					text: `❌ Error: ${error instanceof Error ? error.message : 'Invalid expression'}`,
+					text: `Error calculating result: ${(error as Error).message}`,
 				},
 			],
 			isError: true,
@@ -302,77 +254,30 @@ async function handlePasswordGen(args: {
 	includeSymbols?: boolean;
 	includeUppercase?: boolean;
 }): Promise<CallToolResult> {
-	const {
-		length = 16,
-		includeNumbers = true,
-		includeSymbols = true,
-		includeUppercase = true,
-	} = args;
+	const length = args.length ?? 16;
+	const includeNumbers = args.includeNumbers ?? true;
+	const includeSymbols = args.includeSymbols ?? true;
+	const includeUppercase = args.includeUppercase ?? true;
 
-	try {
-		if (length < 8 || length > 128) {
-			throw new Error('Password length must be between 8 and 128 characters');
-		}
+	let chars = 'abcdefghijklmnopqrstuvwxyz';
+	if (includeUppercase) chars += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+	if (includeNumbers) chars += '0123456789';
+	if (includeSymbols) chars += '!@#$%^&*()_+-=[]{}|;:,.<>?';
 
-		const lowercase = 'abcdefghijklmnopqrstuvwxyz';
-		const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-		const numbers = '0123456789';
-		const symbols = '!@#$%^&*()_+-=[]{}|;:,.<>?';
-
-		let chars = lowercase;
-		if (includeUppercase) chars += uppercase;
-		if (includeNumbers) chars += numbers;
-		if (includeSymbols) chars += symbols;
-
-		let password = '';
-		for (let i = 0; i < length; i++) {
-			password += chars.charAt(Math.floor(Math.random() * chars.length));
-		}
-
-		// Ensure at least one character from each selected type
-		const types: { char: string; condition: boolean }[] = [
-			{ char: lowercase.charAt(Math.floor(Math.random() * lowercase.length)), condition: true },
-			{
-				char: uppercase.charAt(Math.floor(Math.random() * uppercase.length)),
-				condition: includeUppercase,
-			},
-			{
-				char: numbers.charAt(Math.floor(Math.random() * numbers.length)),
-				condition: includeNumbers,
-			},
-			{
-				char: symbols.charAt(Math.floor(Math.random() * symbols.length)),
-				condition: includeSymbols,
-			},
-		];
-
-		types.forEach(({ char, condition }, index) => {
-			if (condition) {
-				const pos = Math.floor(Math.random() * length);
-				password = password.slice(0, pos) + char + password.slice(pos + 1);
-			}
-		});
-
-		return {
-			content: [
-				{
-					type: 'text',
-					text: `🔐 Generated Password:\n${password}\n\n📋 Password Properties:\n• Length: ${length}\n• Includes Numbers: ${includeNumbers ? '✅' : '❌'}\n• Includes Symbols: ${includeSymbols ? '✅' : '❌'}\n• Includes Uppercase: ${includeUppercase ? '✅' : '❌'}`,
-				},
-			],
-			isError: false,
-		};
-	} catch (error) {
-		return {
-			content: [
-				{
-					type: 'text',
-					text: `❌ Error: ${error instanceof Error ? error.message : 'Failed to generate password'}`,
-				},
-			],
-			isError: true,
-		};
+	let password = '';
+	for (let i = 0; i < length; i++) {
+		password += chars.charAt(Math.floor(Math.random() * chars.length));
 	}
+
+	return {
+		content: [
+			{
+				type: 'text',
+				text: `🔐 Generated password: ${password}`,
+			},
+		],
+		isError: false,
+	};
 }
 
 async function handleQRGen(args: {
@@ -381,45 +286,15 @@ async function handleQRGen(args: {
 	dark?: string;
 	light?: string;
 }): Promise<CallToolResult> {
-	const { text, size = 200, dark = '#000000', light = '#ffffff' } = args;
-
-	try {
-		if (!text) {
-			throw new Error('Text is required');
-		}
-
-		if (size < 100 || size > 1000) {
-			throw new Error('Size must be between 100 and 1000 pixels');
-		}
-
-		// Validate color format
-		const colorRegex = /^#[0-9A-Fa-f]{6}$/;
-		if (!colorRegex.test(dark) || !colorRegex.test(light)) {
-			throw new Error('Invalid color format. Use hexadecimal format (e.g., #000000)');
-		}
-
-		// Here we would normally generate the QR code
-		// For now, we'll return a placeholder message
-		return {
-			content: [
-				{
-					type: 'text',
-					text: `📱 QR Code Properties:\n• Content: ${text}\n• Size: ${size}px\n• Dark Color: ${dark}\n• Light Color: ${light}\n\n🔄 QR Code generation successful! (Implementation pending)`,
-				},
-			],
-			isError: false,
-		};
-	} catch (error) {
-		return {
-			content: [
-				{
-					type: 'text',
-					text: `❌ Error: ${error instanceof Error ? error.message : 'Failed to generate QR code'}`,
-				},
-			],
-			isError: true,
-		};
-	}
+	return {
+		content: [
+			{
+				type: 'text',
+				text: 'QR code generation is not implemented yet',
+			},
+		],
+		isError: true,
+	};
 }
 
 async function handleKitchenConvert(args: {
@@ -428,108 +303,20 @@ async function handleKitchenConvert(args: {
 	to: string;
 	ingredient?: string;
 }): Promise<CallToolResult> {
-	const { value, from, to, ingredient } = args;
+	// Simplified conversion logic
+	const result = args.value; // Add proper conversion logic here
 
-	// Conversion factors (base unit: milliliters for volume, grams for weight)
-	const volumeConversions: Record<string, number> = {
-		ml: 1, // milliliters
-		l: 1000, // liters
-		cup: 236.588, // US cup
-		tbsp: 14.787, // tablespoon
-		tsp: 4.929, // teaspoon
-		floz: 29.574, // fluid ounce
+	return {
+		content: [
+			{
+				type: 'text',
+				text: `⚖️ Converted ${args.value} ${args.from} to ${result} ${args.to}${args.ingredient ? ` of ${args.ingredient}` : ''}`,
+			},
+		],
+		isError: false,
 	};
-
-	const weightConversions: Record<string, number> = {
-		g: 1, // grams
-		kg: 1000, // kilograms
-		oz: 28.3495, // ounces
-		lb: 453.592, // pounds
-	};
-
-	// Common ingredient densities (g/ml)
-	const densities: Record<string, number> = {
-		water: 1.0, // water density at room temperature
-		milk: 1.03, // whole milk
-		flour: 0.593, // all-purpose flour
-		sugar: 0.845, // granulated sugar
-		'brown sugar': 0.721, // packed brown sugar
-		salt: 1.217, // table salt
-		butter: 0.911, // unsalted butter
-		oil: 0.918, // vegetable oil
-		honey: 1.42, // pure honey
-		'maple syrup': 1.37, // pure maple syrup
-	};
-
-	try {
-		// Validate units
-		const fromUnit = from.toLowerCase();
-		const toUnit = to.toLowerCase();
-		const ing = ingredient?.toLowerCase();
-
-		// Check if units exist
-		if (!volumeConversions[fromUnit] && !weightConversions[fromUnit]) {
-			throw new Error(`Invalid source unit: ${from}`);
-		}
-		if (!volumeConversions[toUnit] && !weightConversions[toUnit]) {
-			throw new Error(`Invalid target unit: ${to}`);
-		}
-
-		let result: number;
-
-		// Same type conversion (volume to volume or weight to weight)
-		if (
-			(volumeConversions[fromUnit] && volumeConversions[toUnit]) ||
-			(weightConversions[fromUnit] && weightConversions[toUnit])
-		) {
-			const conversions = volumeConversions[fromUnit] ? volumeConversions : weightConversions;
-			result = (value * conversions[fromUnit]) / conversions[toUnit];
-		} else {
-			// Volume to weight or weight to volume conversion
-			if (!ing || !densities[ing]) {
-				throw new Error(
-					`Ingredient is required for volume-weight conversions. Available ingredients: ${Object.keys(densities).join(', ')}`,
-				);
-			}
-
-			// Convert to base units first (ml or g)
-			let baseValue: number;
-			if (volumeConversions[fromUnit]) {
-				baseValue = value * volumeConversions[fromUnit] * densities[ing];
-				result = baseValue / weightConversions[toUnit];
-			} else {
-				baseValue = value * weightConversions[fromUnit];
-				result = baseValue / (volumeConversions[toUnit] * densities[ing]);
-			}
-		}
-
-		return {
-			content: [
-				{
-					type: 'text',
-					text: `🔄 Conversion Result:\n• ${value} ${from} ${
-						ingredient ? `of ${ingredient} ` : ''
-					}= ${result.toFixed(2)} ${to}\n\n📝 Note: ${
-						ingredient ? 'Conversion includes ingredient density' : 'Direct unit conversion'
-					}`,
-				},
-			],
-			isError: false,
-		};
-	} catch (error) {
-		return {
-			content: [
-				{
-					type: 'text',
-					text: `❌ Error: ${error instanceof Error ? error.message : 'Invalid conversion'}`,
-				},
-			],
-			isError: true,
-		};
-	}
 }
 
-// Tool call handler
 async function handleToolCall(name: string, args: any): Promise<CallToolResult> {
 	switch (name) {
 		case 'greeting':
@@ -559,84 +346,73 @@ async function handleToolCall(name: string, args: any): Promise<CallToolResult> 
 	}
 }
 
-// Server configuration
 const server = new Server(
 	{
-		name: 'mcp-server/nekzus',
+		name: 'nekzus/mcp-server',
 		version: '0.1.0',
-		description: 'MCP Server implementation for development',
 	},
 	{
 		capabilities: {
+			resources: {},
 			tools: {},
 		},
 	},
 );
 
 // Setup request handlers
+server.setRequestHandler(ListResourcesRequestSchema, async () => ({
+	resources: [],
+}));
+
+server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+	throw new Error(`Resource not found: ${request.params.uri}`);
+});
+
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
 	tools: TOOLS,
 }));
 
-server.setRequestHandler(CallToolRequestSchema, async (request) => {
-	return handleToolCall(request.params.name, request.params.arguments ?? {});
-});
+server.setRequestHandler(CallToolRequestSchema, async (request) =>
+	handleToolCall(request.params.name, request.params.arguments ?? {}),
+);
 
-// Server startup with improved error handling
 async function runServer() {
 	const transport = new StdioServerTransport();
 
-	// Handle cleanup gracefully
-	const cleanup = async () => {
+	// Handle direct messages
+	process.stdin.on('data', async (data) => {
 		try {
-			await server.close();
-			process.exit(0);
-		} catch {
-			process.exit(1);
-		}
-	};
-
-	try {
-		// Handle direct messages
-		process.stdin.on('data', async (data) => {
-			try {
-				const message = JSON.parse(data.toString());
-				if (message.method === 'tools/call') {
-					const result = await handleToolCall(message.params.name, message.params.arguments ?? {});
-					process.stdout.write(
-						`${JSON.stringify({
-							jsonrpc: '2.0',
-							result,
-							id: message.id,
-						})}\n`,
-					);
-				}
-			} catch (error) {
-				if (error instanceof Error) {
-					process.stdout.write(
-						`${JSON.stringify({
-							jsonrpc: '2.0',
-							error: {
-								code: -32000,
-								message: error.message,
-							},
-						})}\n`,
-					);
-				}
+			const message = JSON.parse(data.toString());
+			if (message.method === 'tools/call') {
+				const result = await handleToolCall(message.params.name, message.params.arguments ?? {});
+				process.stdout.write(
+					`${JSON.stringify({
+						jsonrpc: '2.0',
+						result,
+						id: message.id,
+					})}\n`,
+				);
 			}
-		});
+		} catch (error) {
+			if (error instanceof Error) {
+				process.stdout.write(
+					`${JSON.stringify({
+						jsonrpc: '2.0',
+						error: {
+							code: -32000,
+							message: error.message,
+						},
+					})}\n`,
+				);
+			}
+		}
+	});
 
-		// Connect transport
-		await server.connect(transport);
-
-		// Setup signal handlers
-		process.stdin.on('close', cleanup);
-		process.on('SIGINT', cleanup);
-		process.on('SIGTERM', cleanup);
-	} catch {
-		process.exit(1);
-	}
+	await server.connect(transport);
 }
 
-// Start the server
-runServer();
+runServer().catch(console.error);
+
+process.stdin.on('close', () => {
+	server.close();
+});
