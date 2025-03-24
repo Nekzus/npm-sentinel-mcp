@@ -10,7 +10,7 @@ import {
 	ReadResourceRequestSchema,
 	type Tool,
 } from '@modelcontextprotocol/sdk/types.js';
-import 'dotenv/config';
+import QRCode from 'qrcode';
 
 // Logger function that uses stderr - only for critical errors
 const log = (...args: any[]) => {
@@ -286,15 +286,39 @@ async function handleQRGen(args: {
 	dark?: string;
 	light?: string;
 }): Promise<CallToolResult> {
-	return {
-		content: [
-			{
-				type: 'text',
-				text: 'QR code generation is not implemented yet',
+	try {
+		const { text, size = 200, dark = '#000000', light = '#ffffff' } = args;
+
+		// Generate QR code as Data URL
+		const qrDataUrl = await QRCode.toDataURL(text, {
+			width: size,
+			margin: 1,
+			color: {
+				dark,
+				light,
 			},
-		],
-		isError: true,
-	};
+		});
+
+		return {
+			content: [
+				{
+					type: 'text',
+					text: `📱 QR Code generated successfully!\n\nProperties:\n• Content: ${text}\n• Size: ${size}px\n• Dark Color: ${dark}\n• Light Color: ${light}\n\nQR Code (Data URL):\n${qrDataUrl}`,
+				},
+			],
+			isError: false,
+		};
+	} catch (error) {
+		return {
+			content: [
+				{
+					type: 'text',
+					text: `Error generating QR code: ${(error as Error).message}`,
+				},
+			],
+			isError: true,
+		};
+	}
 }
 
 async function handleKitchenConvert(args: {
@@ -411,7 +435,7 @@ async function runServer() {
 	await server.connect(transport);
 }
 
-runServer().catch(console.error);
+runServer().catch(log);
 
 process.stdin.on('close', () => {
 	server.close();

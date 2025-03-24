@@ -14,6 +14,7 @@ coverage/
 .npmignore
 tsconfig.json
 jest.config.js
+Dockerfile
 
 # Editor directories
 .idea/
