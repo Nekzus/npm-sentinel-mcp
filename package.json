@@ -4,7 +4,7 @@
   "description": "Personal MCP Server implementation providing extensible utility functions and tools for development and testing purposes",
   "type": "module",
   "bin": {
-    "nekzus-mcp": "dist/index.js"
+    "mcp-server-nekzus": "dist/index.js"
   },
   "files": [
     "dist"
