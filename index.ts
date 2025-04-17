@@ -1294,7 +1294,7 @@ async function handleNpmLicenseCompatibility(args: {
 				if (!response.ok) {
 					throw new Error(`Failed to fetch license info for ${pkg}: ${response.statusText}`);
 				}
-				const data = await response.json();
+				const data = (await response.json()) as { license?: string };
 				return {
 					package: pkg,
 					license: data.license || 'UNKNOWN',
@@ -1302,11 +1302,11 @@ async function handleNpmLicenseCompatibility(args: {
 			}),
 		);
 
-		let text = `📜 License Compatibility Analysis\n\n`;
-		text += `Packages analyzed:\n`;
-		licenses.forEach(({ package: pkg, license }) => {
+		let text = '📜 License Compatibility Analysis\n\n';
+		text += 'Packages analyzed:\n';
+		for (const { package: pkg, license } of licenses) {
 			text += `• ${pkg}: ${license}\n`;
-		});
+		}
 		text += '\n';
 
 		// Basic license compatibility check
@@ -1345,6 +1345,101 @@ async function handleNpmLicenseCompatibility(args: {
 				{
 					type: 'text',
 					text: `Error analyzing license compatibility: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				},
+			],
+			isError: true,
+		};
+	}
+}
+
+interface GitHubRepoStats {
+	stargazers_count: number;
+	forks_count: number;
+	open_issues_count: number;
+	watchers_count: number;
+	updated_at: string;
+	created_at: string;
+	has_wiki: boolean;
+	default_branch: string;
+	topics: string[];
+}
+
+// Repository statistics analyzer
+async function handleNpmRepoStats(args: { package: string }): Promise<CallToolResult> {
+	try {
+		// First get the package info from npm to find the repository URL
+		const npmResponse = await fetch(`https://registry.npmjs.org/${args.package}/latest`);
+		if (!npmResponse.ok) {
+			throw new Error(`Failed to fetch npm info for ${args.package}: ${npmResponse.statusText}`);
+		}
+		const npmData = (await npmResponse.json()) as { repository?: { url?: string; type?: string } };
+
+		if (!npmData.repository?.url) {
+			return {
+				content: [{ type: 'text', text: `No repository URL found for package ${args.package}` }],
+				isError: true,
+			};
+		}
+
+		// Extract GitHub repo info from URL
+		const repoUrl = npmData.repository.url;
+		const match = repoUrl.match(/github\.com[:/]([^/]+)\/([^/.]+)/);
+		if (!match) {
+			return {
+				content: [{ type: 'text', text: `Could not parse GitHub repository URL: ${repoUrl}` }],
+				isError: true,
+			};
+		}
+
+		const [, owner, repo] = match;
+
+		// Fetch repository stats from GitHub API
+		const githubResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+			headers: {
+				Accept: 'application/vnd.github.v3+json',
+				'User-Agent': 'MCP-Server',
+			},
+		});
+
+		if (!githubResponse.ok) {
+			throw new Error(`Failed to fetch GitHub stats: ${githubResponse.statusText}`);
+		}
+
+		const data = (await githubResponse.json()) as GitHubRepoStats;
+
+		const text = [
+			`📊 Repository Statistics for ${args.package}`,
+			'',
+			'🌟 Engagement Metrics:',
+			`• Stars: ${data.stargazers_count.toLocaleString()}`,
+			`• Forks: ${data.forks_count.toLocaleString()}`,
+			`• Watchers: ${data.watchers_count.toLocaleString()}`,
+			`• Open Issues: ${data.open_issues_count.toLocaleString()}`,
+			'',
+			'📅 Timeline:',
+			`• Created: ${new Date(data.created_at).toLocaleDateString()}`,
+			`• Last Updated: ${new Date(data.updated_at).toLocaleDateString()}`,
+			'',
+			'🔧 Repository Details:',
+			`• Default Branch: ${data.default_branch}`,
+			`• Wiki Enabled: ${data.has_wiki ? 'Yes' : 'No'}`,
+			'',
+			'🏷️ Topics:',
+			data.topics.length
+				? data.topics.map((topic) => `• ${topic}`).join('\n')
+				: '• No topics found',
+		].join('\n');
+
+		return {
+			content: [{ type: 'text', text }],
+			isError: false,
+		};
+	} catch (error) {
+		return {
+			content: [
+				{
+					type: 'text',
+					text: `Error analyzing repository stats: ${error instanceof Error ? error.message : 'Unknown error'}`,
 				},
 			],
 			isError: true,
@@ -1477,6 +1572,15 @@ server.tool(
 	},
 	async ({ packages }) => {
 		return await handleNpmLicenseCompatibility({ packages });
+	},
+);
+
+// Add the new tool to the server
+server.tool(
+	'npmRepoStats',
+	{ package: z.string().describe('The name of the package') },
+	async ({ package: packageName }) => {
+		return await handleNpmRepoStats({ package: packageName });
 	},
 );
 
