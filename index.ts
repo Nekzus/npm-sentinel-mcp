@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import type { CallToolResult, Tool } from '@modelcontextprotocol/sdk/types.js';
 import fetch from 'node-fetch';
 import { z } from 'zod';
@@ -129,7 +131,6 @@ interface NpmsApiResponse {
 }
 
 // Type inference
-type NpmPackageVersion = z.infer<typeof NpmPackageVersionSchema>;
 type NpmPackageInfo = z.infer<typeof NpmPackageInfoSchema>;
 type NpmPackageData = z.infer<typeof NpmPackageDataSchema>;
 type BundlephobiaData = z.infer<typeof BundlephobiaDataSchema>;
@@ -837,17 +838,84 @@ async function handleNpmPopularity(args: { packageName: string }): Promise<CallT
 	}
 }
 
-// Export functions
-export {
-	handleNpmCompare,
-	handleNpmDeps,
-	handleNpmLatest,
-	handleNpmMaintenance,
-	handleNpmPopularity,
-	handleNpmQuality,
-	handleNpmSize,
-	handleNpmTrends,
-	handleNpmTypes,
-	handleNpmVersions,
-	handleNpmVulnerabilities,
-};
+// Create server instance
+const server = new McpServer({
+	name: 'mcp-npm-tools',
+	version: '1.0.0',
+});
+
+// Add NPM tools
+server.tool(
+	'npmVersions',
+	{ packageName: z.string().describe('The name of the package') },
+	async ({ packageName }) => {
+		return await handleNpmVersions({ packageName });
+	},
+);
+
+server.tool(
+	'npmLatest',
+	{ packageName: z.string().describe('The name of the package') },
+	async ({ packageName }) => {
+		return await handleNpmLatest({ packageName });
+	},
+);
+
+server.tool(
+	'npmDeps',
+	{ packageName: z.string().describe('The name of the package') },
+	async ({ packageName }) => {
+		return await handleNpmDeps({ packageName });
+	},
+);
+
+server.tool(
+	'npmTypes',
+	{ packageName: z.string().describe('The name of the package') },
+	async ({ packageName }) => {
+		return await handleNpmTypes({ packageName });
+	},
+);
+
+server.tool(
+	'npmSize',
+	{ packageName: z.string().describe('The name of the package') },
+	async ({ packageName }) => {
+		return await handleNpmSize({ packageName });
+	},
+);
+
+server.tool(
+	'npmVulnerabilities',
+	{ packageName: z.string().describe('The name of the package') },
+	async ({ packageName }) => {
+		return await handleNpmVulnerabilities({ packageName });
+	},
+);
+
+server.tool(
+	'npmTrends',
+	{
+		packageName: z.string().describe('The name of the package'),
+		period: z.enum(['last-week', 'last-month', 'last-year']).describe('Time period for trends'),
+	},
+	async ({ packageName, period }) => {
+		return await handleNpmTrends({ packageName, period });
+	},
+);
+
+server.tool(
+	'npmCompare',
+	{ packages: z.array(z.string()).describe('List of package names to compare') },
+	async ({ packages }) => {
+		return await handleNpmCompare({ packages });
+	},
+);
+
+// Start receiving messages on stdin and sending messages on stdout
+const transport = new StdioServerTransport();
+await server.connect(transport);
+
+process.stdin.on('close', () => {
+	server.close();
+});
