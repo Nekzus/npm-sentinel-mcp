@@ -7,6 +7,14 @@ import fetch from 'node-fetch';
 import { z } from 'zod';
 
 // Zod schemas for npm package data
+export const NpmMaintainerSchema = z
+	.object({
+		name: z.string(),
+		email: z.string().optional(),
+		url: z.string().optional(),
+	})
+	.passthrough();
+
 export const NpmPackageVersionSchema = z
 	.object({
 		name: z.string(),
@@ -104,31 +112,155 @@ export const NpmPopularitySchema = z.object({
 	communityInterest: z.number(),
 });
 
-export interface NpmsApiResponse {
+// Interfaz actualizada para la respuesta de npms.io
+interface NpmsApiResponse {
+	analyzedAt: string;
+	collected: {
+		metadata: {
+			name: string;
+			version: string;
+			description?: string;
+		};
+		npm: {
+			downloads: Array<{
+				from: string;
+				to: string;
+				count: number;
+			}>;
+			starsCount: number;
+		};
+		github?: {
+			starsCount: number;
+			forksCount: number;
+			subscribersCount: number;
+			issues: {
+				count: number;
+				openCount: number;
+			};
+		};
+	};
 	score: {
-		quality: {
-			score: number;
-			tests: number;
-			coverage: number;
-			linting: number;
-			types: number;
-		};
-		maintenance: {
-			score: number;
-			issuesResolutionTime: number;
-			commitsFrequency: number;
-			releaseFrequency: number;
-			lastUpdate: string;
-		};
-		popularity: {
-			score: number;
-			stars: number;
-			downloads: number;
-			dependents: number;
-			communityInterest: number;
+		final: number;
+		detail: {
+			quality: number;
+			popularity: number;
+			maintenance: number;
 		};
 	};
 }
+
+function isValidNpmsResponse(data: unknown): data is NpmsApiResponse {
+	if (typeof data !== 'object' || data === null) {
+		console.debug('Response is not an object or is null');
+		return false;
+	}
+
+	const response = data as Partial<NpmsApiResponse>;
+
+	// Check score structure
+	if (
+		!response.score ||
+		typeof response.score !== 'object' ||
+		!('final' in response.score) ||
+		typeof response.score.final !== 'number' ||
+		!('detail' in response.score) ||
+		typeof response.score.detail !== 'object'
+	) {
+		console.debug('Invalid score structure');
+		return false;
+	}
+
+	// Check score detail metrics
+	const detail = response.score.detail;
+	if (
+		typeof detail.quality !== 'number' ||
+		typeof detail.popularity !== 'number' ||
+		typeof detail.maintenance !== 'number'
+	) {
+		console.debug('Invalid score detail metrics');
+		return false;
+	}
+
+	// Check collected data structure
+	if (
+		!response.collected ||
+		typeof response.collected !== 'object' ||
+		!response.collected.metadata ||
+		typeof response.collected.metadata !== 'object' ||
+		typeof response.collected.metadata.name !== 'string' ||
+		typeof response.collected.metadata.version !== 'string'
+	) {
+		console.debug('Invalid collected data structure');
+		return false;
+	}
+
+	// Check npm data
+	if (
+		!response.collected.npm ||
+		typeof response.collected.npm !== 'object' ||
+		!Array.isArray(response.collected.npm.downloads) ||
+		typeof response.collected.npm.starsCount !== 'number'
+	) {
+		console.debug('Invalid npm data structure');
+		return false;
+	}
+
+	// Optional github data check
+	if (response.collected.github) {
+		if (
+			typeof response.collected.github !== 'object' ||
+			typeof response.collected.github.starsCount !== 'number' ||
+			typeof response.collected.github.forksCount !== 'number' ||
+			typeof response.collected.github.subscribersCount !== 'number' ||
+			!response.collected.github.issues ||
+			typeof response.collected.github.issues !== 'object' ||
+			typeof response.collected.github.issues.count !== 'number' ||
+			typeof response.collected.github.issues.openCount !== 'number'
+		) {
+			console.debug('Invalid github data structure');
+			return false;
+		}
+	}
+
+	return true;
+}
+
+export const NpmSearchResultSchema = z
+	.object({
+		objects: z.array(
+			z.object({
+				package: z.object({
+					name: z.string(),
+					version: z.string(),
+					description: z.string().optional(),
+					keywords: z.array(z.string()).optional(),
+					publisher: z
+						.object({
+							username: z.string(),
+						})
+						.optional(),
+					links: z
+						.object({
+							npm: z.string().optional(),
+							homepage: z.string().optional(),
+							repository: z.string().optional(),
+						})
+						.optional(),
+				}),
+				score: z.object({
+					final: z.number(),
+					detail: z.object({
+						quality: z.number(),
+						popularity: z.number(),
+						maintenance: z.number(),
+					}),
+				}),
+				searchScore: z.number(),
+			}),
+		),
+		total: z.number(),
+	})
+	.passthrough();
 
 // Type inference
 export type NpmPackageInfo = z.infer<typeof NpmPackageInfoSchema>;
@@ -269,6 +401,70 @@ const TOOLS: Tool[] = [
 				},
 			},
 			required: ['packages'],
+		},
+	},
+	{
+		name: 'npmMaintainers',
+		description: 'Get maintainers for an NPM package',
+		parameters: z.object({
+			packageName: z.string().describe('The name of the package'),
+		}),
+		inputSchema: {
+			type: 'object',
+			properties: {
+				packageName: { type: 'string' },
+			},
+			required: ['packageName'],
+		},
+	},
+	{
+		name: 'npmScore',
+		description:
+			'Get consolidated package score based on quality, maintenance, and popularity metrics',
+		parameters: z.object({
+			packageName: z.string().describe('The name of the package'),
+		}),
+		inputSchema: {
+			type: 'object',
+			properties: {
+				packageName: { type: 'string' },
+			},
+			required: ['packageName'],
+		},
+	},
+	{
+		name: 'npmPackageReadme',
+		description: 'Get the README for an NPM package',
+		parameters: z.object({
+			packageName: z.string().describe('The name of the package'),
+		}),
+		inputSchema: {
+			type: 'object',
+			properties: {
+				packageName: { type: 'string' },
+			},
+			required: ['packageName'],
+		},
+	},
+	{
+		name: 'npmSearch',
+		description: 'Search for NPM packages',
+		parameters: z.object({
+			query: z.string().describe('Search query for packages'),
+			limit: z
+				.number()
+				.min(1)
+				.max(50)
+				.optional()
+				.describe('Maximum number of results to return (default: 10)'),
+		}),
+		inputSchema: {
+			type: 'object',
+			properties: {
+				query: { type: 'string' },
+				limit: { type: 'number', minimum: 1, maximum: 50 },
+			},
+			required: ['query'],
 		},
 	},
 ];
@@ -707,15 +903,20 @@ async function handleNpmQuality(args: { packageName: string }): Promise<CallTool
 		if (!response.ok) {
 			throw new Error(`Failed to fetch quality data: ${response.statusText}`);
 		}
-		const data = (await response.json()) as NpmsApiResponse;
-		const quality = data.score.quality;
+		const rawData = await response.json();
+
+		if (!isValidNpmsResponse(rawData)) {
+			throw new Error('Invalid response format from npms.io API');
+		}
+
+		const quality = rawData.score.detail.quality;
 
 		const result = NpmQualitySchema.parse({
-			score: Math.round(quality.score * 100) / 100,
-			tests: Math.round(quality.tests * 100) / 100,
-			coverage: Math.round(quality.coverage * 100) / 100,
-			linting: Math.round(quality.linting * 100) / 100,
-			types: Math.round(quality.types * 100) / 100,
+			score: Math.round(quality * 100) / 100,
+			tests: 0, // Estos valores ya no están disponibles en la API
+			coverage: 0,
+			linting: 0,
+			types: 0,
 		});
 
 		return {
@@ -724,10 +925,7 @@ async function handleNpmQuality(args: { packageName: string }): Promise<CallTool
 					type: 'text',
 					text: `Quality metrics for ${args.packageName}:
 - Overall Score: ${result.score}
-- Tests: ${result.tests}
-- Coverage: ${result.coverage}
-- Linting: ${result.linting}
-- Types: ${result.types}`,
+- Note: Detailed metrics (tests, coverage, linting, types) are no longer provided by the API`,
 				},
 			],
 			isError: false,
@@ -745,7 +943,6 @@ async function handleNpmQuality(args: { packageName: string }): Promise<CallTool
 	}
 }
 
-// Function to get package maintenance metrics
 async function handleNpmMaintenance(args: { packageName: string }): Promise<CallToolResult> {
 	try {
 		const response = await fetch(
@@ -754,15 +951,20 @@ async function handleNpmMaintenance(args: { packageName: string }): Promise<Call
 		if (!response.ok) {
 			throw new Error(`Failed to fetch maintenance data: ${response.statusText}`);
 		}
-		const data = (await response.json()) as NpmsApiResponse;
-		const maintenance = data.score.maintenance;
+		const data = await response.json();
+
+		if (!isValidNpmsResponse(data)) {
+			throw new Error('Invalid API response format');
+		}
+
+		const maintenanceScore = data.score.detail.maintenance;
 
 		const result = NpmMaintenanceSchema.parse({
-			score: Math.round(maintenance.score * 100) / 100,
-			issuesResolutionTime: Math.round(maintenance.issuesResolutionTime * 100) / 100,
-			commitsFrequency: Math.round(maintenance.commitsFrequency * 100) / 100,
-			releaseFrequency: Math.round(maintenance.releaseFrequency * 100) / 100,
-			lastUpdate: new Date(maintenance.lastUpdate).toISOString(),
+			score: Math.round(maintenanceScore * 100) / 100,
+			issuesResolutionTime: 0,
+			commitsFrequency: 0,
+			releaseFrequency: 0,
+			lastUpdate: new Date().toISOString(),
 		});
 
 		return {
@@ -771,10 +973,7 @@ async function handleNpmMaintenance(args: { packageName: string }): Promise<Call
 					type: 'text',
 					text: `Maintenance metrics for ${args.packageName}:
 - Overall Score: ${result.score}
-- Issues Resolution Time: ${result.issuesResolutionTime}
-- Commits Frequency: ${result.commitsFrequency}
-- Release Frequency: ${result.releaseFrequency}
-- Last Update: ${new Date(result.lastUpdate).toLocaleDateString()}`,
+- Note: Detailed metrics are no longer provided by the API`,
 				},
 			],
 			isError: false,
@@ -792,7 +991,6 @@ async function handleNpmMaintenance(args: { packageName: string }): Promise<Call
 	}
 }
 
-// Function to get package popularity metrics
 async function handleNpmPopularity(args: { packageName: string }): Promise<CallToolResult> {
 	try {
 		const response = await fetch(
@@ -801,15 +999,20 @@ async function handleNpmPopularity(args: { packageName: string }): Promise<CallT
 		if (!response.ok) {
 			throw new Error(`Failed to fetch popularity data: ${response.statusText}`);
 		}
-		const data = (await response.json()) as NpmsApiResponse;
-		const popularity = data.score.popularity;
+		const data = await response.json();
+
+		if (!isValidNpmsResponse(data)) {
+			throw new Error('Invalid API response format');
+		}
+
+		const popularityScore = data.score.detail.popularity;
 
 		const result = NpmPopularitySchema.parse({
-			score: Math.round(popularity.score * 100) / 100,
-			stars: Math.round(popularity.stars),
-			downloads: Math.round(popularity.downloads),
-			dependents: Math.round(popularity.dependents),
-			communityInterest: Math.round(popularity.communityInterest * 100) / 100,
+			score: Math.round(popularityScore * 100) / 100,
+			stars: 0,
+			downloads: 0,
+			dependents: 0,
+			communityInterest: 0,
 		});
 
 		return {
@@ -818,10 +1021,7 @@ async function handleNpmPopularity(args: { packageName: string }): Promise<CallT
 					type: 'text',
 					text: `Popularity metrics for ${args.packageName}:
 - Overall Score: ${result.score}
-- GitHub Stars: ${result.stars}
-- Downloads: ${result.downloads}
-- Dependent Packages: ${result.dependents}
-- Community Interest: ${result.communityInterest}`,
+- Note: Detailed metrics are no longer provided by the API`,
 				},
 			],
 			isError: false,
@@ -836,6 +1036,319 @@ async function handleNpmPopularity(args: { packageName: string }): Promise<CallT
 			],
 			isError: true,
 		} as CallToolResult;
+	}
+}
+
+async function handleNpmMaintainers(args: { packageName: string }): Promise<CallToolResult> {
+	try {
+		const response = await fetch(`https://registry.npmjs.org/${args.packageName}`);
+		if (!response.ok) {
+			throw new Error(`Failed to fetch package info: ${response.statusText}`);
+		}
+
+		const rawData = await response.json();
+		if (!isNpmPackageInfo(rawData)) {
+			throw new Error('Invalid package info data received');
+		}
+
+		const maintainers = (rawData.maintainers as z.infer<typeof NpmMaintainerSchema>[]) || [];
+		let text = `👥 Maintainers for ${args.packageName}:\n\n`;
+
+		if (maintainers.length === 0) {
+			text += 'No maintainers found\n';
+		} else {
+			for (const maintainer of maintainers) {
+				text += `• ${maintainer.name}`;
+				if (maintainer.email) text += ` <${maintainer.email}>`;
+				if (maintainer.url) text += `\n  URL: ${maintainer.url}`;
+				text += '\n';
+			}
+		}
+
+		return {
+			content: [{ type: 'text', text }],
+			isError: false,
+		};
+	} catch (error) {
+		return {
+			content: [
+				{
+					type: 'text',
+					text: `Error fetching maintainers: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				},
+			],
+			isError: true,
+		};
+	}
+}
+
+async function handleNpmScore(args: { packageName: string }): Promise<CallToolResult> {
+	try {
+		const encodedPackage = encodeURIComponent(args.packageName);
+		const apiUrl = `https://api.npms.io/v2/package/${encodedPackage}`;
+
+		const response = await fetch(apiUrl);
+
+		if (response.status === 404) {
+			return {
+				content: [
+					{
+						type: 'text',
+						text: `Package "${args.packageName}" not found in the npm registry. Please verify the package name and try again.`,
+					},
+				],
+				isError: true,
+			};
+		}
+
+		if (!response.ok) {
+			throw new Error(`API request failed with status ${response.status} (${response.statusText})`);
+		}
+
+		const rawData = await response.json();
+
+		if (!isValidNpmsResponse(rawData)) {
+			console.debug('Response validation details:', {
+				isObject: typeof rawData === 'object' && rawData !== null,
+				hasScore: rawData && typeof rawData === 'object' && 'score' in rawData,
+				hasCollected: rawData && typeof rawData === 'object' && 'collected' in rawData,
+			});
+			throw new Error('Invalid or incomplete response from npms.io API');
+		}
+
+		const { score, collected } = rawData;
+		const { detail } = score;
+
+		let text = `📊 Package Score for ${args.packageName}\n\n`;
+		text += `Overall Score: ${score.final}\n\n`;
+
+		text += `🎯 Quality: ${detail.quality}\n`;
+		text += `🛠 Maintenance: ${detail.maintenance}\n`;
+		text += `📈 Popularity: ${detail.popularity}\n\n`;
+
+		if (collected.github) {
+			text += '📊 GitHub Stats:\n';
+			text += `• Stars: ${collected.github.starsCount.toLocaleString()}\n`;
+			text += `• Forks: ${collected.github.forksCount.toLocaleString()}\n`;
+			text += `• Watchers: ${collected.github.subscribersCount.toLocaleString()}\n`;
+			text += `• Total Issues: ${collected.github.issues.count.toLocaleString()}\n`;
+			text += `• Open Issues: ${collected.github.issues.openCount.toLocaleString()}\n\n`;
+		}
+
+		if (collected.npm?.downloads?.length > 0) {
+			const lastDownloads = collected.npm.downloads[0];
+			text += '📥 NPM Downloads:\n';
+			text += `• Last day: ${lastDownloads.count.toLocaleString()} (${new Date(lastDownloads.from).toLocaleDateString()} - ${new Date(lastDownloads.to).toLocaleDateString()})\n`;
+		}
+
+		return {
+			content: [{ type: 'text', text }],
+			isError: false,
+		};
+	} catch (error) {
+		console.error('Full error:', error);
+
+		let errorMessage = 'An unexpected error occurred while fetching package score.';
+
+		if (error instanceof Error) {
+			if (error.message.includes('API request failed')) {
+				errorMessage = `Failed to fetch package score: ${error.message}. The npms.io API might be experiencing issues.`;
+			} else if (error.message.includes('Invalid or incomplete response')) {
+				errorMessage = `${error.message}. The package data might be incomplete or in an unexpected format.`;
+			} else {
+				errorMessage = `Error fetching package score: ${error.message}`;
+			}
+		}
+
+		return {
+			content: [{ type: 'text', text: errorMessage }],
+			isError: true,
+		};
+	}
+}
+
+async function handleNpmPackageReadme(args: { packageName: string }): Promise<CallToolResult> {
+	try {
+		const response = await fetch(`https://registry.npmjs.org/${args.packageName}`);
+		if (!response.ok) {
+			throw new Error(`Failed to fetch package info: ${response.statusText}`);
+		}
+
+		const rawData = await response.json();
+		if (!isNpmPackageInfo(rawData)) {
+			throw new Error('Invalid package info data received');
+		}
+
+		const latestVersion = rawData['dist-tags']?.latest;
+		if (!latestVersion || !rawData.versions?.[latestVersion]) {
+			throw new Error('No latest version found');
+		}
+
+		const readme = rawData.versions[latestVersion].readme || rawData.readme;
+
+		if (!readme) {
+			return {
+				content: [
+					{
+						type: 'text',
+						text: `No README found for ${args.packageName}`,
+					},
+				],
+				isError: false,
+			};
+		}
+
+		return {
+			content: [
+				{
+					type: 'text',
+					text: `📖 README for ${args.packageName}@${latestVersion}\n\n${readme}`,
+				},
+			],
+			isError: false,
+		};
+	} catch (error) {
+		return {
+			content: [
+				{
+					type: 'text',
+					text: `Error fetching README: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				},
+			],
+			isError: true,
+		};
+	}
+}
+
+async function handleNpmSearch(args: { query: string; limit?: number }): Promise<CallToolResult> {
+	try {
+		const limit = args.limit || 10;
+		const response = await fetch(
+			`https://registry.npmjs.org/-/v1/search?text=${encodeURIComponent(args.query)}&size=${limit}`,
+		);
+		if (!response.ok) {
+			throw new Error(`Failed to search packages: ${response.statusText}`);
+		}
+
+		const rawData = await response.json();
+		const parseResult = NpmSearchResultSchema.safeParse(rawData);
+		if (!parseResult.success) {
+			throw new Error('Invalid search results data received');
+		}
+
+		const { objects, total } = parseResult.data;
+		let text = `🔍 Search results for "${args.query}"\n`;
+		text += `Found ${total.toLocaleString()} packages (showing top ${limit})\n\n`;
+
+		for (const result of objects) {
+			const pkg = result.package;
+			const score = result.score;
+
+			text += `📦 ${pkg.name}@${pkg.version}\n`;
+			if (pkg.description) text += `${pkg.description}\n`;
+
+			// Normalize and format score to ensure it's between 0 and 1
+			const normalizedScore = Math.min(1, score.final / 100);
+			const finalScore = normalizedScore.toFixed(2);
+			text += `Score: ${finalScore} (${(normalizedScore * 100).toFixed(0)}%)\n`;
+
+			if (pkg.keywords && pkg.keywords.length > 0) {
+				text += `Keywords: ${pkg.keywords.join(', ')}\n`;
+			}
+
+			if (pkg.links) {
+				text += 'Links:\n';
+				if (pkg.links.npm) text += `• NPM: ${pkg.links.npm}\n`;
+				if (pkg.links.homepage) text += `• Homepage: ${pkg.links.homepage}\n`;
+				if (pkg.links.repository) text += `• Repository: ${pkg.links.repository}\n`;
+			}
+
+			text += '\n';
+		}
+
+		return {
+			content: [{ type: 'text', text }],
+			isError: false,
+		};
+	} catch (error) {
+		return {
+			content: [
+				{
+					type: 'text',
+					text: `Error searching packages: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				},
+			],
+			isError: true,
+		};
+	}
+}
+
+// License compatibility checker
+async function handleNpmLicenseCompatibility(args: {
+	packages: string[];
+}): Promise<CallToolResult> {
+	try {
+		const licenses = await Promise.all(
+			args.packages.map(async (pkg) => {
+				const response = await fetch(`https://registry.npmjs.org/${pkg}/latest`);
+				if (!response.ok) {
+					throw new Error(`Failed to fetch license info for ${pkg}: ${response.statusText}`);
+				}
+				const data = await response.json();
+				return {
+					package: pkg,
+					license: data.license || 'UNKNOWN',
+				};
+			}),
+		);
+
+		let text = `📜 License Compatibility Analysis\n\n`;
+		text += `Packages analyzed:\n`;
+		licenses.forEach(({ package: pkg, license }) => {
+			text += `• ${pkg}: ${license}\n`;
+		});
+		text += '\n';
+
+		// Basic license compatibility check
+		const hasGPL = licenses.some(({ license }) => license?.includes('GPL'));
+		const hasMIT = licenses.some(({ license }) => license === 'MIT');
+		const hasApache = licenses.some(({ license }) => license?.includes('Apache'));
+		const hasUnknown = licenses.some(({ license }) => license === 'UNKNOWN');
+
+		text += 'Compatibility Analysis:\n';
+		if (hasUnknown) {
+			text += '⚠️ Warning: Some packages have unknown licenses. Manual review recommended.\n';
+		}
+		if (hasGPL) {
+			text += '⚠️ Contains GPL licensed code. Resulting work may need to be GPL licensed.\n';
+			if (hasMIT || hasApache) {
+				text += '⚠️ Mixed GPL with MIT/Apache licenses. Review carefully for compliance.\n';
+			}
+		} else if (hasMIT && hasApache) {
+			text += '✅ MIT and Apache 2.0 licenses are compatible.\n';
+		} else if (hasMIT) {
+			text += '✅ All MIT licensed. Generally safe to use.\n';
+		} else if (hasApache) {
+			text += '✅ All Apache licensed. Generally safe to use.\n';
+		}
+
+		text +=
+			'\nNote: This is a basic analysis. For legal compliance, please consult with a legal expert.\n';
+
+		return {
+			content: [{ type: 'text', text }],
+			isError: false,
+		};
+	} catch (error) {
+		return {
+			content: [
+				{
+					type: 'text',
+					text: `Error analyzing license compatibility: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				},
+			],
+			isError: true,
+		};
 	}
 }
 
@@ -910,6 +1423,60 @@ server.tool(
 	{ packages: z.array(z.string()).describe('List of package names to compare') },
 	async ({ packages }) => {
 		return await handleNpmCompare({ packages });
+	},
+);
+
+server.tool(
+	'npmMaintainers',
+	{ packageName: z.string().describe('The name of the package') },
+	async ({ packageName }) => {
+		return await handleNpmMaintainers({ packageName });
+	},
+);
+
+server.tool(
+	'npmScore',
+	{ packageName: z.string().describe('The name of the package') },
+	async ({ packageName }) => {
+		return await handleNpmScore({ packageName });
+	},
+);
+
+server.tool(
+	'npmPackageReadme',
+	{ packageName: z.string().describe('The name of the package') },
+	async ({ packageName }) => {
+		return await handleNpmPackageReadme({ packageName });
+	},
+);
+
+server.tool(
+	'npmSearch',
+	{
+		query: z.string().describe('Search query for packages'),
+		limit: z
+			.number()
+			.min(1)
+			.max(50)
+			.optional()
+			.describe('Maximum number of results to return (default: 10)'),
+	},
+	async ({ query, limit }) => {
+		return await handleNpmSearch({ query, limit });
+	},
+);
+
+// Add the tool to the server
+server.tool(
+	'npmLicenseCompatibility',
+	{
+		packages: z
+			.array(z.string())
+			.min(1)
+			.describe('List of package names to check for license compatibility'),
+	},
+	async ({ packages }) => {
+		return await handleNpmLicenseCompatibility({ packages });
 	},
 );
 
