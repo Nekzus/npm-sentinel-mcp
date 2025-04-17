@@ -13,6 +13,10 @@ _Built on the MCP SDK, providing real-time insights into package quality, securi
 
 </div>
 
+<a href="https://glama.ai/mcp/servers/@Nekzus/mcp-server">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@Nekzus/mcp-server/badge" alt="Utility Server MCP server" />
+</a>
+
 ## Features
 
 - **Version Analysis**
