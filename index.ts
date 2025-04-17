@@ -350,7 +350,7 @@ async function handleNpmVersions(args: { packageName: string }): Promise<CallToo
 
 async function handleNpmLatest(args: { packageName: string }): Promise<CallToolResult> {
 	try {
-		const response = await fetch(`https://registry.npmjs.org/${args.packageName}`);
+		const response = await fetch(`https://registry.npmjs.org/${args.packageName}/latest`);
 		if (!response.ok) {
 			throw new Error(`Failed to fetch package info: ${response.statusText}`);
 		}
@@ -918,4 +918,17 @@ await server.connect(transport);
 
 process.stdin.on('close', () => {
 	server.close();
+});
+
+// Handle uncaught errors
+process.on('uncaughtException', (error) => {
+	console.error('Fatal error:', error);
+	server.close();
+	process.exit(1);
+});
+
+process.on('unhandledRejection', (error) => {
+	console.error('Unhandled rejection:', error);
+	server.close();
+	process.exit(1);
 });
