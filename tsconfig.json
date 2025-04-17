@@ -13,10 +13,12 @@
         "declaration": true,
         "declarationMap": true,
         "sourceMap": true,
-        "composite": true
+        "composite": true,
+        "incremental": true,
+        "tsBuildInfoFile": "./dist/.tsbuildinfo"
     },
     "include": [
-        "index.ts"
+        "**/*.ts"
     ],
     "exclude": [
         "node_modules",

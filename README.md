@@ -1,157 +1,73 @@
 # @nekzus/mcp-server
 
+<div align="center">
+
 [![Github Workflow](https://github.com/nekzus/mcp-server/actions/workflows/publish.yml/badge.svg?event=push)](https://github.com/Nekzus/mcp-server/actions/workflows/publish.yml)
 [![npm-version](https://img.shields.io/npm/v/@nekzus/mcp-server.svg)](https://www.npmjs.com/package/@nekzus/mcp-server)
 [![npm-month](https://img.shields.io/npm/dm/@nekzus/mcp-server.svg)](https://www.npmjs.com/package/@nekzus/mcp-server)
 [![npm-total](https://img.shields.io/npm/dt/@nekzus/mcp-server.svg?style=flat)](https://www.npmjs.com/package/@nekzus/mcp-server)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Donate](https://img.shields.io/badge/donate-paypal-blue.svg?style=flat-square)](https://paypal.me/maseortega)
-
-<div align="center">
 
 **A Model Context Protocol (MCP) server for comprehensive NPM package analysis** </br>
 _Built on the MCP SDK, providing real-time insights into package quality, security, dependencies, and metrics_
 
+[Features](#features) •
+[Installation](#installation) •
+[Usage](#usage) •
+[API Reference](#api-reference) •
+[Development](#development)
+
 </div>
 
-## Features
+## 📋 Table of Contents
 
-- **Version Analysis**
-  - List all available package versions
-  - Get latest version details
-  - Track version history
-  - Analyze release patterns
+- [Features](#features)
+- [Installation](#installation)
+- [Usage](#usage)
+  - [Configuration](#configuration)
+  - [Basic Usage](#basic-usage)
+- [API Reference](#api-reference)
+  - [Version Analysis](#version-analysis)
+  - [Package Analysis](#package-analysis)
+  - [Metrics Analysis](#metrics-analysis)
+- [TypeScript Support](#typescript-support)
+- [Development](#development)
+- [Contributing](#contributing)
+- [License](#license)
 
-- **Package Analysis**
-  - Check dependencies and devDependencies
-  - Verify TypeScript support
-  - Analyze package size and dependencies
-  - Scan for vulnerabilities
-  - Monitor security updates
+## ✨ Features
 
-- **Metrics Analysis**
-  - Track download trends
-  - Compare package metrics
-  - Evaluate quality scores
-  - Assess maintenance status
-  - Monitor popularity trends
+### 📦 Version Analysis
+- List all available package versions
+- Get latest version details and changelog
+- Track version history
+- Analyze release patterns
 
-## Tools
+### 🔍 Package Analysis
+- Check dependencies and devDependencies
+- Verify TypeScript support and types
+- Analyze package size and bundle metrics
+- Scan for security vulnerabilities
+- Monitor security updates
 
-### Version Analysis Tools
+### 📊 Metrics Analysis
+- Track download trends and patterns
+- Compare package metrics
+- Evaluate quality scores
+- Assess maintenance status
+- Monitor popularity trends
 
-- **npmVersions**
-  - Get all available versions of a package
-  - Input: `packageName` (string, required)
-  - Example:
-    ```json
-    {"packageName": "react"} -> Lists all react versions
-    ```
-
-- **npmLatest**
-  - Get latest version info and changelog
-  - Input: `packageName` (string, required)
-  - Example:
-    ```json
-    {"packageName": "react"} -> Latest version details
-    ```
-
-### Package Analysis Tools
-
-- **npmDeps**
-  - Analyze package dependencies
-  - Input: `packageName` (string, required)
-  - Example:
-    ```json
-    {"packageName": "react"} -> Dependencies breakdown
-    ```
-
-- **npmTypes**
-  - Check TypeScript support
-  - Input: `packageName` (string, required)
-  - Example:
-    ```json
-    {"packageName": "react"} -> TypeScript support info
-    ```
-
-- **npmSize**
-  - Get package size metrics
-  - Input: `packageName` (string, required)
-  - Example:
-    ```json
-    {"packageName": "react"} -> Size and dependency info
-    ```
-
-- **npmVulnerabilities**
-  - Check security vulnerabilities
-  - Input: `packageName` (string, required)
-  - Example:
-    ```json
-    {"packageName": "react"} -> Security vulnerabilities
-    ```
-
-### Metrics Analysis Tools
-
-- **npmTrends**
-  - Get download trends
-  - Inputs:
-    - `packageName` (string, required)
-    - `period` (string, optional): "last-week" | "last-month" | "last-year"
-  - Example:
-    ```json
-    {
-      "packageName": "react",
-      "period": "last-month"
-    } -> Download trends data
-    ```
-
-- **npmCompare**
-  - Compare multiple packages
-  - Input: `packages` (string[], required)
-  - Example:
-    ```json
-    {
-      "packages": ["react", "vue", "angular"]
-    } -> Comparative metrics
-    ```
-
-- **npmQuality**
-  - Get quality metrics
-  - Input: `packageName` (string, required)
-  - Example:
-    ```json
-    {"packageName": "react"} -> Quality score details
-    ```
-
-- **npmMaintenance**
-  - Get maintenance metrics
-  - Input: `packageName` (string, required)
-  - Example:
-    ```json
-    {"packageName": "react"} -> Maintenance status
-    ```
-
-- **npmPopularity**
-  - Get popularity metrics
-  - Input: `packageName` (string, required)
-  - Example:
-    ```json
-    {"packageName": "react"} -> Popularity metrics
-    ```
-
-## Key Features
-
-- Real-time package analysis
-- Comprehensive security scanning
-- Detailed dependency tracking
-- TypeScript support verification
-- Performance metrics monitoring
+### 🛠 Technical Features
+- Full TypeScript support with type definitions
 - Zero configuration required
-- Type-safe implementations
-- Full TypeScript declarations
-- Docker support
 - ESM support
+- Real-time analysis
+- Type-safe implementations
+- Comprehensive error handling
 
-## Installation
+## 🚀 Installation
 
 ```bash
 # NPM
@@ -164,11 +80,13 @@ yarn add @nekzus/mcp-server
 pnpm add @nekzus/mcp-server
 ```
 
-## Configuration
+## 📖 Usage
 
-To use this server with the Claude Desktop app, add the following configuration to the "mcpServers" section of your `claude_desktop_config.json`:
+### Configuration
 
-### NPX (Recommended)
+#### With Claude Desktop
+
+Add the following to your `claude_desktop_config.json`:
 
 ```json
 {
@@ -176,35 +94,119 @@ To use this server with the Claude Desktop app, add the following configuration 
     "nekzus": {
       "transport": "stdio",
       "command": "npx",
-      "args": [
-        "-y",
-        "@nekzus/mcp-server"
-      ]
+      "args": ["-y", "@nekzus/mcp-server"]
     }
   }
 }
 ```
 
-### Docker
-
-```json
-{
-  "mcpServers": {
-    "nekzus": {
-      "transport": "stdio",
-      "command": "docker",
-      "args": ["run", "-i", "--rm", "--init", "nekzus/mcp-server"]
-    }
-  }
-}
-```
-
-The configuration file is typically located at:
+Configuration file locations:
 - Windows: `%APPDATA%/claude-desktop/claude_desktop_config.json`
 - macOS: `~/Library/Application Support/claude-desktop/claude_desktop_config.json`
 - Linux: `~/.config/claude-desktop/claude_desktop_config.json`
 
-## Development
+### Basic Usage
+
+```typescript
+import { McpServer } from '@nekzus/mcp-server';
+
+// The server automatically registers all available tools
+const server = new McpServer({
+  name: 'mcp-npm-tools',
+  version: '1.0.0'
+});
+
+// Start receiving messages
+await server.connect(new StdioServerTransport());
+```
+
+## 📚 API Reference
+
+### Version Analysis
+
+#### npmVersions
+Get all available versions of a package.
+```typescript
+interface Input {
+  packageName: string;
+}
+```
+
+#### npmLatest
+Get latest version info and changelog.
+```typescript
+interface Input {
+  packageName: string;
+}
+```
+
+### Package Analysis
+
+#### npmDeps
+Analyze package dependencies.
+```typescript
+interface Input {
+  packageName: string;
+}
+```
+
+#### npmTypes
+Check TypeScript support.
+```typescript
+interface Input {
+  packageName: string;
+}
+```
+
+#### npmSize
+Get package size metrics.
+```typescript
+interface Input {
+  packageName: string;
+}
+```
+
+#### npmVulnerabilities
+Check security vulnerabilities.
+```typescript
+interface Input {
+  packageName: string;
+}
+```
+
+### Metrics Analysis
+
+#### npmTrends
+Get download trends.
+```typescript
+interface Input {
+  packageName: string;
+  period: "last-week" | "last-month" | "last-year";
+}
+```
+
+#### npmCompare
+Compare multiple packages.
+```typescript
+interface Input {
+  packages: string[];
+}
+```
+
+## 🔷 TypeScript Support
+
+This package includes comprehensive TypeScript definitions. All tools and schemas are fully typed:
+
+```typescript
+import type {
+  NpmPackageInfo,
+  NpmPackageData,
+  BundlephobiaData,
+  NpmDownloadsData
+} from '@nekzus/mcp-server';
+```
+
+## 🛠 Development
 
 ```bash
 # Install dependencies
@@ -222,27 +224,38 @@ npm run lint
 # Run tests
 npm run test
 
-# Build
+# Build for production
 npm run build
+
+# Start the server
+node dist/index.js
 ```
 
-## Docker
+## 📄 License
 
-Build and run the Docker image:
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-```bash
-# Build the image
-docker build -t nekzus/mcp-server .
+## 🤝 Contributing
 
-# Run the container
-docker run -i --rm --init nekzus/mcp-server
-```
+Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
 
-## Requirements
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-- Node.js >= 18
-- npm >= 9
+## 📫 Contact
 
-## License
+- GitHub: [@nekzus](https://github.com/nekzus)
+- Email: nekzus.dev@gmail.com
 
-MIT © [nekzus](https://github.com/nekzus)
+## ⭐️ Support
+
+If you find this project helpful, please consider:
+- Giving it a ⭐️ on GitHub
+- [Supporting me on PayPal](https://paypal.me/maseortega)
+
+---
+
+Made by [nekzus](https://github.com/nekzus)
