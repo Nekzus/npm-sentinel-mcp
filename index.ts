@@ -7,7 +7,7 @@ import fetch from 'node-fetch';
 import { z } from 'zod';
 
 // Zod schemas for npm package data
-const NpmPackageVersionSchema = z
+export const NpmPackageVersionSchema = z
 	.object({
 		name: z.string(),
 		version: z.string(),
@@ -31,7 +31,7 @@ const NpmPackageVersionSchema = z
 	})
 	.passthrough();
 
-const NpmPackageInfoSchema = z
+export const NpmPackageInfoSchema = z
 	.object({
 		name: z.string(),
 		'dist-tags': z.record(z.string()),
@@ -54,7 +54,7 @@ const NpmPackageInfoSchema = z
 	})
 	.passthrough();
 
-const NpmPackageDataSchema = z.object({
+export const NpmPackageDataSchema = z.object({
 	name: z.string(),
 	version: z.string(),
 	description: z.string().optional(),
@@ -66,13 +66,13 @@ const NpmPackageDataSchema = z.object({
 	typings: z.string().optional(),
 });
 
-const BundlephobiaDataSchema = z.object({
+export const BundlephobiaDataSchema = z.object({
 	size: z.number(),
 	gzip: z.number(),
 	dependencyCount: z.number(),
 });
 
-const NpmDownloadsDataSchema = z.object({
+export const NpmDownloadsDataSchema = z.object({
 	downloads: z.number(),
 	start: z.string(),
 	end: z.string(),
@@ -80,7 +80,7 @@ const NpmDownloadsDataSchema = z.object({
 });
 
 // Schemas for NPM quality, maintenance and popularity metrics
-const NpmQualitySchema = z.object({
+export const NpmQualitySchema = z.object({
 	score: z.number(),
 	tests: z.number(),
 	coverage: z.number(),
@@ -88,7 +88,7 @@ const NpmQualitySchema = z.object({
 	types: z.number(),
 });
 
-const NpmMaintenanceSchema = z.object({
+export const NpmMaintenanceSchema = z.object({
 	score: z.number(),
 	issuesResolutionTime: z.number(),
 	commitsFrequency: z.number(),
@@ -96,7 +96,7 @@ const NpmMaintenanceSchema = z.object({
 	lastUpdate: z.string(),
 });
 
-const NpmPopularitySchema = z.object({
+export const NpmPopularitySchema = z.object({
 	score: z.number(),
 	stars: z.number(),
 	downloads: z.number(),
@@ -104,7 +104,7 @@ const NpmPopularitySchema = z.object({
 	communityInterest: z.number(),
 });
 
-interface NpmsApiResponse {
+export interface NpmsApiResponse {
 	score: {
 		quality: {
 			score: number;
@@ -131,10 +131,10 @@ interface NpmsApiResponse {
 }
 
 // Type inference
-type NpmPackageInfo = z.infer<typeof NpmPackageInfoSchema>;
-type NpmPackageData = z.infer<typeof NpmPackageDataSchema>;
-type BundlephobiaData = z.infer<typeof BundlephobiaDataSchema>;
-type NpmDownloadsData = z.infer<typeof NpmDownloadsDataSchema>;
+export type NpmPackageInfo = z.infer<typeof NpmPackageInfoSchema>;
+export type NpmPackageData = z.infer<typeof NpmPackageDataSchema>;
+export type BundlephobiaData = z.infer<typeof BundlephobiaDataSchema>;
+export type NpmDownloadsData = z.infer<typeof NpmDownloadsDataSchema>;
 
 // Logger function that uses stderr - only for critical errors
 const log = (...args: any[]) => {

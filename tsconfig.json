@@ -12,7 +12,8 @@
         "resolveJsonModule": true,
         "declaration": true,
         "declarationMap": true,
-        "sourceMap": true
+        "sourceMap": true,
+        "composite": true
     },
     "include": [
         "index.ts"

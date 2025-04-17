@@ -3,6 +3,8 @@
   "version": "0.0.0-development",
   "description": "MCP server for comprehensive NPM package analysis. Provides real-time insights into package quality, security, dependencies, and metrics. Built on the MCP SDK for seamless integration with Claude and Anthropic AI tools.",
   "type": "module",
+  "types": "./dist/index.d.ts",
+  "main": "./dist/index.js",
   "bin": {
     "mcp-server-nekzus": "dist/index.js"
   },
@@ -56,7 +58,11 @@
     "esm",
     "typescript-types"
   ],
-  "author": "nekzus",
+  "author": {
+    "name": "nekzus",
+    "email": "nekzus.dev@gmail.com",
+    "url": "https://github.com/Nekzus"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
