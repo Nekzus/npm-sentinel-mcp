@@ -1,13 +1,17 @@
 {
   "name": "@nekzus/mcp-server",
   "version": "0.0.0-development",
-  "description": "Personal MCP Server implementation providing extensible utility functions and tools for development and testing purposes",
+  "description": "MCP server for comprehensive NPM package analysis. Provides real-time insights into package quality, security, dependencies, and metrics. Built on the MCP SDK for seamless integration with Claude and Anthropic AI tools.",
   "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
     "mcp-server-nekzus": "dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc && shx chmod +x dist/*.js",
@@ -20,17 +24,45 @@
     "check": "biome check --apply .",
     "commit": "git-cz",
     "semantic-release": "semantic-release --branches main",
-    "watch": "tsc --watch"
+    "watch": "tsc --watch",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "mcp",
+    "model-context-protocol",
+    "claude",
+    "anthropic",
+    "ai",
     "server",
     "typescript",
-    "greetings",
-    "cards",
-    "games"
+    "npm-tools",
+    "npm-analysis",
+    "npm-package-info",
+    "npm-dependencies",
+    "npm-vulnerabilities",
+    "npm-trends",
+    "npm-metrics",
+    "npm-quality",
+    "npm-maintenance",
+    "npm-popularity",
+    "npm-size",
+    "npm-types",
+    "npm-compare",
+    "development-tools",
+    "testing-tools",
+    "utility-functions",
+    "cli-tools",
+    "sdk",
+    "api",
+    "json-rpc",
+    "esm",
+    "typescript-types"
   ],
-  "author": "nekzus",
+  "author": {
+    "name": "nekzus",
+    "email": "nekzus.dev@gmail.com",
+    "url": "https://github.com/nekzus"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -41,8 +73,10 @@
   },
   "homepage": "https://github.com/Nekzus/mcp-server#readme",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.7.0",
-    "qrcode": "1.5.4"
+    "@modelcontextprotocol/sdk": "1.9.0",
+    "node-fetch": "3.3.2",
+    "qrcode": "1.5.4",
+    "zod": "3.24.3"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
@@ -52,15 +86,15 @@
     "@semantic-release/npm": "12.0.1",
     "@semantic-release/release-notes-generator": "14.0.3",
     "@types/jest": "29.5.14",
-    "@types/node": "22.13.13",
+    "@types/node": "22.14.1",
     "@types/qrcode": "1.5.5",
     "cz-conventional-changelog": "3.3.0",
     "jest": "29.7.0",
     "semantic-release": "24.2.3",
     "shx": "0.4.0",
-    "ts-jest": "29.3.0",
+    "ts-jest": "29.3.2",
     "tsx": "4.19.3",
-    "typescript": "5.8.2"
+    "typescript": "5.8.3"
   },
   "config": {
     "commitizen": {
@@ -69,5 +103,8 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }

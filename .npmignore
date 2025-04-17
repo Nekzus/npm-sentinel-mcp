@@ -1,4 +1,6 @@
 # Source
+*.ts
+!*.d.ts
 src/
 
 # Tests
@@ -6,6 +8,7 @@ __tests__/
 *.test.ts
 *.spec.ts
 coverage/
+jest.config.js
 
 # Config files
 .eslintrc
@@ -13,8 +16,9 @@ coverage/
 .gitignore
 .npmignore
 tsconfig.json
-jest.config.js
 Dockerfile
+biome.json
+.cursorrules
 
 # Editor directories
 .idea/
@@ -23,6 +27,7 @@ Dockerfile
 # Logs
 logs/
 *.log
+npm-debug.log*
 
 # Environment variables
 .env*
@@ -31,7 +36,7 @@ logs/
 .git/
 .github/
 
-# Documentation files (except README)
+# Documentation files (except README and LICENSE)
 docs/
 CONTRIBUTING.md
 CHANGELOG.md
@@ -39,4 +44,10 @@ CHANGELOG.md
 # Development tools
 nodemon.json
 .eslintignore
-.prettierignore 
+.prettierignore
+
+# Memory bank
+memory-bank/
+
+# Build artifacts
+*.tsbuildinfo 
