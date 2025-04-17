@@ -350,7 +350,8 @@ async function handleNpmVersions(args: { packageName: string }): Promise<CallToo
 
 async function handleNpmLatest(args: { packageName: string }): Promise<CallToolResult> {
 	try {
-		const response = await fetch(`https://registry.npmjs.org/${args.packageName}/latest`);
+		// Fetch full package info instead of just latest
+		const response = await fetch(`https://registry.npmjs.org/${args.packageName}`);
 		if (!response.ok) {
 			throw new Error(`Failed to fetch package info: ${response.statusText}`);
 		}
@@ -361,8 +362,8 @@ async function handleNpmLatest(args: { packageName: string }): Promise<CallToolR
 		}
 
 		const latestVersion = rawData['dist-tags']?.latest;
-		if (!latestVersion || !rawData.versions) {
-			throw new Error('No latest version or versions data found');
+		if (!latestVersion || !rawData.versions?.[latestVersion]) {
+			throw new Error('No latest version found');
 		}
 
 		const latestVersionInfo = rawData.versions[latestVersion];
