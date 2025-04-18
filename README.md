@@ -12,7 +12,12 @@
 
 </div>
 
+<a href="https://glama.ai/mcp/servers/@Nekzus/mcp-server">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@Nekzus/mcp-server/badge" alt="Utility Server MCP server" />
+</a>
+
 Node.js server implementing Model Context Protocol (MCP) for comprehensive NPM package analysis.
+
 
 ## Features
 
@@ -188,4 +193,4 @@ This MCP server is licensed under the MIT License. This means you are free to us
 
 ---
 
-Made by [nekzus](https://github.com/nekzus) • [Support Development](https://paypal.me/maseortega)
+MIT © [nekzus](https://github.com/nekzus)
