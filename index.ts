@@ -59,6 +59,7 @@ export const NpmPackageInfoSchema = z
 			.passthrough()
 			.optional(),
 		homepage: z.string().optional(),
+		maintainers: z.array(NpmMaintainerSchema).optional(),
 	})
 	.passthrough();
 
@@ -532,12 +533,23 @@ const TOOLS: Tool[] = [
 ];
 
 // Type guards for API responses
-function isNpmPackageInfo(data: unknown): data is z.infer<typeof NpmPackageInfoSchema> {
-	try {
-		return NpmPackageInfoSchema.parse(data) !== null;
-	} catch {
-		return false;
-	}
+function isNpmPackageInfo(data: unknown): data is NpmPackageInfo {
+	return (
+		typeof data === 'object' &&
+		data !== null &&
+		(!('maintainers' in data) ||
+			(Array.isArray((data as NpmPackageInfo).maintainers) &&
+				((data as NpmPackageInfo).maintainers?.every(
+					(m) =>
+						typeof m === 'object' &&
+						m !== null &&
+						'name' in m &&
+						'email' in m &&
+						typeof m.name === 'string' &&
+						typeof m.email === 'string',
+				) ??
+					true)))
+	);
 }
 
 function isNpmPackageData(data: unknown): data is z.infer<typeof NpmPackageDataSchema> {
@@ -1285,50 +1297,67 @@ async function handleNpmMaintainers(args: { packages: string[] }): Promise<CallT
 	try {
 		const results = await Promise.all(
 			args.packages.map(async (pkg) => {
-				const response = await fetch(`https://registry.npmjs.org/${pkg}`);
-				if (!response.ok) {
-					throw new Error(`Failed to fetch package info: ${response.statusText}`);
+				const response = await fetch(`https://registry.npmjs.org/${encodeURIComponent(pkg)}`);
+
+				if (response.status === 404) {
+					return {
+						name: pkg,
+						error: 'Package not found in the npm registry',
+					};
 				}
 
-				const rawData = await response.json();
-				if (!isNpmPackageInfo(rawData)) {
+				if (!response.ok) {
+					throw new Error(
+						`API request failed with status ${response.status} (${response.statusText})`,
+					);
+				}
+
+				const data = await response.json();
+				if (!isNpmPackageInfo(data)) {
 					throw new Error('Invalid package info data received');
 				}
 
-				const maintainers = (rawData.maintainers as z.infer<typeof NpmMaintainerSchema>[]) || [];
-				let text = `📦 Package: ${pkg}\n`;
-				text += `${'-'.repeat(40)}\n`;
-
-				if (maintainers.length === 0) {
-					text += '⚠️ No maintainers found\n';
-				} else {
-					text += `👥 Maintainers (${maintainers.length}):\n\n`;
-					for (const maintainer of maintainers) {
-						text += `• ${maintainer.name}`;
-						if (maintainer.email) {
-							text += `\n  📧 ${maintainer.email}`;
-						}
-						if (maintainer.url) {
-							text += `\n  🔗 ${maintainer.url}`;
-						}
-						text += '\n\n';
-					}
-				}
-
-				return { name: pkg, text };
+				return {
+					name: pkg,
+					maintainers: data.maintainers || [],
+				};
 			}),
 		);
 
-		let text = '';
+		let text = '👥 Package Maintainers\n\n';
+
 		for (const result of results) {
-			text += result.text;
+			if ('error' in result) {
+				text += `❌ ${result.name}: ${result.error}\n\n`;
+				continue;
+			}
+
+			text += `📦 ${result.name}\n`;
+			text += `${'-'.repeat(40)}\n`;
+
+			const maintainers = result.maintainers || [];
+			if (maintainers.length === 0) {
+				text += '⚠️ No maintainers found.\n';
+			} else {
+				text += `👥 Maintainers (${maintainers.length}):\n\n`;
+				for (const maintainer of maintainers) {
+					text += `• ${maintainer.name}\n`;
+					text += `  📧 ${maintainer.email}\n\n`;
+				}
+			}
+
 			if (results.indexOf(result) < results.length - 1) {
 				text += '\n';
 			}
 		}
 
 		return {
-			content: [{ type: 'text', text }],
+			content: [
+				{
+					type: 'text',
+					text,
+				},
+			],
 			isError: false,
 		};
 	} catch (error) {
@@ -1336,7 +1365,7 @@ async function handleNpmMaintainers(args: { packages: string[] }): Promise<CallT
 			content: [
 				{
 					type: 'text',
-					text: `Error fetching maintainers: ${error instanceof Error ? error.message : 'Unknown error'}`,
+					text: `Error fetching package maintainers: ${error instanceof Error ? error.message : 'Unknown error'}`,
 				},
 			],
 			isError: true,
@@ -1366,11 +1395,6 @@ async function handleNpmScore(args: { packages: string[] }): Promise<CallToolRes
 				const rawData = await response.json();
 
 				if (!isValidNpmsResponse(rawData)) {
-					console.debug('Response validation details:', {
-						isObject: typeof rawData === 'object' && rawData !== null,
-						hasScore: rawData && typeof rawData === 'object' && 'score' in rawData,
-						hasCollected: rawData && typeof rawData === 'object' && 'collected' in rawData,
-					});
 					return {
 						name: pkg,
 						error: 'Invalid or incomplete response from npms.io API',
@@ -1425,27 +1449,25 @@ async function handleNpmScore(args: { packages: string[] }): Promise<CallToolRes
 			}
 		}
 
+		// Retornar en el formato MCP estándar
 		return {
-			content: [{ type: 'text', text }],
+			content: [
+				{
+					type: 'text',
+					text,
+				},
+			],
 			isError: false,
 		};
 	} catch (error) {
-		console.error('Full error:', error);
-
-		let errorMessage = 'An unexpected error occurred while fetching package scores.';
-
-		if (error instanceof Error) {
-			if (error.message.includes('API request failed')) {
-				errorMessage = `Failed to fetch package scores: ${error.message}. The npms.io API might be experiencing issues.`;
-			} else if (error.message.includes('Invalid or incomplete response')) {
-				errorMessage = `${error.message}. The package data might be incomplete or in an unexpected format.`;
-			} else {
-				errorMessage = `Error fetching package scores: ${error.message}`;
-			}
-		}
-
+		// Manejo de errores en formato MCP estándar
 		return {
-			content: [{ type: 'text', text: errorMessage }],
+			content: [
+				{
+					type: 'text',
+					text: `Error fetching package scores: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				},
+			],
 			isError: true,
 		};
 	}
