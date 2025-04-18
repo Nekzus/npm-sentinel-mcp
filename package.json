@@ -73,7 +73,7 @@
   },
   "homepage": "https://github.com/Nekzus/mcp-server#readme",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.10.0",
+    "@modelcontextprotocol/sdk": "1.10.1",
     "node-fetch": "3.3.2",
     "zod": "3.24.3"
   },
