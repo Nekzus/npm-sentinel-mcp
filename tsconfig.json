@@ -12,10 +12,13 @@
         "resolveJsonModule": true,
         "declaration": true,
         "declarationMap": true,
-        "sourceMap": true
+        "sourceMap": true,
+        "composite": true,
+        "incremental": true,
+        "tsBuildInfoFile": "./dist/.tsbuildinfo"
     },
     "include": [
-        "index.ts"
+        "**/*.ts"
     ],
     "exclude": [
         "node_modules",

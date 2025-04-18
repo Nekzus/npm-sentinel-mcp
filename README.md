@@ -1,15 +1,14 @@
-# @nekzus/mcp-server
+# NPM Analysis MCP Server
+
+<div align="center">
 
 [![Github Workflow](https://github.com/nekzus/mcp-server/actions/workflows/publish.yml/badge.svg?event=push)](https://github.com/Nekzus/mcp-server/actions/workflows/publish.yml)
 [![npm-version](https://img.shields.io/npm/v/@nekzus/mcp-server.svg)](https://www.npmjs.com/package/@nekzus/mcp-server)
 [![npm-month](https://img.shields.io/npm/dm/@nekzus/mcp-server.svg)](https://www.npmjs.com/package/@nekzus/mcp-server)
 [![npm-total](https://img.shields.io/npm/dt/@nekzus/mcp-server.svg?style=flat)](https://www.npmjs.com/package/@nekzus/mcp-server)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue.svg)](https://www.typescriptlang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Donate](https://img.shields.io/badge/donate-paypal-blue.svg?style=flat-square)](https://paypal.me/maseortega)
-
-<div align="center">
-
-**A Model Context Protocol (MCP) server for comprehensive NPM package analysis** </br>
-_Built on the MCP SDK, providing real-time insights into package quality, security, dependencies, and metrics_
 
 </div>
 
@@ -17,168 +16,159 @@ _Built on the MCP SDK, providing real-time insights into package quality, securi
   <img width="380" height="200" src="https://glama.ai/mcp/servers/@Nekzus/mcp-server/badge" alt="Utility Server MCP server" />
 </a>
 
+Node.js server implementing Model Context Protocol (MCP) for comprehensive NPM package analysis.
+
+
 ## Features
 
-- **Version Analysis**
-  - List all available package versions
-  - Get latest version details
-  - Track version history
-  - Analyze release patterns
-
-- **Package Analysis**
-  - Check dependencies and devDependencies
-  - Verify TypeScript support
-  - Analyze package size and dependencies
-  - Scan for vulnerabilities
-  - Monitor security updates
-
-- **Metrics Analysis**
-  - Track download trends
-  - Compare package metrics
-  - Evaluate quality scores
-  - Assess maintenance status
-  - Monitor popularity trends
-
-## Tools
-
-### Version Analysis Tools
-
-- **npmVersions**
-  - Get all available versions of a package
-  - Input: `packageName` (string, required)
-  - Example:
-    ```json
-    {"packageName": "react"} -> Lists all react versions
-    ```
-
-- **npmLatest**
-  - Get latest version info and changelog
-  - Input: `packageName` (string, required)
-  - Example:
-    ```json
-    {"packageName": "react"} -> Latest version details
-    ```
-
-### Package Analysis Tools
-
-- **npmDeps**
-  - Analyze package dependencies
-  - Input: `packageName` (string, required)
-  - Example:
-    ```json
-    {"packageName": "react"} -> Dependencies breakdown
-    ```
-
-- **npmTypes**
-  - Check TypeScript support
-  - Input: `packageName` (string, required)
-  - Example:
-    ```json
-    {"packageName": "react"} -> TypeScript support info
-    ```
-
-- **npmSize**
-  - Get package size metrics
-  - Input: `packageName` (string, required)
-  - Example:
-    ```json
-    {"packageName": "react"} -> Size and dependency info
-    ```
-
-- **npmVulnerabilities**
-  - Check security vulnerabilities
-  - Input: `packageName` (string, required)
-  - Example:
-    ```json
-    {"packageName": "react"} -> Security vulnerabilities
-    ```
-
-### Metrics Analysis Tools
-
-- **npmTrends**
-  - Get download trends
-  - Inputs:
-    - `packageName` (string, required)
-    - `period` (string, optional): "last-week" | "last-month" | "last-year"
-  - Example:
-    ```json
-    {
-      "packageName": "react",
-      "period": "last-month"
-    } -> Download trends data
-    ```
-
-- **npmCompare**
-  - Compare multiple packages
-  - Input: `packages` (string[], required)
-  - Example:
-    ```json
-    {
-      "packages": ["react", "vue", "angular"]
-    } -> Comparative metrics
-    ```
-
-- **npmQuality**
-  - Get quality metrics
-  - Input: `packageName` (string, required)
-  - Example:
-    ```json
-    {"packageName": "react"} -> Quality score details
-    ```
-
-- **npmMaintenance**
-  - Get maintenance metrics
-  - Input: `packageName` (string, required)
-  - Example:
-    ```json
-    {"packageName": "react"} -> Maintenance status
-    ```
-
-- **npmPopularity**
-  - Get popularity metrics
-  - Input: `packageName` (string, required)
-  - Example:
-    ```json
-    {"packageName": "react"} -> Popularity metrics
-    ```
-
-## Key Features
-
-- Real-time package analysis
-- Comprehensive security scanning
-- Detailed dependency tracking
+- Version analysis and tracking
+- Dependency analysis and mapping
+- Security vulnerability scanning
+- Package quality metrics
+- Download trends and statistics
 - TypeScript support verification
-- Performance metrics monitoring
-- Zero configuration required
-- Type-safe implementations
-- Full TypeScript declarations
-- Docker support
-- ESM support
+- Package size analysis
+- Maintenance metrics
+- Real-time package comparisons
 
-## Installation
+Note: The server provides AI-assisted analysis through MCP integration.
 
-```bash
-# NPM
-npm install @nekzus/mcp-server
+## API
 
-# Yarn
-yarn add @nekzus/mcp-server
+### Resources
 
-# PNPM
-pnpm add @nekzus/mcp-server
-```
+- `npm://registry`: NPM Registry interface
+- `npm://security`: Security analysis interface
+- `npm://metrics`: Package metrics interface
 
-## Configuration
+### Tools
 
-To use this server with the Claude Desktop app, add the following configuration to the "mcpServers" section of your `claude_desktop_config.json`:
+#### npmVersions
+- Get all versions of a package
+- Input: `packages` (string[])
+- Returns: Version history with release dates
 
-### NPX (Recommended)
+#### npmLatest
+- Get latest version information
+- Input: `packages` (string[])
+- Returns: Latest version details and changelog
+
+#### npmDeps
+- Analyze package dependencies
+- Input: `packages` (string[])
+- Returns: Complete dependency tree analysis
+
+#### npmTypes
+- Check TypeScript support
+- Input: `packages` (string[])
+- Returns: TypeScript compatibility status
+
+#### npmSize
+- Analyze package size
+- Input: `packages` (string[])
+- Returns: Bundle size and import cost analysis
+
+#### npmVulnerabilities
+- Scan for security vulnerabilities
+- Input: `packages` (string[])
+- Returns: Security advisories and severity ratings
+
+#### npmTrends
+- Get download trends
+- Input:
+  - `packages` (string[])
+  - `period` ("last-week" | "last-month" | "last-year")
+- Returns: Download statistics over time
+
+#### npmCompare
+- Compare multiple packages
+- Input: `packages` (string[])
+- Returns: Detailed comparison metrics
+
+#### npmMaintainers
+- Get package maintainers
+- Input: `packages` (string[])
+- Returns: Maintainer information and activity
+
+#### npmScore
+- Get package quality score
+- Input: `packages` (string[])
+- Returns: Comprehensive quality metrics
+
+#### npmPackageReadme
+- Get package README
+- Input: `packages` (string[])
+- Returns: Formatted README content
+
+#### npmSearch
+- Search for packages
+- Input:
+  - `query` (string)
+  - `limit` (number, optional)
+- Returns: Matching packages with metadata
+
+#### npmLicenseCompatibility
+- Check license compatibility
+- Input: `packages` (string[])
+- Returns: License analysis and compatibility info
+
+#### npmRepoStats
+- Get repository statistics
+- Input: `packages` (string[])
+- Returns: GitHub/repository metrics
+
+#### npmDeprecated
+- Check for deprecation
+- Input: `packages` (string[])
+- Returns: Deprecation status and alternatives
+
+#### npmChangelogAnalysis
+- Analyze package changelogs
+- Input: `packages` (string[])
+- Returns: Changelog summaries and impact analysis
+
+#### npmAlternatives
+- Find package alternatives
+- Input: `packages` (string[])
+- Returns: Similar packages with comparisons
+
+#### npmQuality
+- Assess package quality
+- Input: `packages` (string[])
+- Returns: Quality metrics and scores
+
+#### npmMaintenance
+- Check maintenance status
+- Input: `packages` (string[])
+- Returns: Maintenance activity metrics
+
+## Usage with Claude Desktop
+
+Add this to your `claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
-    "nekzus": {
+    "npmAnalyzer": {
       "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@nekzus/mcp-server"]
+    }
+  }
+}
+```
+
+Configuration file locations:
+- Windows: `%APPDATA%/claude-desktop/claude_desktop_config.json`
+- macOS: `~/Library/Application Support/claude-desktop/claude_desktop_config.json`
+- Linux: `~/.config/claude-desktop/claude_desktop_config.json`
+
+## NPX
+
+```json
+{
+  "mcpServers": {
+    "npmAnalyzer": {
       "command": "npx",
       "args": [
         "-y",
@@ -189,64 +179,18 @@ To use this server with the Claude Desktop app, add the following configuration 
 }
 ```
 
-### Docker
-
-```json
-{
-  "mcpServers": {
-    "nekzus": {
-      "transport": "stdio",
-      "command": "docker",
-      "args": ["run", "-i", "--rm", "--init", "nekzus/mcp-server"]
-    }
-  }
-}
-```
-
-The configuration file is typically located at:
-- Windows: `%APPDATA%/claude-desktop/claude_desktop_config.json`
-- macOS: `~/Library/Application Support/claude-desktop/claude_desktop_config.json`
-- Linux: `~/.config/claude-desktop/claude_desktop_config.json`
-
-## Development
+## Build
 
 ```bash
-# Install dependencies
+# Build with npm
 npm install
-
-# Run in development mode
-npm run dev
-
-# Format code
-npm run format
-
-# Lint code
-npm run lint
-
-# Run tests
-npm run test
-
-# Build
 npm run build
 ```
 
-## Docker
-
-Build and run the Docker image:
-
-```bash
-# Build the image
-docker build -t nekzus/mcp-server .
-
-# Run the container
-docker run -i --rm --init nekzus/mcp-server
-```
-
-## Requirements
-
-- Node.js >= 18
-- npm >= 9
-
 ## License
+
+This MCP server is licensed under the MIT License. This means you are free to use, modify, and distribute the software, subject to the terms and conditions of the MIT License. For more details, please see the LICENSE file in the project repository.
+
+---
 
 MIT © [nekzus](https://github.com/nekzus)
