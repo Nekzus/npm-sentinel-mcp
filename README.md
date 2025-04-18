@@ -1,4 +1,4 @@
-# MCP Package Analyzer - Intelligent NPM Analysis Server
+# NPM Analysis MCP Server
 
 <div align="center">
 
@@ -10,56 +10,136 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Donate](https://img.shields.io/badge/donate-paypal-blue.svg?style=flat-square)](https://paypal.me/maseortega)
 
-<h2>🤖 Model Context Protocol Server for NPM Analysis</h2>
-
-**AI-Powered Analysis • MCP Integration • Package Intelligence**
-
-_Advanced NPM package analysis through Model Context Protocol (MCP) for AI-assisted development_
-
-<hr>
-
-<h3>🔗 MCP-Ready • 📊 AI-Enhanced • 🚀 Real-Time Analysis</h3>
-
-_Seamlessly integrate NPM package analysis with Claude and other AI assistants through MCP_
-
-[Key Features](#key-features) •
-[Quick Start](#quick-start) •
-[Documentation](#documentation) •
-[Examples](#examples) •
-[Support](#support)
-
 </div>
 
-## 🚀 Installation & Setup
+Node.js server implementing Model Context Protocol (MCP) for comprehensive NPM package analysis.
 
-### Using with MCP Inspector
+## Features
 
-```bash
-# Inspect the server using MCP Inspector
-npx @modelcontextprotocol/inspector npx -y @nekzus/mcp-server
+- Version analysis and tracking
+- Dependency analysis and mapping
+- Security vulnerability scanning
+- Package quality metrics
+- Download trends and statistics
+- TypeScript support verification
+- Package size analysis
+- Maintenance metrics
+- Real-time package comparisons
 
-# For local development
-npx @modelcontextprotocol/inspector node path/to/server/index.js
-```
+Note: The server provides AI-assisted analysis through MCP integration.
 
-### Direct Installation
+## API
 
-```bash
-# Using npm
-npm install @nekzus/mcp-server
+### Resources
 
-# Using yarn
-yarn add @nekzus/mcp-server
+- `npm://registry`: NPM Registry interface
+- `npm://security`: Security analysis interface
+- `npm://metrics`: Package metrics interface
 
-# Using pnpm
-pnpm add @nekzus/mcp-server
-```
+### Tools
 
-## 📖 MCP Configuration
+#### npmVersions
+- Get all versions of a package
+- Input: `packages` (string[])
+- Returns: Version history with release dates
 
-### With Claude or other AI Assistants
+#### npmLatest
+- Get latest version information
+- Input: `packages` (string[])
+- Returns: Latest version details and changelog
 
-Add to your configuration file (`claude_desktop_config.json` or similar):
+#### npmDeps
+- Analyze package dependencies
+- Input: `packages` (string[])
+- Returns: Complete dependency tree analysis
+
+#### npmTypes
+- Check TypeScript support
+- Input: `packages` (string[])
+- Returns: TypeScript compatibility status
+
+#### npmSize
+- Analyze package size
+- Input: `packages` (string[])
+- Returns: Bundle size and import cost analysis
+
+#### npmVulnerabilities
+- Scan for security vulnerabilities
+- Input: `packages` (string[])
+- Returns: Security advisories and severity ratings
+
+#### npmTrends
+- Get download trends
+- Input:
+  - `packages` (string[])
+  - `period` ("last-week" | "last-month" | "last-year")
+- Returns: Download statistics over time
+
+#### npmCompare
+- Compare multiple packages
+- Input: `packages` (string[])
+- Returns: Detailed comparison metrics
+
+#### npmMaintainers
+- Get package maintainers
+- Input: `packages` (string[])
+- Returns: Maintainer information and activity
+
+#### npmScore
+- Get package quality score
+- Input: `packages` (string[])
+- Returns: Comprehensive quality metrics
+
+#### npmPackageReadme
+- Get package README
+- Input: `packages` (string[])
+- Returns: Formatted README content
+
+#### npmSearch
+- Search for packages
+- Input:
+  - `query` (string)
+  - `limit` (number, optional)
+- Returns: Matching packages with metadata
+
+#### npmLicenseCompatibility
+- Check license compatibility
+- Input: `packages` (string[])
+- Returns: License analysis and compatibility info
+
+#### npmRepoStats
+- Get repository statistics
+- Input: `packages` (string[])
+- Returns: GitHub/repository metrics
+
+#### npmDeprecated
+- Check for deprecation
+- Input: `packages` (string[])
+- Returns: Deprecation status and alternatives
+
+#### npmChangelogAnalysis
+- Analyze package changelogs
+- Input: `packages` (string[])
+- Returns: Changelog summaries and impact analysis
+
+#### npmAlternatives
+- Find package alternatives
+- Input: `packages` (string[])
+- Returns: Similar packages with comparisons
+
+#### npmQuality
+- Assess package quality
+- Input: `packages` (string[])
+- Returns: Quality metrics and scores
+
+#### npmMaintenance
+- Check maintenance status
+- Input: `packages` (string[])
+- Returns: Maintenance activity metrics
+
+## Usage with Claude Desktop
+
+Add this to your `claude_desktop_config.json`:
 
 ```json
 {
@@ -78,230 +158,34 @@ Configuration file locations:
 - macOS: `~/Library/Application Support/claude-desktop/claude_desktop_config.json`
 - Linux: `~/.config/claude-desktop/claude_desktop_config.json`
 
-### Basic Usage as MCP Server
+## NPX
 
-```typescript
-import { McpServer } from '@nekzus/mcp-server';
-
-// Initialize MCP server with required metadata
-const server = new McpServer({
-  name: 'npm-analyzer',
-  version: '1.0.0',
-  description: 'MCP-compliant NPM package analysis server'
-});
-
-// Connect using MCP stdio transport
-await server.connect(new StdioServerTransport());
-
-// Server automatically registers all available NPM analysis tools
-// and handles MCP protocol communication
+```json
+{
+  "mcpServers": {
+    "npmAnalyzer": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@nekzus/mcp-server"
+      ]
+    }
+  }
+}
 ```
 
-### Development Testing
-
-For development and testing:
-
-1. Start the server in development mode
-2. Use MCP Inspector to verify:
-   - Tool availability and schemas
-   - Response formats
-   - Error handling
-3. Test with Claude or other AI assistants
+## Build
 
 ```bash
-# Test with MCP Inspector during development
-npx @modelcontextprotocol/inspector node ./dist/index.js
-
-# Monitor server logs and tool execution
+# Build with npm
+npm install
+npm run build
 ```
 
-## 🎯 What is @nekzus/mcp-server?
+## License
 
-@nekzus/mcp-server is a specialized server implementation that provides deep insights into NPM packages through the Model Context Protocol (MCP). It offers a comprehensive suite of analysis tools designed to help developers make informed decisions about package selection, security, and maintenance.
-
-### 🌟 Why Choose This Package?
-
-- **Comprehensive Analysis**: Get detailed insights into package quality, security, dependencies, and usage metrics
-- **Real-Time Data**: Access up-to-date information directly from npm and related services
-- **Batch Processing**: Analyze multiple packages simultaneously for efficient comparisons
-- **Type Safety**: Full TypeScript support with comprehensive type definitions
-- **MCP Integration**: Seamless integration with Claude and other AI assistants through MCP
-- **Performance Focused**: Optimized for speed with concurrent processing and caching capabilities
-
-## 📊 Key Features
-
-### 📦 Package Intelligence
-- **Version Analysis**
-  - Track all available versions and release patterns
-  - Get detailed changelogs and version histories
-  - Monitor latest releases and updates
-  - Compare version differences
-
-- **Dependency Analysis**
-  - Map complete dependency trees
-  - Identify potential conflicts
-  - Track outdated dependencies
-  - Analyze peer dependencies
-  - Check for circular dependencies
-
-- **Security Assessment**
-  - Scan for known vulnerabilities
-  - Monitor security advisories
-  - Track patch availability
-  - Assess dependency security
-  - Get severity ratings
-
-### 🔍 Quality Metrics
-- **Code Quality**
-  - Maintenance scores
-  - Code coverage metrics
-  - Documentation quality
-  - Type definitions status
-  - Best practices compliance
-
-- **Community Health**
-  - Download trends
-  - GitHub activity
-  - Contributor metrics
-  - Issue response times
-  - Release frequency
-
-- **Performance Metrics**
-  - Bundle size analysis
-  - Tree-shaking effectiveness
-  - Runtime performance
-  - Memory footprint
-  - Load time impact
-
-### 🛠 Technical Capabilities
-- **Multi-Package Processing**
-  - Concurrent analysis
-  - Batch comparisons
-  - Aggregate metrics
-  - Cross-package insights
-
-- **Data Integration**
-  - NPM Registry
-  - GitHub API
-  - Security Databases
-  - Download Statistics
-  - Quality Metrics
-
-## 🚀 Quick Start
-
-### Installation
-
-```bash
-# Using npm
-npm install @nekzus/mcp-server
-
-# Using yarn
-yarn add @nekzus/mcp-server
-
-# Using pnpm
-pnpm add @nekzus/mcp-server
-```
-
-### Basic Usage
-
-```typescript
-import { McpServer } from '@nekzus/mcp-server';
-
-// Initialize the server
-const server = new McpServer({
-  name: 'npm-analysis',
-  version: '1.0.0'
-});
-
-// Start the server with stdio transport
-await server.connect(new StdioServerTransport());
-```
-
-## 📖 Documentation
-
-### Tool Categories
-
-#### 1. Version Analysis Tools
-```typescript
-// Get all versions of a package
-const versions = await npmVersions({ packageName: 'react' });
-
-// Get latest version details
-const latest = await npmLatest({ packageName: 'express' });
-```
-
-#### 2. Package Analysis Tools
-```typescript
-// Check dependencies
-const deps = await npmDeps({ packageName: 'next' });
-
-// Verify TypeScript support
-const types = await npmTypes({ packageName: 'lodash' });
-```
-
-#### 3. Metrics Analysis Tools
-```typescript
-// Compare multiple packages
-const comparison = await npmCompare({ 
-  packages: ['react', 'preact', 'vue'] 
-});
-
-// Get download trends
-const trends = await npmTrends({ 
-  packages: ['axios', 'fetch'],
-  period: 'last-month'
-});
-```
-
-## 🎯 Examples
-
-### Analyzing Multiple Packages
-```typescript
-// Compare security of multiple packages
-const security = await npmVulnerabilities({
-  packages: ['express', 'fastify', 'koa']
-});
-
-// Get quality metrics for frameworks
-const quality = await npmQuality({
-  packages: ['next', 'nuxt', 'remix']
-});
-```
-
-### Tracking Package Health
-```typescript
-// Get comprehensive package score
-const score = await npmScore({
-  packageName: 'react'
-});
-
-// Check maintenance status
-const maintenance = await npmMaintenance({
-  packageName: 'typescript'
-});
-```
-
-## 🤝 Contributing
-
-We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 📫 Contact & Support
-
-- **GitHub**: [@nekzus](https://github.com/nekzus)
-- **Email**: nekzus.dev@gmail.com
-- **Support**: [PayPal](https://paypal.me/maseortega)
-
-## ⭐️ Show Your Support
-
-If you find this project helpful, please consider:
-- Giving it a star on GitHub
-- Sharing it with others
-- [Supporting the development](https://paypal.me/maseortega)
+This MCP server is licensed under the MIT License. This means you are free to use, modify, and distribute the software, subject to the terms and conditions of the MIT License. For more details, please see the LICENSE file in the project repository.
 
 ---
 
-Made by [nekzus](https://github.com/nekzus)
+Made by [nekzus](https://github.com/nekzus) • [Support Development](https://paypal.me/maseortega)
