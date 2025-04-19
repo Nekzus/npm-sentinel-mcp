@@ -2,7 +2,7 @@
 FROM node:lts-alpine
 
 # Add labels for better maintainability
-LABEL maintainer="Nekzus <nekzus@example.com>"
+LABEL maintainer="Nekzus <nekzus.dev@gmail.com>"
 LABEL description="NPM Sentinel MCP Server for package analysis"
 LABEL version="1.0.0"
 
