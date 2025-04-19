@@ -6,34 +6,15 @@ startCommand:
   type: stdio
   configSchema:
     type: object
-    required: []
-    properties:
-      NODE_ENV:
-        type: string
-        description: Node environment (development/production)
-        enum: ["development", "production"]
-        default: "production"
-      LOG_LEVEL:
-        type: string
-        description: Logging level for the server
-        enum: ["error", "warn", "info", "debug"]
-        default: "info"
-      NPM_TOKEN:
-        type: string
-        description: Optional NPM token for private package access
-      CACHE_TTL:
-        type: number
-        description: Cache time-to-live in seconds
-        minimum: 0
-        default: 3600
+    properties: {}  # No required configurations
   commandFunction: |
     (config) => ({
       command: "node",
       args: ["dist/index.js"],
-      env: {
-        NODE_ENV: config.NODE_ENV || "production",
-        LOG_LEVEL: config.LOG_LEVEL || "info",
-        NPM_TOKEN: config.NPM_TOKEN || "",
-        CACHE_TTL: String(config.CACHE_TTL || 3600)
-      }
-    }) 
+      env: {}
+    })
+  exampleConfig:
+    npmToken: your_npm_token_here
+    logLevel: info
+
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml 
