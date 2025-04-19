@@ -1,0 +1,265 @@
+# NPM Sentinel MCP Server - Full Documentation
+
+## Protocol Specification
+Version: 2025-03-26
+Transport: stdio
+Features: resources, tools, error handling
+
+## Architecture
+```mermaid
+flowchart TD
+    Client[MCP Client] <-->|MCP Protocol| Server[NPM Sentinel Server]
+    Server -->|Fetch| NPM[NPM Registry]
+    Server -->|Analysis| Security[Security DB]
+    Server -->|Metrics| Stats[Download Stats]
+    
+    subgraph Resources
+        NPM
+        Security
+        Stats
+    end
+    
+    subgraph Tools
+        Analysis[Package Analysis]
+        TypeScript[TS Support]
+        Performance[Performance]
+        Trends[Trend Analysis]
+    end
+```
+
+## Resources
+
+### npm://registry
+Content-Type: application/json
+Methods: GET, SUBSCRIBE
+Update Frequency: Real-time
+Rate Limits: Follows npm registry limits
+Description: Package metadata and version information interface
+
+### npm://security
+Content-Type: application/json
+Methods: GET
+Update Frequency: Daily
+Severity Levels: Low, Medium, High, Critical
+Description: Vulnerability and security analysis interface
+
+### npm://metrics
+Content-Type: application/json
+Methods: GET, SUBSCRIBE
+Update Frequency: Real-time
+Metrics Types: Downloads, Stars, Issues, Updates
+Description: Package analytics and statistics interface
+
+## Tool Specifications
+
+### Package Analysis
+
+#### npmVersions
+```typescript
+interface VersionsInput {
+  packages: string[];
+}
+
+interface VersionInfo {
+  version: string;
+  releaseDate: string;
+  deprecated?: boolean;
+  description?: string;
+}
+
+interface VersionsResponse {
+  [package: string]: VersionInfo[];
+}
+```
+
+#### npmSecurity
+```typescript
+interface SecurityInput {
+  packages: string[];
+}
+
+interface Vulnerability {
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  description: string;
+  affectedVersions: string;
+  recommendation: string;
+}
+
+interface SecurityResponse {
+  [package: string]: Vulnerability[];
+}
+```
+
+#### npmMetrics
+```typescript
+interface MetricsInput {
+  packages: string[];
+}
+
+interface PackageMetrics {
+  downloads: number;
+  stars: number;
+  issues: number;
+  lastUpdate: string;
+  score: number;
+}
+
+interface MetricsResponse {
+  [package: string]: PackageMetrics;
+}
+```
+
+### TypeScript Support
+
+#### npmTypes
+```typescript
+interface TypesInput {
+  packages: string[];
+}
+
+interface TypeSupport {
+  hasTypes: boolean;
+  bundled: boolean;
+  definitelyTyped: boolean;
+  typeVersion?: string;
+}
+
+interface TypesResponse {
+  [package: string]: TypeSupport;
+}
+```
+
+### Performance Analysis
+
+#### npmSize
+```typescript
+interface SizeInput {
+  packages: string[];
+}
+
+interface SizeMetrics {
+  size: number;
+  gzip: number;
+  dependencies: number;
+  treeshakeable: boolean;
+}
+
+interface SizeResponse {
+  [package: string]: SizeMetrics;
+}
+```
+
+### Trend Analysis
+
+#### npmTrends
+```typescript
+interface TrendsInput {
+  packages: string[];
+  period: 'last-week' | 'last-month' | 'last-year';
+}
+
+interface TrendMetrics {
+  downloads: number[];
+  growth: number;
+  popularity: number;
+}
+
+interface TrendsResponse {
+  [package: string]: TrendMetrics;
+}
+```
+
+## Error Handling
+
+### Standard Error Format
+```typescript
+interface MCPError {
+  error: {
+    code: number;
+    message: string;
+    data?: {
+      details: string;
+      packageName?: string;
+      context?: any;
+    };
+  };
+}
+```
+
+### Error Codes
+1000: Invalid package name
+1001: Package not found
+1002: Version not found
+1003: Rate limit exceeded
+1004: Network error
+1005: Analysis failed
+2000: Internal server error
+
+## Security Considerations
+
+### Data Protection
+- All data is processed locally
+- No sensitive information is stored
+- Secure communication channels
+
+### Rate Limiting
+- Implements fair usage policies
+- Respects NPM registry limits
+- Prevents abuse
+
+### Authentication
+- Supports npm token authentication
+- Validates package access
+- Manages credentials securely
+
+## Integration Guide
+
+### Configuration
+```json
+{
+  "mcpServers": {
+    "npmSentinel": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@nekzus/mcp-server"]
+    }
+  }
+}
+```
+
+### Basic Usage
+```typescript
+// Initialize client
+const client = await MCPClient.connect("npmSentinel");
+
+// Analyze package
+const result = await client.invoke("npmVersions", {
+  packages: ["react"]
+});
+
+// Subscribe to updates
+const unsubscribe = await client.subscribe("npm://registry", {
+  package: "react",
+  onUpdate: (data) => console.log(data)
+});
+```
+
+## Best Practices
+
+### Resource Usage
+1. Subscribe to resources for real-time updates
+2. Implement caching for frequently accessed data
+3. Use batch operations when possible
+4. Handle rate limits gracefully
+
+### Error Handling
+1. Implement proper error recovery
+2. Provide meaningful error messages
+3. Log errors for debugging
+4. Handle timeout scenarios
+
+### Performance
+1. Use connection pooling
+2. Implement request queuing
+3. Cache responses
+4. Handle concurrent requests 

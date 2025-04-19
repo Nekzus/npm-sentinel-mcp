@@ -52,3 +52,7 @@ memory-bank/
 
 # Build artifacts
 *.tsbuildinfo 
+
+# llms
+llms.txt
+llms-full.txt

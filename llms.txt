@@ -1,0 +1,143 @@
+# NPM Sentinel MCP Server
+Protocol Version: 2025-03-26
+Transport: stdio
+Features: resources, tools, websocket
+Storage: ephemeral
+
+## Server Configuration
+- Supports WebSocket connections
+- 5-minute idle timeout
+- Session affinity enabled
+- No persistent storage (use external databases if needed)
+
+## Resources
+
+npm://registry
+Content-Type: application/json
+Methods: GET, SUBSCRIBE
+Description: NPM Registry interface for package metadata and version information
+
+npm://security
+Content-Type: application/json
+Methods: GET
+Description: Security analysis interface for vulnerabilities and package safety
+
+npm://metrics
+Content-Type: application/json
+Methods: GET, SUBSCRIBE
+Description: Package metrics interface for analytics and trends
+
+## Tools
+
+npmVersions
+Description: Get all versions of a package with release dates
+Schema: {
+  "packages": {
+    "type": "array",
+    "items": { "type": "string" },
+    "description": "List of package names to analyze"
+  }
+}
+
+npmSecurity
+Description: Comprehensive security analysis and vulnerability detection
+Schema: {
+  "packages": {
+    "type": "array",
+    "items": { "type": "string" },
+    "description": "List of package names to scan"
+  }
+}
+
+npmMetrics
+Description: Package quality and maintenance metrics
+Schema: {
+  "packages": {
+    "type": "array",
+    "items": { "type": "string" },
+    "description": "List of package names to analyze"
+  }
+}
+
+npmTypes
+Description: TypeScript compatibility verification
+Schema: {
+  "packages": {
+    "type": "array",
+    "items": { "type": "string" },
+    "description": "List of package names to check"
+  }
+}
+
+npmSize
+Description: Bundle size and performance impact analysis
+Schema: {
+  "packages": {
+    "type": "array",
+    "items": { "type": "string" },
+    "description": "List of package names to analyze"
+  }
+}
+
+npmTrends
+Description: Download trends and adoption metrics
+Schema: {
+  "packages": {
+    "type": "array",
+    "items": { "type": "string" },
+    "description": "List of package names to analyze"
+  },
+  "period": {
+    "type": "string",
+    "enum": ["last-week", "last-month", "last-year"],
+    "description": "Time period for analysis"
+  }
+}
+
+## Error Format
+{
+  "error": {
+    "code": number,
+    "message": string,
+    "data": {
+      "details": string,
+      "packageName": string
+    }
+  }
+}
+
+## Integration
+```json
+{
+  "mcpServers": {
+    "npmSentinel": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@nekzus/mcp-server"]
+    }
+  }
+}
+```
+
+## Server Requirements
+- No API key required for initialization
+- No configuration needed for tools/list endpoint
+- Handles WebSocket reconnection
+- Designed for ephemeral storage
+- Follows MCP specification
+
+## Best Practices
+1. Always check tool response status
+2. Handle rate limits appropriately
+3. Use batch operations when possible
+4. Subscribe to relevant resources for real-time updates
+5. Implement proper error handling
+6. Cache results when appropriate
+
+## Server Capabilities
+- Real-time analysis
+- Batch processing
+- Resource subscription
+- AI-powered insights
+- TypeScript support
+- Security scanning 
