@@ -4,17 +4,12 @@ build:
 
 startCommand:
   type: stdio
-  configSchema:
-    type: object
-    properties: {}  # No required configurations
+  configSchema: {}  # No special configuration needed for basic setup
   commandFunction: |
     (config) => ({
-      command: "node",
-      args: ["dist/index.js"],
-      env: {}
+      "command": "node",
+      "args": ["dist/index.js"],
+      "env": {}
     })
-  exampleConfig:
-    npmToken: your_npm_token_here
-    logLevel: info
 
 # Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml 
