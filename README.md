@@ -1,4 +1,4 @@
-# NPM Analysis MCP Server
+# NPM Sentinel MCP
 
 <div align="center">
 
@@ -13,11 +13,10 @@
 </div>
 
 <a href="https://glama.ai/mcp/servers/@Nekzus/mcp-server">
-  <img width="380" height="200" src="https://glama.ai/mcp/servers/@Nekzus/mcp-server/badge" alt="Utility Server MCP server" />
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@Nekzus/mcp-server/badge" alt="NPM Sentinel MCP server" />
 </a>
 
-Node.js server implementing Model Context Protocol (MCP) for comprehensive NPM package analysis.
-
+A powerful Model Context Protocol (MCP) server that revolutionizes NPM package analysis through AI. Built to integrate with Claude and Anthropic AI, it provides real-time intelligence on package security, dependencies, and performance. This MCP server delivers instant insights and smart analysis to safeguard and optimize your npm ecosystem, making package management decisions faster and safer for modern development workflows.
 
 ## Features
 

@@ -1,7 +1,7 @@
 {
   "name": "@nekzus/mcp-server",
   "version": "0.0.0-development",
-  "description": "MCP server for comprehensive NPM package analysis. Provides real-time insights into package quality, security, dependencies, and metrics. Built on the MCP SDK for seamless integration with Claude and Anthropic AI tools.",
+  "description": "NPM Sentinel MCP - A powerful Model Context Protocol (MCP) server that revolutionizes NPM package analysis through AI. Built to integrate with Claude and Anthropic AI, it provides real-time intelligence on package security, dependencies, and performance.",
   "type": "module",
   "types": "./dist/index.d.ts",
   "main": "./dist/index.js",
