@@ -66,12 +66,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Nekzus/mcp-server.git"
+    "url": "git+https://github.com/Nekzus/npm-sentinel-mcp.git"
   },
   "bugs": {
-    "url": "https://github.com/Nekzus/mcp-server/issues"
+    "url": "https://github.com/Nekzus/npm-sentinel-mcp/issues"
   },
-  "homepage": "https://github.com/Nekzus/mcp-server#readme",
+  "homepage": "https://github.com/Nekzus/npm-sentinel-mcp#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.10.1",
     "node-fetch": "3.3.2",
