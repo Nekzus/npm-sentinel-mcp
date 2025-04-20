@@ -2147,26 +2147,29 @@ const server = new McpServer({
 // Add NPM tools
 server.tool(
 	'npmVersions',
+	'Get all available versions of an NPM package',
 	{
 		packages: z.array(z.string()).describe('List of package names to get versions for'),
 	},
-	async (args) => {
+	async (args, extra) => {
 		return await handleNpmVersions(args);
 	},
 );
 
 server.tool(
 	'npmLatest',
+	'Get the latest version and changelog of an NPM package',
 	{
 		packages: z.array(z.string()).describe('List of package names to get latest versions for'),
 	},
-	async (args) => {
+	async (args, extra) => {
 		return await handleNpmLatest(args);
 	},
 );
 
 server.tool(
 	'npmDeps',
+	'Analyze dependencies and devDependencies of an NPM package',
 	{
 		packages: z.array(z.string()).describe('List of package names to analyze dependencies for'),
 	},
@@ -2177,6 +2180,7 @@ server.tool(
 
 server.tool(
 	'npmTypes',
+	'Check TypeScript types availability and version for a package',
 	{
 		packages: z.array(z.string()).describe('List of package names to check types for'),
 	},
@@ -2187,6 +2191,7 @@ server.tool(
 
 server.tool(
 	'npmSize',
+	'Get package size information including dependencies and bundle size',
 	{
 		packages: z.array(z.string()).describe('List of package names to get size information for'),
 	},
@@ -2197,6 +2202,7 @@ server.tool(
 
 server.tool(
 	'npmVulnerabilities',
+	'Check for known vulnerabilities in packages',
 	{
 		packages: z.array(z.string()).describe('List of package names to check for vulnerabilities'),
 	},
@@ -2207,6 +2213,7 @@ server.tool(
 
 server.tool(
 	'npmTrends',
+	'Get download trends and popularity metrics for packages',
 	{
 		packages: z.array(z.string()).describe('List of package names to get trends for'),
 		period: z
@@ -2222,6 +2229,7 @@ server.tool(
 
 server.tool(
 	'npmCompare',
+	'Compare multiple NPM packages based on various metrics',
 	{
 		packages: z.array(z.string()).describe('List of package names to compare'),
 	},
@@ -2232,6 +2240,7 @@ server.tool(
 
 server.tool(
 	'npmMaintainers',
+	'Get maintainers information for NPM packages',
 	{
 		packages: z.array(z.string()).describe('List of package names to get maintainers for'),
 	},
@@ -2242,6 +2251,7 @@ server.tool(
 
 server.tool(
 	'npmScore',
+	'Get consolidated package score based on quality, maintenance, and popularity metrics',
 	{
 		packages: z.array(z.string()).describe('List of package names to get scores for'),
 	},
@@ -2252,6 +2262,7 @@ server.tool(
 
 server.tool(
 	'npmPackageReadme',
+	'Get the README content for NPM packages',
 	{
 		packages: z.array(z.string()).describe('List of package names to get READMEs for'),
 	},
@@ -2262,6 +2273,7 @@ server.tool(
 
 server.tool(
 	'npmSearch',
+	'Search for NPM packages with optional limit',
 	{
 		query: z.string().describe('Search query for packages'),
 		limit: z
@@ -2278,6 +2290,7 @@ server.tool(
 
 server.tool(
 	'npmLicenseCompatibility',
+	'Check license compatibility between multiple packages',
 	{
 		packages: z
 			.array(z.string())
@@ -2291,6 +2304,7 @@ server.tool(
 
 server.tool(
 	'npmRepoStats',
+	'Get repository statistics for NPM packages',
 	{
 		packages: z.array(z.string()).describe('List of package names to get repository stats for'),
 	},
@@ -2301,6 +2315,7 @@ server.tool(
 
 server.tool(
 	'npmDeprecated',
+	'Check if packages are deprecated',
 	{
 		packages: z.array(z.string()).describe('List of package names to check for deprecation'),
 	},
@@ -2311,6 +2326,7 @@ server.tool(
 
 server.tool(
 	'npmChangelogAnalysis',
+	'Analyze changelog and release history of packages',
 	{
 		packages: z.array(z.string()).describe('List of package names to analyze changelogs for'),
 	},
@@ -2321,6 +2337,7 @@ server.tool(
 
 server.tool(
 	'npmAlternatives',
+	'Find alternative packages with similar functionality',
 	{
 		packages: z.array(z.string()).describe('List of package names to find alternatives for'),
 	},
@@ -2331,6 +2348,7 @@ server.tool(
 
 server.tool(
 	'npmQuality',
+	'Analyze package quality metrics',
 	{
 		packages: z.array(z.string()).describe('List of package names to analyze'),
 	},
@@ -2341,6 +2359,7 @@ server.tool(
 
 server.tool(
 	'npmMaintenance',
+	'Analyze package maintenance metrics',
 	{
 		packages: z.array(z.string()).describe('List of package names to analyze'),
 	},

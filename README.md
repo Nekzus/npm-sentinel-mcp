@@ -140,6 +140,63 @@ Note: The server provides AI-assisted analysis through MCP integration.
 - Input: `packages` (string[])
 - Returns: Maintenance activity metrics
 
+## Docker
+
+### Build
+```bash
+# Build the Docker image
+docker build -t nekzus/npm-sentinel-mcp .
+```
+
+### Usage
+
+You can run the MCP server using Docker with directory mounting to `/projects`:
+
+```json
+{
+  "mcpServers": {
+    "npm-sentinel-mcp": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-w", "/projects",
+        "--mount", "type=bind,src=${PWD},dst=/projects",
+        "nekzus/npm-sentinel-mcp",
+        "node",
+        "dist/index.js"
+      ]
+    }
+  }
+}
+```
+
+For multiple directories:
+
+```json
+{
+  "mcpServers": {
+    "npm-sentinel-mcp": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-w", "/projects",
+        "--mount", "type=bind,src=/path/to/workspace,dst=/projects/workspace",
+        "--mount", "type=bind,src=/path/to/other/dir,dst=/projects/other/dir,ro",
+        "nekzus/npm-sentinel-mcp",
+        "node",
+        "dist/index.js"
+      ]
+    }
+  }
+}
+```
+
+Note: All mounted directories must be under `/projects` for proper access.
+
 ## Usage with Claude Desktop
 
 Add this to your `claude_desktop_config.json`:
@@ -166,7 +223,7 @@ Configuration file locations:
 ```json
 {
   "mcpServers": {
-    "npmAnalyzer": {
+    "npm-sentinel-mcp": {
       "command": "npx",
       "args": [
         "-y",

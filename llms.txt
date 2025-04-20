@@ -39,18 +39,18 @@ Schema: {
   }
 }
 
-npmSecurity
-Description: Comprehensive security analysis and vulnerability detection
+npmLatest
+Description: Get latest version information for packages
 Schema: {
   "packages": {
     "type": "array",
     "items": { "type": "string" },
-    "description": "List of package names to scan"
+    "description": "List of package names to check"
   }
 }
 
-npmMetrics
-Description: Package quality and maintenance metrics
+npmDeps
+Description: Analyze package dependencies
 Schema: {
   "packages": {
     "type": "array",
@@ -79,6 +79,16 @@ Schema: {
   }
 }
 
+npmVulnerabilities
+Description: Security vulnerability analysis
+Schema: {
+  "packages": {
+    "type": "array",
+    "items": { "type": "string" },
+    "description": "List of package names to analyze"
+  }
+}
+
 npmTrends
 Description: Download trends and adoption metrics
 Schema: {
@@ -91,6 +101,131 @@ Schema: {
     "type": "string",
     "enum": ["last-week", "last-month", "last-year"],
     "description": "Time period for analysis"
+  }
+}
+
+npmCompare
+Description: Compare multiple packages
+Schema: {
+  "packages": {
+    "type": "array",
+    "items": { "type": "string" },
+    "description": "List of package names to compare"
+  }
+}
+
+npmQuality
+Description: Package quality metrics analysis
+Schema: {
+  "packages": {
+    "type": "array",
+    "items": { "type": "string" },
+    "description": "List of package names to analyze"
+  }
+}
+
+npmMaintenance
+Description: Package maintenance metrics
+Schema: {
+  "packages": {
+    "type": "array",
+    "items": { "type": "string" },
+    "description": "List of package names to analyze"
+  }
+}
+
+npmMaintainers
+Description: Get package maintainers information
+Schema: {
+  "packages": {
+    "type": "array",
+    "items": { "type": "string" },
+    "description": "List of package names to check"
+  }
+}
+
+npmScore
+Description: Get package quality scores
+Schema: {
+  "packages": {
+    "type": "array",
+    "items": { "type": "string" },
+    "description": "List of package names to analyze"
+  }
+}
+
+npmPackageReadme
+Description: Get package README content
+Schema: {
+  "packages": {
+    "type": "array",
+    "items": { "type": "string" },
+    "description": "List of package names to get READMEs for"
+  }
+}
+
+npmSearch
+Description: Search for NPM packages
+Schema: {
+  "query": {
+    "type": "string",
+    "description": "Search query for packages"
+  },
+  "limit": {
+    "type": "number",
+    "description": "Maximum number of results to return",
+    "minimum": 1,
+    "maximum": 50
+  }
+}
+
+npmLicenseCompatibility
+Description: Check license compatibility between packages
+Schema: {
+  "packages": {
+    "type": "array",
+    "items": { "type": "string" },
+    "description": "List of package names to check"
+  }
+}
+
+npmRepoStats
+Description: Get repository statistics
+Schema: {
+  "packages": {
+    "type": "array",
+    "items": { "type": "string" },
+    "description": "List of package names to analyze"
+  }
+}
+
+npmDeprecated
+Description: Check for deprecated packages and versions
+Schema: {
+  "packages": {
+    "type": "array",
+    "items": { "type": "string" },
+    "description": "List of package names to check"
+  }
+}
+
+npmChangelogAnalysis
+Description: Analyze package changelogs
+Schema: {
+  "packages": {
+    "type": "array",
+    "items": { "type": "string" },
+    "description": "List of package names to analyze"
+  }
+}
+
+npmAlternatives
+Description: Find alternative packages
+Schema: {
+  "packages": {
+    "type": "array",
+    "items": { "type": "string" },
+    "description": "List of package names to find alternatives for"
   }
 }
 

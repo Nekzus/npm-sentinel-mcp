@@ -214,11 +214,70 @@ interface MCPError {
 
 ## Integration Guide
 
-### Configuration
+### Docker Configuration
+The server can be run in a Docker container with directory mounting to `/projects`. This allows for secure access to files while maintaining isolation.
+
+#### Build
+```bash
+# Build the Docker image
+docker build -t nekzus/npm-sentinel-mcp .
+```
+
+#### Basic Usage
 ```json
 {
   "mcpServers": {
-    "npmSentinel": {
+    "npm-sentinel-mcp": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-w", "/projects",
+        "--mount", "type=bind,src=${PWD},dst=/projects",
+        "nekzus/npm-sentinel-mcp",
+        "node",
+        "dist/index.js"
+      ]
+    }
+  }
+}
+```
+
+#### Multi-Directory Configuration
+```json
+{
+  "mcpServers": {
+    "npm-sentinel-mcp": {
+      "command": "docker",
+      "args": [
+        "run",
+        "-i",
+        "--rm",
+        "-w", "/projects",
+        "--mount", "type=bind,src=/path/to/workspace,dst=/projects/workspace",
+        "--mount", "type=bind,src=/path/to/other/dir,dst=/projects/other/dir,ro",
+        "nekzus/npm-sentinel-mcp",
+        "node",
+        "dist/index.js"
+      ]
+    }
+  }
+}
+```
+
+#### Mount Guidelines
+- Mount all directories under `/projects`
+- Use absolute paths for source directories
+- Add `,ro` flag for read-only access
+- Working directory is set to `/projects`
+- Container runs in interactive mode with auto-removal
+
+### Standard Configuration
+```json
+{
+  "mcpServers": {
+    "npm-sentinel-mcp": {
       "transport": "stdio",
       "command": "npx",
       "args": ["-y", "@nekzus/mcp-server"]
@@ -230,7 +289,7 @@ interface MCPError {
 ### Basic Usage
 ```typescript
 // Initialize client
-const client = await MCPClient.connect("npmSentinel");
+const client = await MCPClient.connect("npm-sentinel-mcp");
 
 // Analyze package
 const result = await client.invoke("npmVersions", {
