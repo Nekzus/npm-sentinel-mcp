@@ -11,8 +11,8 @@
 
 </div>
 
-<a href="https://glama.ai/mcp/servers/@Nekzus/mcp-server">
-  <img width="380" height="200" src="https://glama.ai/mcp/servers/@Nekzus/mcp-server/badge" alt="NPM Sentinel MCP server" />
+<a href="https://glama.ai/mcp/servers/@Nekzus/npm-sentinel-mcp">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@Nekzus/npm-sentinel-mcp/badge" alt="NPM Sentinel MCP badge" />
 </a>
 
 A powerful Model Context Protocol (MCP) server that revolutionizes NPM package analysis through AI. Built to integrate with Claude and Anthropic AI, it provides real-time intelligence on package security, dependencies, and performance. This MCP server delivers instant insights and smart analysis to safeguard and optimize your npm ecosystem, making package management decisions faster and safer for modern development workflows.
