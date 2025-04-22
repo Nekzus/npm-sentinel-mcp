@@ -9,11 +9,11 @@
 [![smithery badge](https://smithery.ai/badge/@Nekzus/npm-sentinel-mcp)](https://smithery.ai/server/@Nekzus/npm-sentinel-mcp)
 [![Donate](https://img.shields.io/badge/donate-paypal-blue.svg?style=flat-square)](https://paypal.me/maseortega)
 
-</div>
-
 <a href="https://glama.ai/mcp/servers/@Nekzus/npm-sentinel-mcp">
   <img width="380" height="200" src="https://glama.ai/mcp/servers/@Nekzus/npm-sentinel-mcp/badge" alt="NPM Sentinel MCP badge" />
 </a>
+
+</div>
 
 A powerful Model Context Protocol (MCP) server that revolutionizes NPM package analysis through AI. Built to integrate with Claude and Anthropic AI, it provides real-time intelligence on package security, dependencies, and performance. This MCP server delivers instant insights and smart analysis to safeguard and optimize your npm ecosystem, making package management decisions faster and safer for modern development workflows.
 
