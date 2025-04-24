@@ -1,3 +1,15 @@
+# Changelog
+
+All notable changes to this project will be documented in this file. See
+[Conventional Commits](https://conventionalcommits.org) for commit guidelines.
+
+## [1.5.6](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.5.5...v1.5.6) (2025-04-24)
+
+
+### Bug Fixes
+
+* add semantic-release configuration and CHANGELOG file for automated versioning and release notes generation ([2c35197](https://github.com/Nekzus/npm-sentinel-mcp/commit/2c35197d6f4aa3007bdcb89f1bf032f282a94963))
+
 ## [1.5.5](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.5.4...v1.5.5) (2025-04-22)
 
 
@@ -202,5 +214,3 @@
 ### Features
 
 * update package.json to correct bin entry path and bump @types/node version to 22.13.11; ensure jest version is explicitly set to 29.7.0 for consistency ([f28188c](https://github.com/Nekzus/npm-sentinel-mcp/commit/f28188c37b4d873fcf8e14ac3a1f71b861da92d4))
-
-
