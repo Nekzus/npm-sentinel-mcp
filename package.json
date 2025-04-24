@@ -26,7 +26,8 @@
     "commit": "git-cz",
     "semantic-release": "semantic-release --branches main",
     "watch": "tsc --watch",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run build",
+    "changelog:init": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0"
   },
   "keywords": [
     "mcp",
