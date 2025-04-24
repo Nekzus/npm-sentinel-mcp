@@ -576,63 +576,57 @@ function isNpmDownloadsData(data: unknown): data is z.infer<typeof NpmDownloadsD
 	}
 }
 
-async function handleNpmVersions(args: {
+export async function handleNpmVersions(args: {
 	packages: string[];
 }): Promise<CallToolResult> {
-	try {
-		const packagesToProcess = args.packages || [];
-		if (packagesToProcess.length === 0) {
-			throw new Error('No package names provided');
-		}
-
-		const results = await Promise.all(
-			packagesToProcess.map(async (pkg) => {
-				const response = await fetch(`https://registry.npmjs.org/${pkg}`);
-				if (!response.ok) {
-					return { name: pkg, error: `Failed to fetch package info: ${response.statusText}` };
-				}
-
-				const rawData = await response.json();
-				if (!isNpmPackageInfo(rawData)) {
-					return { name: pkg, error: 'Invalid package info data received' };
-				}
-
-				const versions = Object.keys(rawData.versions ?? {}).sort((a, b) => {
-					const [aMajor = 0, aMinor = 0, aPatch = 0] = a.split('.').map(Number);
-					const [bMajor = 0, bMinor = 0, bPatch = 0] = b.split('.').map(Number);
-					if (aMajor !== bMajor) return aMajor - bMajor;
-					if (aMinor !== bMinor) return aMinor - bMinor;
-					return aPatch - bPatch;
+	const results = await Promise.all(
+		args.packages.map(async (pkg) => {
+			try {
+				const response = await fetch(`https://registry.npmjs.org/${pkg}`, {
+					headers: {
+						Accept: 'application/json',
+						'User-Agent': 'NPM-Sentinel-MCP',
+					},
 				});
 
-				return { name: pkg, versions };
-			}),
-		);
+				if (!response.ok) {
+					throw new Error(`Failed to fetch package info: ${response.statusText}`);
+				}
 
-		let text = '';
-		for (const result of results) {
-			if ('error' in result) {
-				text += `❌ ${result.name}: ${result.error}\n\n`;
-			} else {
-				text += `📦 Available versions for ${result.name}:\n${result.versions.join('\n')}\n\n`;
+				const data = await response.json();
+				if (!isNpmPackageInfo(data)) {
+					throw new Error('Invalid package info format');
+				}
+
+				const versions = Object.keys(data.versions);
+				const latestVersion = data['dist-tags']?.latest;
+
+				return {
+					name: pkg,
+					versions,
+					latest: latestVersion,
+					success: true as const,
+				};
+			} catch (error) {
+				return {
+					name: pkg,
+					error: error instanceof Error ? error.message : 'Unknown error',
+					success: false as const,
+				};
 			}
-		}
+		}),
+	);
 
-		return {
-			content: [{ type: 'text', text }],
-			isError: false,
-		};
-	} catch (error) {
-		return {
-			content: [
-				{
-					type: 'text',
-					text: `Error fetching package versions: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				},
-			],
-			isError: true,
-		};
-	}
+	const content = results.map((result) => ({
+		type: 'text' as const,
+		text: result.success
+			? `📦 ${result.name}:
+Latest version: ${result.latest}
+Available versions: ${result.versions.join(', ')}`
+			: `❌ Error fetching ${result.name}: ${result.error}`,
+	}));
+
+	return { content, isError: false };
 }
 
 interface NpmLatestVersionResponse {
@@ -645,53 +639,62 @@ interface NpmLatestVersionResponse {
 	homepage?: string;
 }
 
-async function handleNpmLatest(args: {
+export async function handleNpmLatest(args: {
 	packages: string[];
 }): Promise<CallToolResult> {
-	try {
-		const packages = args.packages || [];
-		let text = '';
+	const results = await Promise.all(
+		args.packages.map(async (pkg) => {
+			try {
+				const response = await fetch(`https://registry.npmjs.org/${pkg}/latest`, {
+					headers: {
+						Accept: 'application/json',
+						'User-Agent': 'NPM-Sentinel-MCP',
+					},
+				});
 
-		for (const pkg of packages) {
-			const response = await fetch(`https://registry.npmjs.org/${pkg}/latest`);
+				if (!response.ok) {
+					throw new Error(`Failed to fetch latest version: ${response.statusText}`);
+				}
 
-			if (!response.ok) {
-				throw new Error(`Failed to fetch latest version for ${pkg}: ${response.statusText}`);
+				const data = await response.json();
+				const latestInfo = data as NpmLatestVersionResponse;
+
+				return {
+					name: pkg,
+					version: latestInfo.version,
+					description: latestInfo.description,
+					author: latestInfo.author?.name,
+					license: latestInfo.license,
+					homepage: latestInfo.homepage,
+					success: true as const,
+				};
+			} catch (err) {
+				return {
+					name: pkg,
+					error: err instanceof Error ? err.message : 'Unknown error',
+					success: false as const,
+				};
 			}
+		}),
+	);
 
-			const data = (await response.json()) as NpmLatestVersionResponse;
-			text += `📦 Latest version of ${pkg}\n`;
-			text += `Version: ${data.version}\n`;
-			text += `Description: ${data.description || 'No description available'}\n`;
-			text += `Author: ${data.author?.name || 'Unknown'}\n`;
-			text += `License: ${data.license || 'Unknown'}\n`;
-			text += `Homepage: ${data.homepage || 'Not specified'}\n\n`;
-			text += '---\n\n';
-		}
+	const content = results.map((result) => ({
+		type: 'text' as const,
+		text: result.success
+			? `📦 Latest version of ${result.name}:
+Version: ${result.version}
+Description: ${result.description || 'No description available'}
+Author: ${result.author || 'Unknown'}
+License: ${result.license || 'Unknown'}
+Homepage: ${result.homepage || 'Not specified'}
+---`
+			: `❌ Error fetching latest version for ${result.name}: ${result.error}`,
+	}));
 
-		return {
-			content: [
-				{
-					type: 'text',
-					text,
-				},
-			],
-			isError: false,
-		};
-	} catch (error) {
-		return {
-			content: [
-				{
-					type: 'text',
-					text: `Error fetching latest version: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				},
-			],
-			isError: true,
-		};
-	}
+	return { content, isError: false };
 }
 
-async function handleNpmDeps(args: {
+export async function handleNpmDeps(args: {
 	packages: string[];
 }): Promise<CallToolResult> {
 	try {
@@ -703,7 +706,12 @@ async function handleNpmDeps(args: {
 		const results = await Promise.all(
 			packagesToProcess.map(async (pkg) => {
 				try {
-					const response = await fetch(`https://registry.npmjs.org/${pkg}/latest`);
+					const response = await fetch(`https://registry.npmjs.org/${pkg}/latest`, {
+						headers: {
+							Accept: 'application/json',
+							'User-Agent': 'NPM-Sentinel-MCP',
+						},
+					});
 					if (!response.ok) {
 						return { name: pkg, error: `Failed to fetch package info: ${response.statusText}` };
 					}
@@ -762,10 +770,7 @@ async function handleNpmDeps(args: {
 			text += '---\n\n';
 		}
 
-		return {
-			content: [{ type: 'text', text }],
-			isError: false,
-		};
+		return { content: [{ type: 'text', text }], isError: false };
 	} catch (error) {
 		return {
 			content: [
@@ -779,11 +784,16 @@ async function handleNpmDeps(args: {
 	}
 }
 
-async function handleNpmTypes(args: { packages: string[] }): Promise<CallToolResult> {
+export async function handleNpmTypes(args: { packages: string[] }): Promise<CallToolResult> {
 	try {
 		const results = await Promise.all(
 			args.packages.map(async (pkg) => {
-				const response = await fetch(`https://registry.npmjs.org/${pkg}/latest`);
+				const response = await fetch(`https://registry.npmjs.org/${pkg}/latest`, {
+					headers: {
+						Accept: 'application/json',
+						'User-Agent': 'NPM-Sentinel-MCP',
+					},
+				});
 				if (!response.ok) {
 					throw new Error(`Failed to fetch package info: ${response.statusText}`);
 				}
@@ -798,9 +808,12 @@ async function handleNpmTypes(args: { packages: string[] }): Promise<CallToolRes
 				}
 
 				const typesPackage = `@types/${pkg.replace('@', '').replace('/', '__')}`;
-				const typesResponse = await fetch(
-					`https://registry.npmjs.org/${typesPackage}/latest`,
-				).catch(() => null);
+				const typesResponse = await fetch(`https://registry.npmjs.org/${typesPackage}/latest`, {
+					headers: {
+						Accept: 'application/json',
+						'User-Agent': 'NPM-Sentinel-MCP',
+					},
+				}).catch(() => null);
 
 				if (typesResponse?.ok) {
 					const typesData = (await typesResponse.json()) as NpmPackageData;
@@ -822,10 +835,7 @@ async function handleNpmTypes(args: { packages: string[] }): Promise<CallToolRes
 			}
 		}
 
-		return {
-			content: [{ type: 'text', text }],
-			isError: false,
-		};
+		return { content: [{ type: 'text', text }], isError: false };
 	} catch (error) {
 		return {
 			content: [
@@ -836,7 +846,7 @@ async function handleNpmTypes(args: { packages: string[] }): Promise<CallToolRes
 	}
 }
 
-async function handleNpmSize(args: {
+export async function handleNpmSize(args: {
 	packages: string[];
 }): Promise<CallToolResult> {
 	try {
@@ -847,7 +857,12 @@ async function handleNpmSize(args: {
 
 		const results = await Promise.all(
 			packagesToProcess.map(async (pkg) => {
-				const response = await fetch(`https://bundlephobia.com/api/size?package=${pkg}`);
+				const response = await fetch(`https://bundlephobia.com/api/size?package=${pkg}`, {
+					headers: {
+						Accept: 'application/json',
+						'User-Agent': 'NPM-Sentinel-MCP',
+					},
+				});
 				if (!response.ok) {
 					return { name: pkg, error: `Failed to fetch package size: ${response.statusText}` };
 				}
@@ -877,10 +892,7 @@ async function handleNpmSize(args: {
 			}
 		}
 
-		return {
-			content: [{ type: 'text', text }],
-			isError: false,
-		};
+		return { content: [{ type: 'text', text }], isError: false };
 	} catch (error) {
 		return {
 			content: [
@@ -894,7 +906,7 @@ async function handleNpmSize(args: {
 	}
 }
 
-async function handleNpmVulnerabilities(args: {
+export async function handleNpmVulnerabilities(args: {
 	packages: string[];
 }): Promise<CallToolResult> {
 	try {
@@ -962,10 +974,7 @@ async function handleNpmVulnerabilities(args: {
 			text += '---\n\n';
 		}
 
-		return {
-			content: [{ type: 'text', text }],
-			isError: false,
-		};
+		return { content: [{ type: 'text', text }], isError: false };
 	} catch (error) {
 		return {
 			content: [
@@ -979,12 +988,17 @@ async function handleNpmVulnerabilities(args: {
 	}
 }
 
-async function handleNpmTrends(args: {
+export async function handleNpmTrends(args: {
 	packages: string[];
 	period?: 'last-week' | 'last-month' | 'last-year';
 }): Promise<CallToolResult> {
 	try {
-		const period = args.period || 'last-month';
+		// Si period es undefined, vacío o inválido, usar el valor por defecto
+		const period =
+			args.period && ['last-week', 'last-month', 'last-year'].includes(args.period)
+				? args.period
+				: 'last-month';
+
 		const periodDays = {
 			'last-week': 7,
 			'last-month': 30,
@@ -1007,7 +1021,12 @@ async function handleNpmTrends(args: {
 
 		const results = await Promise.all(
 			args.packages.map(async (pkg) => {
-				const response = await fetch(`https://api.npmjs.org/downloads/point/${period}/${pkg}`);
+				const response = await fetch(`https://api.npmjs.org/downloads/point/${period}/${pkg}`, {
+					headers: {
+						Accept: 'application/json',
+						'User-Agent': 'NPM-Sentinel-MCP',
+					},
+				});
 				if (!response.ok) {
 					return {
 						name: pkg,
@@ -1056,10 +1075,7 @@ async function handleNpmTrends(args: {
 		text += `Total downloads across all packages: ${totalDownloads.toLocaleString()}\n`;
 		text += `Average daily downloads across all packages: ${Math.round(totalDownloads / periodDays[period]).toLocaleString()}\n`;
 
-		return {
-			content: [{ type: 'text', text }],
-			isError: false,
-		};
+		return { content: [{ type: 'text', text }], isError: false };
 	} catch (error) {
 		return {
 			content: [
@@ -1070,7 +1086,7 @@ async function handleNpmTrends(args: {
 	}
 }
 
-async function handleNpmCompare(args: { packages: string[] }): Promise<CallToolResult> {
+export async function handleNpmCompare(args: { packages: string[] }): Promise<CallToolResult> {
 	try {
 		const results = await Promise.all(
 			args.packages.map(async (pkg) => {
@@ -1112,10 +1128,7 @@ async function handleNpmCompare(args: { packages: string[] }): Promise<CallToolR
 			text += `${pkg.name} | ${pkg.version} | ${pkg.downloads.toLocaleString()} | ${pkg.dependencies} | ${pkg.license || 'N/A'}\n`;
 		}
 
-		return {
-			content: [{ type: 'text', text }],
-			isError: false,
-		};
+		return { content: [{ type: 'text', text }], isError: false };
 	} catch (error) {
 		return {
 			content: [{ type: 'text', text: `Error comparing packages: ${(error as Error).message}` }],
@@ -1125,11 +1138,16 @@ async function handleNpmCompare(args: { packages: string[] }): Promise<CallToolR
 }
 
 // Function to get package quality metrics
-async function handleNpmQuality(args: { packages: string[] }): Promise<CallToolResult> {
+export async function handleNpmQuality(args: { packages: string[] }): Promise<CallToolResult> {
 	try {
 		const results = await Promise.all(
 			args.packages.map(async (pkg) => {
-				const response = await fetch(`https://api.npms.io/v2/package/${encodeURIComponent(pkg)}`);
+				const response = await fetch(`https://api.npms.io/v2/package/${encodeURIComponent(pkg)}`, {
+					headers: {
+						Accept: 'application/json',
+						'User-Agent': 'NPM-Sentinel-MCP',
+					},
+				});
 				if (!response.ok) {
 					return { name: pkg, error: `Failed to fetch quality data: ${response.statusText}` };
 				}
@@ -1167,10 +1185,7 @@ async function handleNpmQuality(args: { packages: string[] }): Promise<CallToolR
 				'- Note: Detailed metrics (tests, coverage, linting, types) are no longer provided by the API\n\n';
 		}
 
-		return {
-			content: [{ type: 'text', text }],
-			isError: false,
-		} as CallToolResult;
+		return { content: [{ type: 'text', text }], isError: false };
 	} catch (error) {
 		return {
 			content: [
@@ -1180,15 +1195,20 @@ async function handleNpmQuality(args: { packages: string[] }): Promise<CallToolR
 				},
 			],
 			isError: true,
-		} as CallToolResult;
+		};
 	}
 }
 
-async function handleNpmMaintenance(args: { packages: string[] }): Promise<CallToolResult> {
+export async function handleNpmMaintenance(args: { packages: string[] }): Promise<CallToolResult> {
 	try {
 		const results = await Promise.all(
 			args.packages.map(async (pkg) => {
-				const response = await fetch(`https://api.npms.io/v2/package/${encodeURIComponent(pkg)}`);
+				const response = await fetch(`https://api.npms.io/v2/package/${encodeURIComponent(pkg)}`, {
+					headers: {
+						Accept: 'application/json',
+						'User-Agent': 'NPM-Sentinel-MCP',
+					},
+				});
 				if (!response.ok) {
 					return { name: pkg, error: `Failed to fetch maintenance data: ${response.statusText}` };
 				}
@@ -1218,10 +1238,7 @@ async function handleNpmMaintenance(args: { packages: string[] }): Promise<CallT
 			text += `- Maintenance Score: ${result.score}\n\n`;
 		}
 
-		return {
-			content: [{ type: 'text', text }],
-			isError: false,
-		} as CallToolResult;
+		return { content: [{ type: 'text', text }], isError: false };
 	} catch (error) {
 		return {
 			content: [
@@ -1231,15 +1248,20 @@ async function handleNpmMaintenance(args: { packages: string[] }): Promise<CallT
 				},
 			],
 			isError: true,
-		} as CallToolResult;
+		};
 	}
 }
 
-async function handleNpmPopularity(args: { packages: string[] }): Promise<CallToolResult> {
+export async function handleNpmPopularity(args: { packages: string[] }): Promise<CallToolResult> {
 	try {
 		const results = await Promise.all(
 			args.packages.map(async (pkg) => {
-				const response = await fetch(`https://api.npms.io/v2/package/${encodeURIComponent(pkg)}`);
+				const response = await fetch(`https://api.npms.io/v2/package/${encodeURIComponent(pkg)}`, {
+					headers: {
+						Accept: 'application/json',
+						'User-Agent': 'NPM-Sentinel-MCP',
+					},
+				});
 				if (!response.ok) {
 					return { name: pkg, error: `Failed to fetch popularity data: ${response.statusText}` };
 				}
@@ -1276,10 +1298,7 @@ async function handleNpmPopularity(args: { packages: string[] }): Promise<CallTo
 			text += '- Note: Detailed metrics are no longer provided by the API\n\n';
 		}
 
-		return {
-			content: [{ type: 'text', text }],
-			isError: false,
-		} as CallToolResult;
+		return { content: [{ type: 'text', text }], isError: false };
 	} catch (error) {
 		return {
 			content: [
@@ -1289,11 +1308,11 @@ async function handleNpmPopularity(args: { packages: string[] }): Promise<CallTo
 				},
 			],
 			isError: true,
-		} as CallToolResult;
+		};
 	}
 }
 
-async function handleNpmMaintainers(args: { packages: string[] }): Promise<CallToolResult> {
+export async function handleNpmMaintainers(args: { packages: string[] }): Promise<CallToolResult> {
 	try {
 		const results = await Promise.all(
 			args.packages.map(async (pkg) => {
@@ -1373,7 +1392,7 @@ async function handleNpmMaintainers(args: { packages: string[] }): Promise<CallT
 	}
 }
 
-async function handleNpmScore(args: { packages: string[] }): Promise<CallToolResult> {
+export async function handleNpmScore(args: { packages: string[] }): Promise<CallToolResult> {
 	try {
 		const results = await Promise.all(
 			args.packages.map(async (pkg) => {
@@ -1473,7 +1492,9 @@ async function handleNpmScore(args: { packages: string[] }): Promise<CallToolRes
 	}
 }
 
-async function handleNpmPackageReadme(args: { packages: string[] }): Promise<CallToolResult> {
+export async function handleNpmPackageReadme(args: {
+	packages: string[];
+}): Promise<CallToolResult> {
 	try {
 		const results = await Promise.all(
 			args.packages.map(async (pkg) => {
@@ -1515,10 +1536,7 @@ async function handleNpmPackageReadme(args: { packages: string[] }): Promise<Cal
 			}
 		}
 
-		return {
-			content: [{ type: 'text', text }],
-			isError: false,
-		};
+		return { content: [{ type: 'text', text }], isError: false };
 	} catch (error) {
 		return {
 			content: [
@@ -1532,7 +1550,10 @@ async function handleNpmPackageReadme(args: { packages: string[] }): Promise<Cal
 	}
 }
 
-async function handleNpmSearch(args: { query: string; limit?: number }): Promise<CallToolResult> {
+export async function handleNpmSearch(args: {
+	query: string;
+	limit?: number;
+}): Promise<CallToolResult> {
 	try {
 		const limit = args.limit || 10;
 		const response = await fetch(
@@ -1578,10 +1599,7 @@ async function handleNpmSearch(args: { query: string; limit?: number }): Promise
 			text += '\n';
 		}
 
-		return {
-			content: [{ type: 'text', text }],
-			isError: false,
-		};
+		return { content: [{ type: 'text', text }], isError: false };
 	} catch (error) {
 		return {
 			content: [
@@ -1596,7 +1614,7 @@ async function handleNpmSearch(args: { query: string; limit?: number }): Promise
 }
 
 // License compatibility checker
-async function handleNpmLicenseCompatibility(args: {
+export async function handleNpmLicenseCompatibility(args: {
 	packages: string[];
 }): Promise<CallToolResult> {
 	try {
@@ -1647,10 +1665,7 @@ async function handleNpmLicenseCompatibility(args: {
 		text +=
 			'\nNote: This is a basic analysis. For legal compliance, please consult with a legal expert.\n';
 
-		return {
-			content: [{ type: 'text', text }],
-			isError: false,
-		};
+		return { content: [{ type: 'text', text }], isError: false };
 	} catch (error) {
 		return {
 			content: [
@@ -1677,7 +1692,7 @@ interface GitHubRepoStats {
 }
 
 // Repository statistics analyzer
-async function handleNpmRepoStats(args: { packages: string[] }): Promise<CallToolResult> {
+export async function handleNpmRepoStats(args: { packages: string[] }): Promise<CallToolResult> {
 	try {
 		const results = await Promise.all(
 			args.packages.map(async (pkg) => {
@@ -1755,10 +1770,7 @@ async function handleNpmRepoStats(args: { packages: string[] }): Promise<CallToo
 			}
 		}
 
-		return {
-			content: [{ type: 'text', text }],
-			isError: false,
-		};
+		return { content: [{ type: 'text', text }], isError: false };
 	} catch (error) {
 		return {
 			content: [
@@ -1824,7 +1836,7 @@ interface DownloadCount {
 	downloads: number;
 }
 
-async function handleNpmDeprecated(args: { packages: string[] }): Promise<CallToolResult> {
+export async function handleNpmDeprecated(args: { packages: string[] }): Promise<CallToolResult> {
 	try {
 		const results = await Promise.all(
 			args.packages.map(async (pkg) => {
@@ -1904,10 +1916,7 @@ async function handleNpmDeprecated(args: { packages: string[] }): Promise<CallTo
 			text += result.text;
 		}
 
-		return {
-			content: [{ type: 'text', text }],
-			isError: false,
-		};
+		return { content: [{ type: 'text', text }], isError: false };
 	} catch (error) {
 		return {
 			content: [
@@ -1921,7 +1930,9 @@ async function handleNpmDeprecated(args: { packages: string[] }): Promise<CallTo
 	}
 }
 
-async function handleNpmChangelogAnalysis(args: { packages: string[] }): Promise<CallToolResult> {
+export async function handleNpmChangelogAnalysis(args: {
+	packages: string[];
+}): Promise<CallToolResult> {
 	try {
 		const results = await Promise.all(
 			args.packages.map(async (pkg) => {
@@ -2035,10 +2046,7 @@ async function handleNpmChangelogAnalysis(args: { packages: string[] }): Promise
 			text += result.text;
 		}
 
-		return {
-			content: [{ type: 'text', text }],
-			isError: false,
-		};
+		return { content: [{ type: 'text', text }], isError: false };
 	} catch (error) {
 		return {
 			content: [
@@ -2052,7 +2060,7 @@ async function handleNpmChangelogAnalysis(args: { packages: string[] }): Promise
 	}
 }
 
-async function handleNpmAlternatives(args: { packages: string[] }): Promise<CallToolResult> {
+export async function handleNpmAlternatives(args: { packages: string[] }): Promise<CallToolResult> {
 	try {
 		const results = await Promise.all(
 			args.packages.map(async (pkg) => {
@@ -2121,10 +2129,7 @@ async function handleNpmAlternatives(args: { packages: string[] }): Promise<Call
 			text += result.text;
 		}
 
-		return {
-			content: [{ type: 'text', text }],
-			isError: false,
-		};
+		return { content: [{ type: 'text', text }], isError: false };
 	} catch (error) {
 		return {
 			content: [
