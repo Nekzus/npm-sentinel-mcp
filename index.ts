@@ -105,14 +105,6 @@ export const NpmMaintenanceSchema = z.object({
 	lastUpdate: z.string(),
 });
 
-export const NpmPopularitySchema = z.object({
-	score: z.number(),
-	stars: z.number(),
-	downloads: z.number(),
-	dependents: z.number(),
-	communityInterest: z.number(),
-});
-
 // Interfaz actualizada para la respuesta de npms.io
 interface NpmsApiResponse {
 	analyzedAt: string;
@@ -1245,66 +1237,6 @@ export async function handleNpmMaintenance(args: { packages: string[] }): Promis
 				{
 					type: 'text',
 					text: `Error fetching maintenance metrics: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				},
-			],
-			isError: true,
-		};
-	}
-}
-
-export async function handleNpmPopularity(args: { packages: string[] }): Promise<CallToolResult> {
-	try {
-		const results = await Promise.all(
-			args.packages.map(async (pkg) => {
-				const response = await fetch(`https://api.npms.io/v2/package/${encodeURIComponent(pkg)}`, {
-					headers: {
-						Accept: 'application/json',
-						'User-Agent': 'NPM-Sentinel-MCP',
-					},
-				});
-				if (!response.ok) {
-					return { name: pkg, error: `Failed to fetch popularity data: ${response.statusText}` };
-				}
-				const data = await response.json();
-
-				if (!isValidNpmsResponse(data)) {
-					return { name: pkg, error: 'Invalid API response format' };
-				}
-
-				const popularityScore = data.score.detail.popularity;
-
-				return {
-					name: pkg,
-					...NpmPopularitySchema.parse({
-						score: Math.round(popularityScore * 100) / 100,
-						stars: 0,
-						downloads: 0,
-						dependents: 0,
-						communityInterest: 0,
-					}),
-				};
-			}),
-		);
-
-		let text = '📈 Popularity Metrics\n\n';
-		for (const result of results) {
-			if ('error' in result) {
-				text += `❌ ${result.name}: ${result.error}\n\n`;
-				continue;
-			}
-
-			text += `📦 ${result.name}\n`;
-			text += `- Overall Score: ${result.score}\n`;
-			text += '- Note: Detailed metrics are no longer provided by the API\n\n';
-		}
-
-		return { content: [{ type: 'text', text }], isError: false };
-	} catch (error) {
-		return {
-			content: [
-				{
-					type: 'text',
-					text: `Error fetching popularity metrics: ${error instanceof Error ? error.message : 'Unknown error'}`,
 				},
 			],
 			isError: true,
