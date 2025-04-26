@@ -105,7 +105,7 @@ export const NpmMaintenanceSchema = z.object({
 	lastUpdate: z.string(),
 });
 
-// Interfaz actualizada para la respuesta de npms.io
+// Updated interface for npms.io response
 interface NpmsApiResponse {
 	analyzedAt: string;
 	collected: {
@@ -985,7 +985,7 @@ export async function handleNpmTrends(args: {
 	period?: 'last-week' | 'last-month' | 'last-year';
 }): Promise<CallToolResult> {
 	try {
-		// Si period es undefined, vacío o inválido, usar el valor por defecto
+		// If period is undefined, empty or invalid, use default value
 		const period =
 			args.period && ['last-week', 'last-month', 'last-year'].includes(args.period)
 				? args.period
@@ -1400,7 +1400,7 @@ export async function handleNpmScore(args: { packages: string[] }): Promise<Call
 			}
 		}
 
-		// Retornar en el formato MCP estándar
+		// Return in standard MCP format
 		return {
 			content: [
 				{
@@ -1411,7 +1411,7 @@ export async function handleNpmScore(args: { packages: string[] }): Promise<Call
 			isError: false,
 		};
 	} catch (error) {
-		// Manejo de errores en formato MCP estándar
+		// Error handling in standard MCP format
 		return {
 			content: [
 				{
