@@ -695,82 +695,109 @@ export async function handleNpmDeps(args: {
 			throw new Error('No package names provided');
 		}
 
-		const results = await Promise.all(
-			packagesToProcess.map(async (pkg) => {
+		const processedResults = await Promise.all(
+			packagesToProcess.map(async (pkgInput) => {
+				let name = '';
+				let version = 'latest'; // Default to 'latest'
+
+				if (typeof pkgInput === 'string') {
+					const atIdx = pkgInput.lastIndexOf('@');
+					if (atIdx > 0) {
+						name = pkgInput.slice(0, atIdx);
+						version = pkgInput.slice(atIdx + 1);
+					} else {
+						name = pkgInput;
+					}
+				} else {
+					// Should not happen with current schema, but good for robustness
+					return {
+						package: 'unknown_package_input',
+						status: 'error',
+						error: 'Invalid package input type',
+						data: null,
+						message: 'Package input was not a string.',
+					};
+				}
+
+				const packageNameForOutput = version === 'latest' ? name : `${name}@${version}`;
+
 				try {
-					const response = await fetch(`https://registry.npmjs.org/${pkg}/latest`, {
+					const response = await fetch(`https://registry.npmjs.org/${name}/${version}`, {
 						headers: {
 							Accept: 'application/json',
 							'User-Agent': 'NPM-Sentinel-MCP',
 						},
 					});
+
 					if (!response.ok) {
-						return { name: pkg, error: `Failed to fetch package info: ${response.statusText}` };
+						return {
+							package: packageNameForOutput,
+							status: 'error',
+							error: `Failed to fetch package info: ${response.status} ${response.statusText}`,
+							data: null,
+							message: `Could not retrieve information for ${packageNameForOutput}.`,
+						};
 					}
 
 					const rawData = await response.json();
 					if (!isNpmPackageData(rawData)) {
-						return { name: pkg, error: 'Invalid package data received' };
+						return {
+							package: packageNameForOutput,
+							status: 'error',
+							error: 'Invalid package data received from registry',
+							data: null,
+							message: `Received malformed data for ${packageNameForOutput}.`,
+						};
 					}
 
+					const mapDeps = (deps: Record<string, string> | undefined) => {
+						if (!deps) return [];
+						return Object.entries(deps).map(([depName, depVersion]) => ({
+							name: depName,
+							version: depVersion,
+						}));
+					};
+
+					const depData = {
+						dependencies: mapDeps(rawData.dependencies),
+						devDependencies: mapDeps(rawData.devDependencies),
+						peerDependencies: mapDeps(rawData.peerDependencies),
+					};
+
+					const actualVersion = rawData.version || version; // Use version from response if available
+
 					return {
-						name: pkg,
-						version: rawData.version,
-						dependencies: rawData.dependencies ?? {},
-						devDependencies: rawData.devDependencies ?? {},
-						peerDependencies: rawData.peerDependencies ?? {},
+						package: `${name}@${actualVersion}`,
+						status: 'success',
+						error: null,
+						data: depData,
+						message: `Dependencies for ${name}@${actualVersion}`,
 					};
 				} catch (error) {
-					return { name: pkg, error: error instanceof Error ? error.message : 'Unknown error' };
+					return {
+						package: packageNameForOutput,
+						status: 'error',
+						error: error instanceof Error ? error.message : 'Unknown processing error',
+						data: null,
+						message: `An unexpected error occurred while processing ${packageNameForOutput}.`,
+					};
 				}
 			}),
 		);
 
-		let text = '';
-		for (const result of results) {
-			if ('error' in result) {
-				text += `❌ ${result.name}: ${result.error}\n\n`;
-				continue;
-			}
-
-			text += `📦 Dependencies for ${result.name}@${result.version}\n\n`;
-
-			if (Object.keys(result.dependencies).length > 0) {
-				text += 'Dependencies:\n';
-				for (const [dep, version] of Object.entries(result.dependencies)) {
-					text += `• ${dep}: ${version}\n`;
-				}
-				text += '\n';
-			}
-
-			if (Object.keys(result.devDependencies).length > 0) {
-				text += 'Dev Dependencies:\n';
-				for (const [dep, version] of Object.entries(result.devDependencies)) {
-					text += `• ${dep}: ${version}\n`;
-				}
-				text += '\n';
-			}
-
-			if (Object.keys(result.peerDependencies).length > 0) {
-				text += 'Peer Dependencies:\n';
-				for (const [dep, version] of Object.entries(result.peerDependencies)) {
-					text += `• ${dep}: ${version}\n`;
-				}
-				text += '\n';
-			}
-
-			text += '---\n\n';
-		}
-
-		return { content: [{ type: 'text', text }], isError: false };
+		const responseJson = JSON.stringify({ results: processedResults }, null, 2);
+		return { content: [{ type: 'text', text: responseJson }], isError: false };
 	} catch (error) {
+		const errorResponse = JSON.stringify(
+			{
+				results: [],
+				error: `General error fetching dependencies: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			},
+			null,
+			2,
+		);
 		return {
-			content: [
-				{
-					type: 'text',
-					text: `Error fetching dependencies: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				},
-			],
+			content: [{ type: 'text', text: errorResponse }],
 			isError: true,
 		};
 	}
@@ -778,61 +805,131 @@ export async function handleNpmDeps(args: {
 
 export async function handleNpmTypes(args: { packages: string[] }): Promise<CallToolResult> {
 	try {
-		const results = await Promise.all(
-			args.packages.map(async (pkg) => {
-				const response = await fetch(`https://registry.npmjs.org/${pkg}/latest`, {
-					headers: {
-						Accept: 'application/json',
-						'User-Agent': 'NPM-Sentinel-MCP',
-					},
-				});
-				if (!response.ok) {
-					throw new Error(`Failed to fetch package info: ${response.statusText}`);
-				}
-				const data = (await response.json()) as NpmPackageData;
+		const packagesToProcess = args.packages || [];
+		if (packagesToProcess.length === 0) {
+			throw new Error('No package names provided');
+		}
 
-				let text = `📦 TypeScript support for ${pkg}@${data.version}\n`;
+		const processedResults = await Promise.all(
+			packagesToProcess.map(async (pkgInput) => {
+				let name = '';
+				let version = 'latest'; // Default to 'latest'
 
-				const hasTypes: boolean = Boolean(data.types || data.typings);
-				if (hasTypes) {
-					text += '✅ Package includes built-in TypeScript types\n';
-					text += `Types path: ${data.types || data.typings}\n`;
-				}
-
-				const typesPackage = `@types/${pkg.replace('@', '').replace('/', '__')}`;
-				const typesResponse = await fetch(`https://registry.npmjs.org/${typesPackage}/latest`, {
-					headers: {
-						Accept: 'application/json',
-						'User-Agent': 'NPM-Sentinel-MCP',
-					},
-				}).catch(() => null);
-
-				if (typesResponse?.ok) {
-					const typesData = (await typesResponse.json()) as NpmPackageData;
-					text += `📦 DefinitelyTyped package available: ${typesPackage}@${typesData.version}\n`;
-					text += `Install with: npm install -D ${typesPackage}`;
-				} else if (!hasTypes) {
-					text += '❌ No TypeScript type definitions found';
+				if (typeof pkgInput === 'string') {
+					const atIdx = pkgInput.lastIndexOf('@');
+					if (atIdx > 0) {
+						name = pkgInput.slice(0, atIdx);
+						version = pkgInput.slice(atIdx + 1);
+					} else {
+						name = pkgInput;
+					}
+				} else {
+					return {
+						package: 'unknown_package_input',
+						status: 'error',
+						error: 'Invalid package input type',
+						data: null,
+						message: 'Package input was not a string.',
+					};
 				}
 
-				return { name: pkg, text };
+				const packageNameForOutput = version === 'latest' ? name : `${name}@${version}`;
+
+				try {
+					const response = await fetch(`https://registry.npmjs.org/${name}/${version}`, {
+						headers: {
+							Accept: 'application/json',
+							'User-Agent': 'NPM-Sentinel-MCP',
+						},
+					});
+
+					if (!response.ok) {
+						return {
+							package: packageNameForOutput,
+							status: 'error',
+							error: `Failed to fetch package info: ${response.status} ${response.statusText}`,
+							data: null,
+							message: `Could not retrieve information for ${packageNameForOutput}.`,
+						};
+					}
+
+					const mainPackageData = (await response.json()) as NpmPackageData;
+					const actualVersion = mainPackageData.version || version; // Use version from response
+					const finalPackageName = `${name}@${actualVersion}`;
+
+					const hasBuiltInTypes = Boolean(mainPackageData.types || mainPackageData.typings);
+					const typesPath = mainPackageData.types || mainPackageData.typings || null;
+
+					const typesPackageName = `@types/${name.replace('@', '').replace('/', '__')}`;
+					let typesPackageInfo: any = {
+						name: typesPackageName,
+						version: null,
+						isAvailable: false,
+					};
+
+					try {
+						const typesResponse = await fetch(
+							`https://registry.npmjs.org/${typesPackageName}/latest`,
+							{
+								headers: {
+									Accept: 'application/json',
+									'User-Agent': 'NPM-Sentinel-MCP',
+								},
+							},
+						);
+						if (typesResponse.ok) {
+							const typesData = (await typesResponse.json()) as NpmPackageData;
+							typesPackageInfo = {
+								name: typesPackageName,
+								version: typesData.version || 'unknown',
+								isAvailable: true,
+							};
+						}
+					} catch (typesError) {
+						// Error fetching @types package, isAvailable remains false
+						console.debug(`Could not fetch @types package ${typesPackageName}: ${typesError}`);
+					}
+
+					return {
+						package: finalPackageName,
+						status: 'success',
+						error: null,
+						data: {
+							mainPackage: {
+								name: name,
+								version: actualVersion,
+								hasBuiltInTypes: hasBuiltInTypes,
+								typesPath: typesPath,
+							},
+							typesPackage: typesPackageInfo,
+						},
+						message: `TypeScript information for ${finalPackageName}`,
+					};
+				} catch (error) {
+					return {
+						package: packageNameForOutput,
+						status: 'error',
+						error: error instanceof Error ? error.message : 'Unknown processing error',
+						data: null,
+						message: `An unexpected error occurred while processing ${packageNameForOutput}.`,
+					};
+				}
 			}),
 		);
 
-		let text = '';
-		for (const result of results) {
-			text += `${result.text}\n\n`;
-			if (results.indexOf(result) < results.length - 1) {
-				text += '---\n\n';
-			}
-		}
-
-		return { content: [{ type: 'text', text }], isError: false };
+		const responseJson = JSON.stringify({ results: processedResults }, null, 2);
+		return { content: [{ type: 'text', text: responseJson }], isError: false };
 	} catch (error) {
+		const errorResponse = JSON.stringify(
+			{
+				results: [],
+				error: `General error checking TypeScript types: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			},
+			null,
+			2,
+		);
 		return {
-			content: [
-				{ type: 'text', text: `Error checking TypeScript types: ${(error as Error).message}` },
-			],
+			content: [{ type: 'text', text: errorResponse }],
 			isError: true,
 		};
 	}
@@ -847,52 +944,129 @@ export async function handleNpmSize(args: {
 			throw new Error('No package names provided');
 		}
 
-		const results = await Promise.all(
-			packagesToProcess.map(async (pkg) => {
-				const response = await fetch(`https://bundlephobia.com/api/size?package=${pkg}`, {
-					headers: {
-						Accept: 'application/json',
-						'User-Agent': 'NPM-Sentinel-MCP',
-					},
-				});
-				if (!response.ok) {
-					return { name: pkg, error: `Failed to fetch package size: ${response.statusText}` };
+		const processedResults = await Promise.all(
+			packagesToProcess.map(async (pkgInput) => {
+				let name = '';
+				let version = 'latest'; // Default to 'latest'
+
+				if (typeof pkgInput === 'string') {
+					const atIdx = pkgInput.lastIndexOf('@');
+					if (atIdx > 0) {
+						name = pkgInput.slice(0, atIdx);
+						version = pkgInput.slice(atIdx + 1);
+					} else {
+						name = pkgInput;
+					}
+				} else {
+					return {
+						package: 'unknown_package_input',
+						status: 'error',
+						error: 'Invalid package input type',
+						data: null,
+						message: 'Package input was not a string.',
+					};
 				}
 
-				const rawData = await response.json();
-				if (!isBundlephobiaData(rawData)) {
-					return { name: pkg, error: 'Invalid response from bundlephobia' };
-				}
+				// Use name@version for bundlephobia if version is specified, otherwise just name (it defaults to latest)
+				const bundlephobiaQuery = version === 'latest' ? name : `${name}@${version}`;
+				const packageNameForOutput = bundlephobiaQuery;
 
-				return {
-					name: pkg,
-					sizeInKb: Number((rawData.size / 1024).toFixed(2)),
-					gzipInKb: Number((rawData.gzip / 1024).toFixed(2)),
-					dependencyCount: rawData.dependencyCount,
-				};
+				try {
+					const response = await fetch(
+						`https://bundlephobia.com/api/size?package=${bundlephobiaQuery}`,
+						{
+							headers: {
+								Accept: 'application/json',
+								'User-Agent': 'NPM-Sentinel-MCP',
+							},
+						},
+					);
+
+					if (!response.ok) {
+						let errorMsg = `Failed to fetch package size: ${response.status} ${response.statusText}`;
+						if (response.status === 404) {
+							errorMsg = `Package ${packageNameForOutput} not found or version not available on Bundlephobia.`;
+						}
+						return {
+							package: packageNameForOutput,
+							status: 'error',
+							error: errorMsg,
+							data: null,
+							message: `Could not retrieve size information for ${packageNameForOutput}.`,
+						};
+					}
+
+					const rawData: any = await response.json(); // Cast to any for initial error check
+
+					// Bundlephobia might return an error object in the JSON body for invalid package versions
+					if (rawData.error) {
+						return {
+							package: packageNameForOutput,
+							status: 'error',
+							error: `Bundlephobia error: ${rawData.error.message || 'Unknown error'}`,
+							data: null,
+							message: `Bundlephobia reported an error for ${packageNameForOutput}.`,
+						};
+					}
+
+					if (!isBundlephobiaData(rawData)) {
+						return {
+							package: packageNameForOutput,
+							status: 'error',
+							error: 'Invalid package data received from Bundlephobia',
+							data: null,
+							message: `Received malformed size data for ${packageNameForOutput}.`,
+						};
+					}
+
+					// Bundlephobia provides the resolved version in its response if 'latest' was queried
+					// However, its response structure for `name` and `version` is not always consistent with NpmPackageDataSchema
+					// We will stick to `packageNameForOutput` for the package name in the result.
+					// If Bundlephobia returns a specific version (e.g. for `pkg@latest`), `rawData.version` might have it.
+
+					const typedRawData = rawData as BundlephobiaData; // Explicit cast after type guard
+
+					const sizeData = {
+						name: (typedRawData as any).name || name,
+						version:
+							(typedRawData as any).version || (version === 'latest' ? 'latest_resolved' : version),
+						sizeInKb: Number((typedRawData.size / 1024).toFixed(2)),
+						gzipInKb: Number((typedRawData.gzip / 1024).toFixed(2)),
+						dependencyCount: typedRawData.dependencyCount,
+					};
+
+					return {
+						package: packageNameForOutput, // Or construct as `${sizeData.name}@${sizeData.version}` if preferred
+						status: 'success',
+						error: null,
+						data: sizeData,
+						message: `Size information for ${packageNameForOutput}`,
+					};
+				} catch (error) {
+					return {
+						package: packageNameForOutput,
+						status: 'error',
+						error: error instanceof Error ? error.message : 'Unknown processing error',
+						data: null,
+						message: `An unexpected error occurred while processing ${packageNameForOutput}.`,
+					};
+				}
 			}),
 		);
 
-		let text = '';
-		for (const result of results) {
-			if ('error' in result) {
-				text += `❌ ${result.name}: ${result.error}\n\n`;
-			} else {
-				text += `📦 ${result.name}\n`;
-				text += `Size: ${result.sizeInKb}KB (gzipped: ${result.gzipInKb}KB)\n`;
-				text += `Dependencies: ${result.dependencyCount}\n\n`;
-			}
-		}
-
-		return { content: [{ type: 'text', text }], isError: false };
+		const responseJson = JSON.stringify({ results: processedResults }, null, 2);
+		return { content: [{ type: 'text', text: responseJson }], isError: false };
 	} catch (error) {
+		const errorResponse = JSON.stringify(
+			{
+				results: [],
+				error: `General error fetching package sizes: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			},
+			null,
+			2,
+		);
 		return {
-			content: [
-				{
-					type: 'text',
-					text: `Error fetching package sizes: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				},
-			],
+			content: [{ type: 'text', text: errorResponse }],
 			isError: true,
 		};
 	}
