@@ -907,74 +907,182 @@ export async function handleNpmVulnerabilities(args: {
 			throw new Error('No package names provided');
 		}
 
-		const results = await Promise.all(
-			packagesToProcess.map(async (pkg) => {
+		const processedResults = await Promise.all(
+			packagesToProcess.map(async (pkgInput) => {
+				let name = '';
+				let version: string | undefined = undefined;
+				if (typeof pkgInput === 'string') {
+					const atIdx = pkgInput.lastIndexOf('@');
+					if (atIdx > 0) {
+						name = pkgInput.slice(0, atIdx);
+						version = pkgInput.slice(atIdx + 1);
+					} else {
+						name = pkgInput;
+					}
+				} else if (typeof pkgInput === 'object' && pkgInput !== null) {
+					name = (pkgInput as any).name;
+					version = (pkgInput as any).version;
+				}
+
+				const osvBody: any = {
+					package: {
+						name,
+						ecosystem: 'npm',
+					},
+				};
+				if (version) {
+					osvBody.version = version;
+				}
+
 				const response = await fetch('https://api.osv.dev/v1/query', {
 					method: 'POST',
 					headers: {
 						'Content-Type': 'application/json',
 					},
-					body: JSON.stringify({
-						package: {
-							name: pkg,
-							ecosystem: 'npm',
-						},
-					}),
+					body: JSON.stringify(osvBody),
 				});
 
+				const queryVersionSpecified = !!version;
+				const packageNameForOutput = version ? `${name}@${version}` : name;
+
 				if (!response.ok) {
-					return { name: pkg, error: `Failed to fetch vulnerability info: ${response.statusText}` };
+					return {
+						package: packageNameForOutput,
+						versionQueried: version || null,
+						status: 'error',
+						error: `OSV API Error: ${response.statusText}`,
+						vulnerabilities: [],
+					};
 				}
 
 				const data = (await response.json()) as {
 					vulns?: Array<{
+						id?: string;
 						summary: string;
 						severity?: string | { type?: string; score?: number };
 						references?: Array<{ url: string }>;
+						affected?: Array<{
+							package?: { ecosystem: string; name: string };
+							ranges?: Array<{
+								type: string;
+								events: Array<{ introduced?: string; fixed?: string; limit?: string }>;
+							}>;
+							versions?: string[];
+						}>;
 					}>;
 				};
 
-				return { name: pkg, vulns: data.vulns || [] };
+				const vulns = data.vulns || [];
+				if (vulns.length === 0) {
+					return {
+						package: packageNameForOutput,
+						versionQueried: version || null,
+						status: 'success',
+						vulnerabilities: [],
+						message: `No known vulnerabilities found${queryVersionSpecified ? ' for the specified version' : ''}.`,
+					};
+				}
+
+				return {
+					package: packageNameForOutput,
+					versionQueried: version || null,
+					status: 'success',
+					vulnerabilities: vulns.map((vuln) => {
+						const sev =
+							typeof vuln.severity === 'object'
+								? vuln.severity.type || 'Unknown'
+								: vuln.severity || 'Unknown';
+						const refs = vuln.references ? vuln.references.map((r) => r.url) : [];
+						const affectedRanges: any[] = [];
+						const affectedVersionsListed: string[] = [];
+
+						const vulnerabilityDetails: any = {
+							summary: vuln.summary,
+							severity: sev,
+							references: refs,
+						};
+
+						if (vuln.affected && vuln.affected.length > 0) {
+							const lifecycle: { introduced?: string; fixed?: string } = {};
+							const firstAffectedEvents = vuln.affected[0]?.ranges?.[0]?.events;
+							if (firstAffectedEvents) {
+								const introducedEvent = firstAffectedEvents.find((e) => e.introduced);
+								const fixedEvent = firstAffectedEvents.find((e) => e.fixed);
+								if (introducedEvent?.introduced) lifecycle.introduced = introducedEvent.introduced;
+								if (fixedEvent?.fixed) lifecycle.fixed = fixedEvent.fixed;
+							}
+							if (Object.keys(lifecycle).length > 0) {
+								vulnerabilityDetails.lifecycle = lifecycle;
+								// Check if the vulnerability is fixed in the queried version
+								if (queryVersionSpecified && version && lifecycle.fixed) {
+									// Basic semver comparison: assumes simple x.y.z versions
+									const queriedParts = version.split('.').map(Number);
+									const fixedParts = lifecycle.fixed.split('.').map(Number);
+									let isFixedDecision = false; // Default to not fixed if loop completes without decision
+									const maxLength = Math.max(queriedParts.length, fixedParts.length);
+
+									for (let i = 0; i < maxLength; i++) {
+										const qp = queriedParts[i] || 0;
+										const fp = fixedParts[i] || 0;
+
+										if (fp < qp) {
+											isFixedDecision = true;
+											break;
+										}
+										if (fp > qp) {
+											isFixedDecision = false;
+											break;
+										}
+										// If parts are equal, continue to the next part
+										// If loop finishes and all parts were equal or fixed was shorter, it means fixed <= queried
+										if (i === maxLength - 1) {
+											isFixedDecision = fixedParts.length <= queriedParts.length;
+										}
+									}
+									vulnerabilityDetails.isFixedInQueriedVersion = isFixedDecision;
+								}
+							}
+						}
+
+						if (!queryVersionSpecified && vuln.affected) {
+							for (const aff of vuln.affected) {
+								if (aff.ranges) {
+									for (const range of aff.ranges) {
+										affectedRanges.push({ type: range.type, events: range.events });
+									}
+								}
+								if (aff.versions && aff.versions.length > 0) {
+									affectedVersionsListed.push(...aff.versions);
+								}
+							}
+							if (affectedRanges.length > 0) {
+								vulnerabilityDetails.affectedRanges = affectedRanges;
+							}
+							if (affectedVersionsListed.length > 0) {
+								vulnerabilityDetails.affectedVersionsListed = affectedVersionsListed;
+							}
+						}
+						return vulnerabilityDetails;
+					}),
+					message: `${vulns.length} vulnerability(ies) found${queryVersionSpecified ? ' for the specified version' : ''}.`,
+				};
 			}),
 		);
 
-		let text = '🔒 Security Analysis\n\n';
-		for (const result of results) {
-			if ('error' in result) {
-				text += `❌ ${result.name}: ${result.error}\n\n`;
-				continue;
-			}
+		const responseJson = JSON.stringify({ results: processedResults }, null, 2);
 
-			text += `📦 ${result.name}\n`;
-			if (result.vulns.length === 0) {
-				text += '✅ No known vulnerabilities\n\n';
-			} else {
-				text += `⚠️ Found ${result.vulns.length} vulnerabilities:\n\n`;
-				for (const vuln of result.vulns) {
-					text += `- ${vuln.summary}\n`;
-					const severity =
-						typeof vuln.severity === 'object'
-							? vuln.severity.type || 'Unknown'
-							: vuln.severity || 'Unknown';
-					text += `  Severity: ${severity}\n`;
-					if (vuln.references && vuln.references.length > 0) {
-						text += `  More info: ${vuln.references[0].url}\n`;
-					}
-					text += '\n';
-				}
-			}
-			text += '---\n\n';
-		}
-
-		return { content: [{ type: 'text', text }], isError: false };
+		return { content: [{ type: 'text', text: responseJson }], isError: false };
 	} catch (error) {
+		const errorResponse = JSON.stringify(
+			{
+				results: [],
+				error: `General error checking vulnerabilities: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			},
+			null,
+			2,
+		);
 		return {
-			content: [
-				{
-					type: 'text',
-					text: `Error checking vulnerabilities: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				},
-			],
+			content: [{ type: 'text', text: errorResponse }],
 			isError: true,
 		};
 	}

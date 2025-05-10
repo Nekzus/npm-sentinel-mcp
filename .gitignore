@@ -46,3 +46,4 @@ coverage/
 # Cursor
 .cursorrules
 memory-bank/
+memory.json
