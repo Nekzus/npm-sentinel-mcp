@@ -20,7 +20,18 @@ export const NpmPackageVersionSchema = z
 		name: z.string(),
 		version: z.string(),
 		description: z.string().optional(),
-		author: z.union([z.string(), z.object({}).passthrough()]).optional(),
+		author: z
+			.union([
+				z.string(),
+				z
+					.object({
+						name: z.string().optional(),
+						email: z.string().optional(),
+						url: z.string().optional(),
+					})
+					.passthrough(),
+			])
+			.optional(),
 		license: z.string().optional(),
 		repository: z
 			.object({
@@ -36,6 +47,15 @@ export const NpmPackageVersionSchema = z
 			.passthrough()
 			.optional(),
 		homepage: z.string().optional(),
+		dependencies: z.record(z.string()).optional(),
+		devDependencies: z.record(z.string()).optional(),
+		peerDependencies: z.record(z.string()).optional(),
+		types: z.string().optional(),
+		typings: z.string().optional(),
+		dist: z
+			.object({ shasum: z.string().optional(), tarball: z.string().optional() })
+			.passthrough()
+			.optional(),
 	})
 	.passthrough();
 
@@ -705,56 +725,143 @@ interface NpmLatestVersionResponse {
 export async function handleNpmLatest(args: {
 	packages: string[];
 }): Promise<CallToolResult> {
-	const results = await Promise.all(
-		args.packages.map(async (pkg) => {
-			try {
-				const response = await fetch(`https://registry.npmjs.org/${pkg}/latest`, {
-					headers: {
-						Accept: 'application/json',
-						'User-Agent': 'NPM-Sentinel-MCP',
-					},
-				});
+	try {
+		const packagesToProcess = args.packages || [];
+		if (packagesToProcess.length === 0) {
+			throw new Error('No package names provided');
+		}
 
-				if (!response.ok) {
-					throw new Error(`Failed to fetch latest version: ${response.statusText}`);
+		const processedResults = await Promise.all(
+			packagesToProcess.map(async (pkgInput) => {
+				let name = '';
+				let versionTag = 'latest'; // Default to 'latest'
+
+				if (typeof pkgInput === 'string') {
+					const atIdx = pkgInput.lastIndexOf('@');
+					if (atIdx > 0) {
+						name = pkgInput.slice(0, atIdx);
+						versionTag = pkgInput.slice(atIdx + 1);
+					} else {
+						name = pkgInput;
+					}
+				} else {
+					return {
+						packageInput: JSON.stringify(pkgInput),
+						packageName: 'unknown_package_input',
+						versionQueried: versionTag,
+						status: 'error',
+						error: 'Invalid package input type',
+						data: null,
+						message: 'Package input was not a string.',
+					};
 				}
 
-				const data = await response.json();
-				const latestInfo = data as NpmLatestVersionResponse;
+				if (!name) {
+					return {
+						packageInput: pkgInput,
+						packageName: 'empty_package_name',
+						versionQueried: versionTag,
+						status: 'error',
+						error: 'Empty package name derived from input',
+						data: null,
+						message: 'Package name could not be determined from input.',
+					};
+				}
 
-				return {
-					name: pkg,
-					version: latestInfo.version,
-					description: latestInfo.description,
-					author: latestInfo.author?.name,
-					license: latestInfo.license,
-					homepage: latestInfo.homepage,
-					success: true as const,
-				};
-			} catch (err) {
-				return {
-					name: pkg,
-					error: err instanceof Error ? err.message : 'Unknown error',
-					success: false as const,
-				};
-			}
-		}),
-	);
+				try {
+					const response = await fetch(`https://registry.npmjs.org/${name}/${versionTag}`, {
+						headers: {
+							Accept: 'application/json',
+							'User-Agent': 'NPM-Sentinel-MCP',
+						},
+					});
 
-	const content = results.map((result) => ({
-		type: 'text' as const,
-		text: result.success
-			? `📦 Latest version of ${result.name}:
-Version: ${result.version}
-Description: ${result.description || 'No description available'}
-Author: ${result.author || 'Unknown'}
-License: ${result.license || 'Unknown'}
-Homepage: ${result.homepage || 'Not specified'}
----`
-			: `❌ Error fetching latest version for ${result.name}: ${result.error}`,
-	}));
+					if (!response.ok) {
+						let errorMsg = `Failed to fetch package version: ${response.status} ${response.statusText}`;
+						if (response.status === 404) {
+							errorMsg = `Package ${name}@${versionTag} not found.`;
+						}
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							versionQueried: versionTag,
+							status: 'error',
+							error: errorMsg,
+							data: null,
+							message: `Could not retrieve version ${versionTag} for package ${name}.`,
+						};
+					}
 
-	return { content, isError: false };
+					const data = await response.json();
+
+					if (!isNpmPackageVersionData(data)) {
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							versionQueried: versionTag,
+							status: 'error',
+							error: 'Invalid package data format received for version',
+							data: null,
+							message: `Received malformed data for ${name}@${versionTag}.`,
+						};
+					}
+
+					const versionData = {
+						name: data.name,
+						version: data.version,
+						description: data.description || null,
+						author:
+							(typeof data.author === 'string' ? data.author : (data.author as any)?.name) || null,
+						license: data.license || null,
+						homepage: data.homepage || null,
+						repositoryUrl: data.repository?.url || null,
+						bugsUrl: data.bugs?.url || null,
+						dependenciesCount: Object.keys(data.dependencies || {}).length,
+						devDependenciesCount: Object.keys(data.devDependencies || {}).length,
+						peerDependenciesCount: Object.keys(data.peerDependencies || {}).length,
+						dist: data.dist || null,
+						types: data.types || data.typings || null,
+					};
+
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						versionQueried: versionTag,
+						status: 'success',
+						error: null,
+						data: versionData,
+						message: `Successfully fetched details for ${data.name}@${data.version}.`,
+					};
+				} catch (error) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						versionQueried: versionTag,
+						status: 'error',
+						error: error instanceof Error ? error.message : 'Unknown processing error',
+						data: null,
+						message: `An unexpected error occurred while processing ${pkgInput}.`,
+					};
+				}
+			}),
+		);
+
+		const responseJson = JSON.stringify({ results: processedResults }, null, 2);
+		return { content: [{ type: 'text', text: responseJson }], isError: false };
+	} catch (error) {
+		const errorResponse = JSON.stringify(
+			{
+				results: [],
+				error: `General error fetching latest package information: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			},
+			null,
+			2,
+		);
+		return {
+			content: [{ type: 'text', text: errorResponse }],
+			isError: true,
+		};
+	}
 }
 
 export async function handleNpmDeps(args: {
@@ -2751,3 +2858,15 @@ process.on('unhandledRejection', (error) => {
 	server.close();
 	process.exit(1);
 });
+
+// Type guard for NpmPackageVersionSchema
+function isNpmPackageVersionData(data: unknown): data is z.infer<typeof NpmPackageVersionSchema> {
+	try {
+		// Use safeParse for type guards to avoid throwing errors on invalid data
+		return NpmPackageVersionSchema.safeParse(data).success;
+	} catch (e) {
+		// This catch block might not be strictly necessary with safeParse but kept for safety
+		// console.error("isNpmPackageVersionData validation failed unexpectedly:", e);
+		return false;
+	}
+}
