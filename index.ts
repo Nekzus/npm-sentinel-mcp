@@ -2130,55 +2130,146 @@ export async function handleNpmPackageReadme(args: {
 	packages: string[];
 }): Promise<CallToolResult> {
 	try {
-		const results = await Promise.all(
-			args.packages.map(async (pkg) => {
-				const response = await fetch(`https://registry.npmjs.org/${pkg}`);
-				if (!response.ok) {
-					throw new Error(`Failed to fetch package info: ${response.statusText}`);
+		const packagesToProcess = args.packages || [];
+		if (packagesToProcess.length === 0) {
+			throw new Error('No package names provided to fetch READMEs.');
+		}
+
+		const processedResults = await Promise.all(
+			packagesToProcess.map(async (pkgInput) => {
+				let name = '';
+				let versionTag: string | undefined = undefined; // Explicitly undefined if not specified
+
+				if (typeof pkgInput === 'string') {
+					const atIdx = pkgInput.lastIndexOf('@');
+					if (atIdx > 0) {
+						name = pkgInput.slice(0, atIdx);
+						versionTag = pkgInput.slice(atIdx + 1);
+					} else {
+						name = pkgInput;
+						versionTag = 'latest'; // Default to latest if no version specified
+					}
+				} else {
+					return {
+						packageInput: JSON.stringify(pkgInput),
+						packageName: 'unknown_package_input',
+						versionQueried: versionTag,
+						versionFetched: null,
+						status: 'error' as const,
+						error: 'Invalid package input type',
+						data: null,
+					};
 				}
 
-				const rawData = await response.json();
-				if (!isNpmPackageInfo(rawData)) {
-					throw new Error('Invalid package info data received');
+				if (!name) {
+					return {
+						packageInput: pkgInput,
+						packageName: 'empty_package_name',
+						versionQueried: versionTag,
+						versionFetched: null,
+						status: 'error' as const,
+						error: 'Empty package name derived from input',
+						data: null,
+					};
 				}
 
-				const latestVersion = rawData['dist-tags']?.latest;
-				if (!latestVersion || !rawData.versions?.[latestVersion]) {
-					throw new Error('No latest version found');
+				try {
+					const response = await fetch(`https://registry.npmjs.org/${name}`);
+					if (!response.ok) {
+						let errorMsg = `Failed to fetch package info: ${response.status} ${response.statusText}`;
+						if (response.status === 404) {
+							errorMsg = `Package ${name} not found.`;
+						}
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							versionQueried: versionTag,
+							versionFetched: null,
+							status: 'error' as const,
+							error: errorMsg,
+							data: null,
+						};
+					}
+
+					const packageInfo = await response.json();
+					if (!isNpmPackageInfo(packageInfo)) {
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							versionQueried: versionTag,
+							versionFetched: null,
+							status: 'error' as const,
+							error: 'Invalid package info data received',
+							data: null,
+						};
+					}
+
+					const versionToUse =
+						versionTag === 'latest' ? packageInfo['dist-tags']?.latest : versionTag;
+
+					if (!versionToUse || !packageInfo.versions || !packageInfo.versions[versionToUse]) {
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							versionQueried: versionTag,
+							versionFetched: versionToUse || null,
+							status: 'error' as const,
+							error: `Version ${versionToUse || 'requested'} not found or no version data available.`,
+							data: null,
+						};
+					}
+
+					const versionData = packageInfo.versions[versionToUse];
+					// README can be in version-specific data or at the root of packageInfo
+					const readmeContent = versionData.readme || packageInfo.readme || null;
+					const hasReadme = !!readmeContent;
+
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						versionQueried: versionTag,
+						versionFetched: versionToUse,
+						status: 'success' as const,
+						error: null,
+						data: {
+							readme: readmeContent,
+							hasReadme: hasReadme,
+						},
+					};
+				} catch (error) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						versionQueried: versionTag,
+						versionFetched: null,
+						status: 'error' as const,
+						error: error instanceof Error ? error.message : 'Unknown processing error',
+						data: null,
+					};
 				}
-
-				const readme = rawData.versions[latestVersion].readme || rawData.readme;
-
-				if (!readme) {
-					return { name: pkg, version: latestVersion, text: 'No README found' };
-				}
-
-				return { name: pkg, version: latestVersion, text: readme };
 			}),
 		);
 
-		let text = '';
-		for (const result of results) {
-			text += `${'='.repeat(80)}\n`;
-			text += `📖 ${result.name}@${result.version}\n`;
-			text += `${'='.repeat(80)}\n\n`;
-			text += result.text;
+		const finalResponse = {
+			queryPackages: args.packages,
+			results: processedResults,
+			message: `README fetching status for ${args.packages.length} package(s).`,
+		};
 
-			if (results.indexOf(result) < results.length - 1) {
-				text += '\n\n';
-				text += `${'='.repeat(80)}\n\n`;
-			}
-		}
-
-		return { content: [{ type: 'text', text }], isError: false };
+		const responseJson = JSON.stringify(finalResponse, null, 2);
+		return { content: [{ type: 'text', text: responseJson }], isError: false };
 	} catch (error) {
+		const errorResponse = JSON.stringify(
+			{
+				queryPackages: args.packages,
+				results: [],
+				error: `General error fetching READMEs: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			},
+			null,
+			2,
+		);
 		return {
-			content: [
-				{
-					type: 'text',
-					text: `Error fetching READMEs: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				},
-			],
+			content: [{ type: 'text', text: errorResponse }],
 			isError: true,
 		};
 	}
