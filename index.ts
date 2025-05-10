@@ -1971,99 +1971,156 @@ export async function handleNpmMaintainers(args: {
 
 export async function handleNpmScore(args: { packages: string[] }): Promise<CallToolResult> {
 	try {
-		const results = await Promise.all(
-			args.packages.map(async (pkg) => {
-				const response = await fetch(`https://api.npms.io/v2/package/${encodeURIComponent(pkg)}`);
+		const packagesToProcess = args.packages || [];
+		if (packagesToProcess.length === 0) {
+			throw new Error('No package names provided to fetch scores.');
+		}
 
-				if (response.status === 404) {
+		const processedResults = await Promise.all(
+			packagesToProcess.map(async (pkgInput) => {
+				let name = '';
+				if (typeof pkgInput === 'string') {
+					const atIdx = pkgInput.lastIndexOf('@');
+					name = atIdx > 0 ? pkgInput.slice(0, atIdx) : pkgInput; // Version is ignored by npms.io API endpoint
+				} else {
 					return {
-						name: pkg,
-						error: 'Package not found in the npm registry',
+						packageInput: JSON.stringify(pkgInput),
+						packageName: 'unknown_package_input',
+						status: 'error' as const,
+						error: 'Invalid package input type',
+						data: null,
 					};
 				}
 
-				if (!response.ok) {
-					throw new Error(
-						`API request failed with status ${response.status} (${response.statusText})`,
+				if (!name) {
+					return {
+						packageInput: pkgInput,
+						packageName: 'empty_package_name',
+						status: 'error' as const,
+						error: 'Empty package name derived from input',
+						data: null,
+					};
+				}
+
+				try {
+					const response = await fetch(
+						`https://api.npms.io/v2/package/${encodeURIComponent(name)}`,
 					);
-				}
 
-				const rawData = await response.json();
+					if (!response.ok) {
+						let errorMsg = `Failed to fetch package score: ${response.status} ${response.statusText}`;
+						if (response.status === 404) {
+							errorMsg = `Package ${name} not found on npms.io.`;
+						}
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							status: 'error' as const,
+							error: errorMsg,
+							data: null,
+						};
+					}
 
-				if (!isValidNpmsResponse(rawData)) {
+					const rawData = await response.json();
+
+					if (!isValidNpmsResponse(rawData)) {
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							status: 'error' as const,
+							error: 'Invalid or incomplete response from npms.io API',
+							data: null,
+						};
+					}
+
+					const { score, collected, analyzedAt } = rawData;
+					const { detail } = score;
+
+					// Calculate total downloads for the last month from the typically first entry in downloads array
+					const lastMonthDownloads =
+						collected.npm?.downloads?.find((d) => {
+							// Heuristic: find a download period that is roughly 30 days
+							const from = new Date(d.from);
+							const to = new Date(d.to);
+							const diffTime = Math.abs(to.getTime() - from.getTime());
+							const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+							return diffDays >= 28 && diffDays <= 31; // Common range for monthly data
+						})?.count ||
+						collected.npm?.downloads?.[0]?.count ||
+						0;
+
+					const scoreData = {
+						analyzedAt: analyzedAt,
+						versionInScore: collected.metadata.version,
+						score: {
+							final: score.final,
+							detail: {
+								quality: detail.quality,
+								popularity: detail.popularity,
+								maintenance: detail.maintenance,
+							},
+						},
+						packageInfoFromScore: {
+							name: collected.metadata.name,
+							version: collected.metadata.version,
+							description: collected.metadata.description || null,
+						},
+						npmStats: {
+							downloadsLastMonth: lastMonthDownloads,
+							starsCount: collected.npm.starsCount,
+						},
+						githubStats: collected.github
+							? {
+									starsCount: collected.github.starsCount,
+									forksCount: collected.github.forksCount,
+									subscribersCount: collected.github.subscribersCount,
+									issues: {
+										count: collected.github.issues.count,
+										openCount: collected.github.issues.openCount,
+									},
+								}
+							: null,
+					};
+
 					return {
-						name: pkg,
-						error: 'Invalid or incomplete response from npms.io API',
+						packageInput: pkgInput,
+						packageName: name,
+						status: 'success' as const,
+						error: null,
+						data: scoreData,
+					};
+				} catch (error) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						status: 'error' as const,
+						error: error instanceof Error ? error.message : 'Unknown processing error',
+						data: null,
 					};
 				}
-
-				const { score, collected } = rawData;
-				const { detail } = score;
-
-				return {
-					name: pkg,
-					score,
-					detail,
-					collected,
-				};
 			}),
 		);
 
-		let text = '📊 Package Scores\n\n';
-
-		for (const result of results) {
-			if ('error' in result) {
-				text += `❌ ${result.name}: ${result.error}\n\n`;
-				continue;
-			}
-
-			text += `📦 ${result.name}\n`;
-			text += `${'-'.repeat(40)}\n`;
-			text += `Overall Score: ${(result.score.final * 100).toFixed(1)}%\n\n`;
-			text += '🎯 Quality Breakdown:\n';
-			text += `• Quality: ${(result.detail.quality * 100).toFixed(1)}%\n`;
-			text += `• Maintenance: ${(result.detail.maintenance * 100).toFixed(1)}%\n`;
-			text += `• Popularity: ${(result.detail.popularity * 100).toFixed(1)}%\n\n`;
-
-			if (result.collected.github) {
-				text += '📈 GitHub Stats:\n';
-				text += `• Stars: ${result.collected.github.starsCount.toLocaleString()}\n`;
-				text += `• Forks: ${result.collected.github.forksCount.toLocaleString()}\n`;
-				text += `• Watchers: ${result.collected.github.subscribersCount.toLocaleString()}\n`;
-				text += `• Total Issues: ${result.collected.github.issues.count.toLocaleString()}\n`;
-				text += `• Open Issues: ${result.collected.github.issues.openCount.toLocaleString()}\n\n`;
-			}
-
-			if (result.collected.npm?.downloads?.length > 0) {
-				const lastDownloads = result.collected.npm.downloads[0];
-				text += '📥 NPM Downloads:\n';
-				text += `• Last day: ${lastDownloads.count.toLocaleString()} (${new Date(lastDownloads.from).toLocaleDateString()} - ${new Date(lastDownloads.to).toLocaleDateString()})\n\n`;
-			}
-
-			if (results.indexOf(result) < results.length - 1) {
-				text += '\n';
-			}
-		}
-
-		// Return in standard MCP format
-		return {
-			content: [
-				{
-					type: 'text',
-					text,
-				},
-			],
-			isError: false,
+		const finalResponse = {
+			queryPackages: args.packages,
+			results: processedResults,
+			message: `Score information for ${args.packages.length} package(s).`,
 		};
+
+		const responseJson = JSON.stringify(finalResponse, null, 2);
+		return { content: [{ type: 'text', text: responseJson }], isError: false };
 	} catch (error) {
-		// Error handling in standard MCP format
+		const errorResponse = JSON.stringify(
+			{
+				queryPackages: args.packages,
+				results: [],
+				error: `General error fetching package scores: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			},
+			null,
+			2,
+		);
 		return {
-			content: [
-				{
-					type: 'text',
-					text: `Error fetching package scores: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				},
-			],
+			content: [{ type: 'text', text: errorResponse }],
 			isError: true,
 		};
 	}
