@@ -1445,94 +1445,151 @@ export async function handleNpmTrends(args: {
 	period?: 'last-week' | 'last-month' | 'last-year';
 }): Promise<CallToolResult> {
 	try {
-		// If period is undefined, empty or invalid, use default value
+		const packagesToProcess = args.packages || [];
+		if (packagesToProcess.length === 0) {
+			throw new Error('No package names provided for trends analysis.');
+		}
+
 		const period =
 			args.period && ['last-week', 'last-month', 'last-year'].includes(args.period)
 				? args.period
 				: 'last-month';
 
-		const periodDays = {
+		const periodDaysMap = {
 			'last-week': 7,
 			'last-month': 30,
 			'last-year': 365,
 		};
+		const daysInPeriod = periodDaysMap[period];
 
-		type SuccessResult = {
-			name: string;
-			downloads: number;
-			success: true;
-		};
-
-		type ErrorResult = {
-			name: string;
-			error: string;
-			success: false;
-		};
-
-		type FetchResult = SuccessResult | ErrorResult;
-
-		const results = await Promise.all(
-			args.packages.map(async (pkg) => {
-				const response = await fetch(`https://api.npmjs.org/downloads/point/${period}/${pkg}`, {
-					headers: {
-						Accept: 'application/json',
-						'User-Agent': 'NPM-Sentinel-MCP',
-					},
-				});
-				if (!response.ok) {
+		const processedResults = await Promise.all(
+			packagesToProcess.map(async (pkgInput) => {
+				let name = '';
+				if (typeof pkgInput === 'string') {
+					const atIdx = pkgInput.lastIndexOf('@');
+					name = atIdx > 0 ? pkgInput.slice(0, atIdx) : pkgInput;
+				} else {
 					return {
-						name: pkg,
-						error: `Failed to fetch download trends: ${response.statusText}`,
-						success: false as const,
+						packageInput: JSON.stringify(pkgInput),
+						packageName: 'unknown_package_input',
+						status: 'error' as const,
+						error: 'Invalid package input type',
+						data: null,
 					};
 				}
-				const data = await response.json();
-				if (!isNpmDownloadsData(data)) {
+
+				if (!name) {
 					return {
-						name: pkg,
-						error: 'Invalid response format from npm downloads API',
-						success: false as const,
+						packageInput: pkgInput,
+						packageName: 'empty_package_name',
+						status: 'error' as const,
+						error: 'Empty package name derived from input',
+						data: null,
 					};
 				}
-				return {
-					name: pkg,
-					downloads: data.downloads,
-					success: true as const,
-				};
+
+				try {
+					const response = await fetch(`https://api.npmjs.org/downloads/point/${period}/${name}`, {
+						headers: {
+							Accept: 'application/json',
+							'User-Agent': 'NPM-Sentinel-MCP',
+						},
+					});
+
+					if (!response.ok) {
+						let errorMsg = `Failed to fetch download trends: ${response.status} ${response.statusText}`;
+						if (response.status === 404) {
+							errorMsg = `Package ${name} not found or no download data for the period.`;
+						}
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							status: 'error' as const,
+							error: errorMsg,
+							data: null,
+						};
+					}
+
+					const data = await response.json();
+					if (!isNpmDownloadsData(data)) {
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							status: 'error' as const,
+							error: 'Invalid response format from npm downloads API',
+							data: null,
+						};
+					}
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						status: 'success' as const,
+						error: null,
+						data: {
+							downloads: data.downloads,
+							period: period,
+							startDate: data.start,
+							endDate: data.end,
+							averageDailyDownloads: Math.round(data.downloads / daysInPeriod),
+						},
+					};
+				} catch (error) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						status: 'error' as const,
+						error: error instanceof Error ? error.message : 'Unknown processing error',
+						data: null,
+					};
+				}
 			}),
 		);
 
-		let text = '📈 Download Trends\n\n';
-		text += `Period: ${period} (${periodDays[period]} days)\n\n`;
+		let totalSuccessful = 0;
+		let overallTotalDownloads = 0;
 
-		// Individual package stats
-		for (const result of results) {
-			if (!result.success) {
-				text += `❌ ${result.name}: ${result.error}\n`;
-				continue;
+		for (const result of processedResults) {
+			if (result.status === 'success' && result.data) {
+				totalSuccessful++;
+				overallTotalDownloads += result.data.downloads;
 			}
-			text += `📦 ${result.name}\n`;
-			text += `Total downloads: ${result.downloads.toLocaleString()}\n`;
-			text += `Average daily downloads: ${Math.round(result.downloads / periodDays[period]).toLocaleString()}\n\n`;
 		}
 
-		// Total stats
-		const totalDownloads = results.reduce((total, result) => {
-			if (result.success) {
-				return total + result.downloads;
-			}
-			return total;
-		}, 0);
+		const summary = {
+			totalPackagesProcessed: packagesToProcess.length,
+			totalSuccessful: totalSuccessful,
+			totalFailed: packagesToProcess.length - totalSuccessful,
+			overallTotalDownloads: overallTotalDownloads,
+			overallAverageDailyDownloads:
+				totalSuccessful > 0
+					? Math.round(overallTotalDownloads / daysInPeriod / totalSuccessful)
+					: 0,
+		};
 
-		text += `Total downloads across all packages: ${totalDownloads.toLocaleString()}\n`;
-		text += `Average daily downloads across all packages: ${Math.round(totalDownloads / periodDays[period]).toLocaleString()}\n`;
+		const finalResponse = {
+			query: {
+				packagesInput: args.packages,
+				periodUsed: period,
+			},
+			results: processedResults,
+			summary: summary,
+		};
 
-		return { content: [{ type: 'text', text }], isError: false };
+		const responseJson = JSON.stringify(finalResponse, null, 2);
+		return { content: [{ type: 'text', text: responseJson }], isError: false };
 	} catch (error) {
+		const errorResponse = JSON.stringify(
+			{
+				query: { packagesInput: args.packages, periodUsed: args.period || 'last-month' },
+				results: [],
+				summary: null,
+				error: `General error fetching download trends: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			},
+			null,
+			2,
+		);
 		return {
-			content: [
-				{ type: 'text', text: `Error fetching download trends: ${(error as Error).message}` },
-			],
+			content: [{ type: 'text', text: errorResponse }],
 			isError: true,
 		};
 	}
