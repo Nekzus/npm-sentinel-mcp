@@ -2044,6 +2044,8 @@ interface NpmPackageVersion {
 
 interface NpmRegistryResponse {
 	versions?: Record<string, NpmPackageVersion>;
+	'dist-tags'?: { latest?: string }; // Ensure dist-tags is properly typed for schema validation
+	readme?: string; // Add readme for NpmPackageInfo compatibility
 }
 
 interface DownloadCount {
@@ -2052,93 +2054,164 @@ interface DownloadCount {
 
 export async function handleNpmDeprecated(args: { packages: string[] }): Promise<CallToolResult> {
 	try {
-		const results = await Promise.all(
-			args.packages.map(async (pkg) => {
-				const response = await fetch(`https://registry.npmjs.org/${pkg}`);
-				if (!response.ok) {
-					throw new Error(`Failed to fetch package info: ${response.statusText}`);
-				}
+		const packagesToProcess = args.packages || [];
+		if (packagesToProcess.length === 0) {
+			throw new Error('No package names provided');
+		}
 
-				const rawData = (await response.json()) as NpmRegistryResponse;
-				if (!isNpmPackageInfo(rawData)) {
-					throw new Error('Invalid package info data received');
-				}
+		const processedResults = await Promise.all(
+			packagesToProcess.map(async (pkgInput) => {
+				let name = '';
+				let version = 'latest'; // Default to 'latest'
 
-				// Get latest version info
-				const latestVersion = rawData['dist-tags']?.latest;
-				if (!latestVersion || !rawData.versions?.[latestVersion]) {
-					throw new Error('No latest version found');
-				}
-
-				const latestVersionInfo = rawData.versions[latestVersion];
-				const dependencies = {
-					...(latestVersionInfo.dependencies || {}),
-					...(latestVersionInfo.devDependencies || {}),
-					...(latestVersionInfo.peerDependencies || {}),
-				};
-
-				// Check each dependency
-				const deprecatedDeps: DeprecatedDependency[] = [];
-				await Promise.all(
-					Object.entries(dependencies).map(async ([dep, version]) => {
-						try {
-							const depResponse = await fetch(`https://registry.npmjs.org/${dep}`);
-							if (!depResponse.ok) return;
-
-							const depData = (await depResponse.json()) as NpmRegistryResponse;
-							const depVersion = version.replace(/[^0-9.]/g, '');
-							if (depData.versions?.[depVersion]?.deprecated) {
-								deprecatedDeps.push({
-									name: dep,
-									version: depVersion,
-									message: depData.versions[depVersion].deprecated || 'No message provided',
-								});
-							}
-						} catch (error) {
-							console.error(`Error checking ${dep}:`, error);
-						}
-					}),
-				);
-
-				// Check if the package itself is deprecated
-				const isDeprecated = latestVersionInfo.deprecated;
-				let text = `📦 Deprecation Check for ${pkg}@${latestVersion}\n\n`;
-
-				if (isDeprecated) {
-					text += '⚠️ WARNING: This package is deprecated!\n';
-					text += `Deprecation message: ${latestVersionInfo.deprecated}\n\n`;
-				} else {
-					text += '✅ This package is not deprecated\n\n';
-				}
-
-				if (deprecatedDeps.length > 0) {
-					text += `Found ${deprecatedDeps.length} deprecated dependencies:\n\n`;
-					for (const dep of deprecatedDeps) {
-						text += `⚠️ ${dep.name}@${dep.version}\n`;
-						text += `   Message: ${dep.message}\n\n`;
+				if (typeof pkgInput === 'string') {
+					const atIdx = pkgInput.lastIndexOf('@');
+					if (atIdx > 0) {
+						name = pkgInput.slice(0, atIdx);
+						version = pkgInput.slice(atIdx + 1);
+					} else {
+						name = pkgInput;
 					}
 				} else {
-					text += '✅ No deprecated dependencies found\n';
+					return {
+						package: 'unknown_package_input',
+						status: 'error',
+						error: 'Invalid package input type',
+						data: null,
+						message: 'Package input was not a string.',
+					};
 				}
 
-				return { name: pkg, text };
+				const initialPackageNameForOutput = version === 'latest' ? name : `${name}@${version}`;
+
+				try {
+					const mainPkgResponse = await fetch(`https://registry.npmjs.org/${name}`);
+					if (!mainPkgResponse.ok) {
+						return {
+							package: initialPackageNameForOutput,
+							status: 'error',
+							error: `Failed to fetch package info for ${name}: ${mainPkgResponse.status} ${mainPkgResponse.statusText}`,
+							data: null,
+							message: `Could not retrieve main package data for ${name}.`,
+						};
+					}
+
+					const mainPkgData = (await mainPkgResponse.json()) as NpmRegistryResponse;
+
+					let versionToFetch = version;
+					if (version === 'latest') {
+						versionToFetch = mainPkgData['dist-tags']?.latest || 'latest';
+						if (versionToFetch === 'latest' && !mainPkgData.versions?.[versionToFetch]) {
+							// If 'latest' tag is missing or points to a non-existent version, try to get the highest semver version
+							const availableVersions = Object.keys(mainPkgData.versions || {});
+							if (availableVersions.length > 0) {
+								// A more robust semver sort would be better here, but for simplicity:
+								versionToFetch = availableVersions.sort().pop() || 'latest';
+							}
+						}
+					}
+
+					const finalPackageNameForOutput = `${name}@${versionToFetch}`;
+
+					const versionInfo = mainPkgData.versions?.[versionToFetch];
+
+					if (!versionInfo) {
+						return {
+							package: finalPackageNameForOutput,
+							status: 'error',
+							error: `Version ${versionToFetch} not found for package ${name}.`,
+							data: null,
+							message: `Specified version for ${name} does not exist.`,
+						};
+					}
+
+					const isPackageDeprecated = !!versionInfo.deprecated;
+					const packageDeprecationMessage = versionInfo.deprecated || null;
+
+					const processDependencies = async (deps: Record<string, string> | undefined) => {
+						if (!deps) return [];
+						const depChecks = Object.entries(deps).map(async ([depName, depSemVer]) => {
+							try {
+								// For dependencies, we check their 'latest' tag to see if the *package itself* is deprecated,
+								// not a specific version. A more granular check could be to resolve semver and check that specific version.
+								const depResponse = await fetch(`https://registry.npmjs.org/${depName}`);
+								if (!depResponse.ok) {
+									return {
+										name: depName,
+										version: depSemVer,
+										isDeprecated: false, // Assume not deprecated if fetch fails
+										deprecationMessage: 'Could not fetch dependency info',
+									};
+								}
+								const depData = (await depResponse.json()) as NpmRegistryResponse;
+								const latestDepVersionTag = depData['dist-tags']?.latest;
+								const latestDepVersionInfo = latestDepVersionTag
+									? depData.versions?.[latestDepVersionTag]
+									: undefined;
+
+								return {
+									name: depName,
+									version: depSemVer,
+									isDeprecated: !!latestDepVersionInfo?.deprecated,
+									deprecationMessage: latestDepVersionInfo?.deprecated || null,
+								};
+							} catch (error) {
+								return {
+									name: depName,
+									version: depSemVer,
+									isDeprecated: false, // Assume not deprecated on error
+									deprecationMessage:
+										error instanceof Error ? error.message : 'Unknown error checking dependency',
+								};
+							}
+						});
+						return Promise.all(depChecks);
+					};
+
+					const directDeps = await processDependencies(versionInfo.dependencies);
+					const devDeps = await processDependencies(versionInfo.devDependencies);
+					const peerDeps = await processDependencies(versionInfo.peerDependencies);
+
+					return {
+						package: finalPackageNameForOutput,
+						status: 'success',
+						error: null,
+						data: {
+							isPackageDeprecated,
+							packageDeprecationMessage,
+							dependencies: {
+								direct: directDeps,
+								development: devDeps,
+								peer: peerDeps,
+							},
+						},
+						message: `Deprecation status for ${finalPackageNameForOutput} and its dependencies.`,
+					};
+				} catch (error) {
+					return {
+						package: initialPackageNameForOutput, // Use initial name as resolution might have failed
+						status: 'error',
+						error: error instanceof Error ? error.message : 'Unknown processing error',
+						data: null,
+						message: `An unexpected error occurred while processing ${initialPackageNameForOutput}.`,
+					};
+				}
 			}),
 		);
 
-		let text = '';
-		for (const result of results) {
-			text += result.text;
-		}
-
-		return { content: [{ type: 'text', text }], isError: false };
+		const responseJson = JSON.stringify({ results: processedResults }, null, 2);
+		return { content: [{ type: 'text', text: responseJson }], isError: false };
 	} catch (error) {
+		const errorResponse = JSON.stringify(
+			{
+				results: [],
+				error: `General error checking deprecated packages: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			},
+			null,
+			2,
+		);
 		return {
-			content: [
-				{
-					type: 'text',
-					text: `Error checking deprecated packages: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				},
-			],
+			content: [{ type: 'text', text: errorResponse }],
 			isError: true,
 		};
 	}
