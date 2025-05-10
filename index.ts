@@ -1597,50 +1597,141 @@ export async function handleNpmTrends(args: {
 
 export async function handleNpmCompare(args: { packages: string[] }): Promise<CallToolResult> {
 	try {
-		const results = await Promise.all(
-			args.packages.map(async (pkg) => {
-				const [infoRes, downloadsRes] = await Promise.all([
-					fetch(`https://registry.npmjs.org/${pkg}/latest`),
-					fetch(`https://api.npmjs.org/downloads/point/last-month/${pkg}`),
-				]);
+		const packagesToProcess = args.packages || [];
+		if (packagesToProcess.length === 0) {
+			throw new Error('No package names provided for comparison.');
+		}
 
-				if (!infoRes.ok || !downloadsRes.ok) {
-					throw new Error(`Failed to fetch data for ${pkg}`);
+		const processedResults = await Promise.all(
+			packagesToProcess.map(async (pkgInput) => {
+				let name = '';
+				let versionTag = 'latest';
+
+				if (typeof pkgInput === 'string') {
+					const atIdx = pkgInput.lastIndexOf('@');
+					if (atIdx > 0) {
+						name = pkgInput.slice(0, atIdx);
+						versionTag = pkgInput.slice(atIdx + 1);
+					} else {
+						name = pkgInput;
+					}
+				} else {
+					return {
+						packageInput: JSON.stringify(pkgInput),
+						packageName: 'unknown_package_input',
+						versionQueried: versionTag,
+						status: 'error' as const,
+						error: 'Invalid package input type',
+						data: null,
+					};
+				}
+				if (!name) {
+					return {
+						packageInput: pkgInput,
+						packageName: 'empty_package_name',
+						versionQueried: versionTag,
+						status: 'error' as const,
+						error: 'Empty package name derived from input',
+						data: null,
+					};
 				}
 
-				const info = await infoRes.json();
-				const downloads = await downloadsRes.json();
+				try {
+					// Fetch package version details from registry
+					const pkgResponse = await fetch(`https://registry.npmjs.org/${name}/${versionTag}`);
+					if (!pkgResponse.ok) {
+						throw new Error(
+							`Failed to fetch package info for ${name}@${versionTag}: ${pkgResponse.status} ${pkgResponse.statusText}`,
+						);
+					}
+					const pkgData = await pkgResponse.json();
+					if (!isNpmPackageVersionData(pkgData)) {
+						throw new Error(`Invalid package data format for ${name}@${versionTag}`);
+					}
 
-				if (!isNpmPackageData(info) || !isNpmDownloadsData(downloads)) {
-					throw new Error(`Invalid response format for ${pkg}`);
+					// Fetch monthly downloads
+					let monthlyDownloads: number | null = null;
+					try {
+						const downloadsResponse = await fetch(
+							`https://api.npmjs.org/downloads/point/last-month/${name}`,
+						);
+						if (downloadsResponse.ok) {
+							const downloadsData = await downloadsResponse.json();
+							if (isNpmDownloadsData(downloadsData)) {
+								monthlyDownloads = downloadsData.downloads;
+							}
+						}
+					} catch (dlError) {
+						console.debug(`Could not fetch downloads for ${name}: ${dlError}`);
+					}
+
+					// Fetch publish date for this specific version
+					// Need to fetch the full package info to get to the 'time' field for specific version
+					let publishDate: string | null = null;
+					try {
+						const fullPkgInfoResponse = await fetch(`https://registry.npmjs.org/${name}`);
+						if (fullPkgInfoResponse.ok) {
+							const fullPkgInfo = await fullPkgInfoResponse.json();
+							if (isNpmPackageInfo(fullPkgInfo) && fullPkgInfo.time) {
+								publishDate = fullPkgInfo.time[pkgData.version] || null;
+							}
+						}
+					} catch (timeError) {
+						console.debug(`Could not fetch time info for ${name}: ${timeError}`);
+					}
+
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						versionQueried: versionTag,
+						status: 'success' as const,
+						error: null,
+						data: {
+							name: pkgData.name,
+							version: pkgData.version,
+							description: pkgData.description || null,
+							license: pkgData.license || null,
+							dependenciesCount: Object.keys(pkgData.dependencies || {}).length,
+							devDependenciesCount: Object.keys(pkgData.devDependencies || {}).length,
+							peerDependenciesCount: Object.keys(pkgData.peerDependencies || {}).length,
+							monthlyDownloads: monthlyDownloads,
+							publishDate: publishDate,
+							repositoryUrl: pkgData.repository?.url || null,
+						},
+					};
+				} catch (error) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						versionQueried: versionTag,
+						status: 'error' as const,
+						error: error instanceof Error ? error.message : 'Unknown processing error',
+						data: null,
+					};
 				}
-
-				return {
-					name: pkg,
-					version: info.version,
-					description: info.description,
-					downloads: downloads.downloads,
-					license: info.license,
-					dependencies: Object.keys(info.dependencies || {}).length,
-				};
 			}),
 		);
 
-		let text = '📊 Package Comparison\n\n';
+		const finalResponse = {
+			queryPackages: args.packages,
+			results: processedResults,
+			message: `Comparison data for ${args.packages.length} package(s).`,
+		};
 
-		// Table header
-		text += 'Package | Version | Monthly Downloads | Dependencies | License\n';
-		text += '--------|---------|------------------|--------------|--------\n';
-
-		// Table rows
-		for (const pkg of results) {
-			text += `${pkg.name} | ${pkg.version} | ${pkg.downloads.toLocaleString()} | ${pkg.dependencies} | ${pkg.license || 'N/A'}\n`;
-		}
-
-		return { content: [{ type: 'text', text }], isError: false };
+		const responseJson = JSON.stringify(finalResponse, null, 2);
+		return { content: [{ type: 'text', text: responseJson }], isError: false };
 	} catch (error) {
+		const errorResponse = JSON.stringify(
+			{
+				queryPackages: args.packages,
+				results: [],
+				error: `General error comparing packages: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			},
+			null,
+			2,
+		);
 		return {
-			content: [{ type: 'text', text: `Error comparing packages: ${(error as Error).message}` }],
+			content: [{ type: 'text', text: errorResponse }],
 			isError: true,
 		};
 	}
