@@ -1852,81 +1852,118 @@ export async function handleNpmMaintenance(args: { packages: string[] }): Promis
 	}
 }
 
-export async function handleNpmMaintainers(args: { packages: string[] }): Promise<CallToolResult> {
+export async function handleNpmMaintainers(args: {
+	packages: string[];
+}): Promise<CallToolResult> {
 	try {
-		const results = await Promise.all(
-			args.packages.map(async (pkg) => {
-				const response = await fetch(`https://registry.npmjs.org/${encodeURIComponent(pkg)}`);
+		const packagesToProcess = args.packages || [];
+		if (packagesToProcess.length === 0) {
+			throw new Error('No package names provided to fetch maintainers.');
+		}
 
-				if (response.status === 404) {
+		const processedResults = await Promise.all(
+			packagesToProcess.map(async (pkgInput) => {
+				let name = '';
+				if (typeof pkgInput === 'string') {
+					const atIdx = pkgInput.lastIndexOf('@');
+					name = atIdx > 0 ? pkgInput.slice(0, atIdx) : pkgInput; // Version is ignored for maintainers
+				} else {
 					return {
-						name: pkg,
-						error: 'Package not found in the npm registry',
+						packageInput: JSON.stringify(pkgInput),
+						packageName: 'unknown_package_input',
+						status: 'error' as const,
+						error: 'Invalid package input type',
+						data: null,
 					};
 				}
 
-				if (!response.ok) {
-					throw new Error(
-						`API request failed with status ${response.status} (${response.statusText})`,
-					);
+				if (!name) {
+					return {
+						packageInput: pkgInput,
+						packageName: 'empty_package_name',
+						status: 'error' as const,
+						error: 'Empty package name derived from input',
+						data: null,
+					};
 				}
 
-				const data = await response.json();
-				if (!isNpmPackageInfo(data)) {
-					throw new Error('Invalid package info data received');
-				}
+				try {
+					const response = await fetch(`https://registry.npmjs.org/${encodeURIComponent(name)}`);
 
-				return {
-					name: pkg,
-					maintainers: data.maintainers || [],
-				};
+					if (!response.ok) {
+						let errorMsg = `Failed to fetch package info: ${response.status} ${response.statusText}`;
+						if (response.status === 404) {
+							errorMsg = `Package ${name} not found in the npm registry.`;
+						}
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							status: 'error' as const,
+							error: errorMsg,
+							data: null,
+						};
+					}
+
+					const data = await response.json();
+					if (!isNpmPackageInfo(data)) {
+						// Using NpmPackageInfoSchema as it contains maintainers
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							status: 'error' as const,
+							error: 'Invalid package info data received from registry',
+							data: null,
+						};
+					}
+
+					const maintainers = (data.maintainers || []).map((m) => ({
+						name: m.name,
+						email: m.email || null, // Ensure email is null if not present
+						url: m.url || null, // NpmMaintainerSchema has url optional
+					}));
+
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						status: 'success' as const,
+						error: null,
+						data: {
+							maintainers: maintainers,
+							maintainersCount: maintainers.length,
+						},
+					};
+				} catch (error) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						status: 'error' as const,
+						error: error instanceof Error ? error.message : 'Unknown processing error',
+						data: null,
+					};
+				}
 			}),
 		);
 
-		let text = '👥 Package Maintainers\n\n';
-
-		for (const result of results) {
-			if ('error' in result) {
-				text += `❌ ${result.name}: ${result.error}\n\n`;
-				continue;
-			}
-
-			text += `📦 ${result.name}\n`;
-			text += `${'-'.repeat(40)}\n`;
-
-			const maintainers = result.maintainers || [];
-			if (maintainers.length === 0) {
-				text += '⚠️ No maintainers found.\n';
-			} else {
-				text += `👥 Maintainers (${maintainers.length}):\n\n`;
-				for (const maintainer of maintainers) {
-					text += `• ${maintainer.name}\n`;
-					text += `  📧 ${maintainer.email}\n\n`;
-				}
-			}
-
-			if (results.indexOf(result) < results.length - 1) {
-				text += '\n';
-			}
-		}
-
-		return {
-			content: [
-				{
-					type: 'text',
-					text,
-				},
-			],
-			isError: false,
+		const finalResponse = {
+			queryPackages: args.packages,
+			results: processedResults,
+			message: `Maintainer information for ${args.packages.length} package(s).`,
 		};
+
+		const responseJson = JSON.stringify(finalResponse, null, 2);
+		return { content: [{ type: 'text', text: responseJson }], isError: false };
 	} catch (error) {
+		const errorResponse = JSON.stringify(
+			{
+				queryPackages: args.packages,
+				results: [],
+				error: `General error fetching maintainer information: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			},
+			null,
+			2,
+		);
 		return {
-			content: [
-				{
-					type: 'text',
-					text: `Error fetching package maintainers: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				},
-			],
+			content: [{ type: 'text', text: errorResponse }],
 			isError: true,
 		};
 	}
