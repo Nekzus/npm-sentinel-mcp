@@ -2372,62 +2372,173 @@ export async function handleNpmLicenseCompatibility(args: {
 	packages: string[];
 }): Promise<CallToolResult> {
 	try {
-		const licenses = await Promise.all(
-			args.packages.map(async (pkg) => {
-				const response = await fetch(`https://registry.npmjs.org/${pkg}/latest`);
-				if (!response.ok) {
-					throw new Error(`Failed to fetch license info for ${pkg}: ${response.statusText}`);
+		const packagesToProcess = args.packages || [];
+		if (packagesToProcess.length === 0) {
+			throw new Error('No package names provided for license compatibility analysis.');
+		}
+
+		const processedResults = await Promise.all(
+			packagesToProcess.map(async (pkgInput) => {
+				let name = '';
+				let versionTag = 'latest';
+
+				if (typeof pkgInput === 'string') {
+					const atIdx = pkgInput.lastIndexOf('@');
+					if (atIdx > 0) {
+						name = pkgInput.slice(0, atIdx);
+						versionTag = pkgInput.slice(atIdx + 1);
+					} else {
+						name = pkgInput;
+					}
+				} else {
+					return {
+						packageInput: JSON.stringify(pkgInput),
+						packageName: 'unknown_package_input',
+						versionQueried: versionTag,
+						versionFetched: null,
+						status: 'error' as const,
+						error: 'Invalid package input type',
+						data: null,
+					};
 				}
-				const data = (await response.json()) as { license?: string };
-				return {
-					package: pkg,
-					license: data.license || 'UNKNOWN',
-				};
+
+				if (!name) {
+					return {
+						packageInput: pkgInput,
+						packageName: 'empty_package_name',
+						versionQueried: versionTag,
+						versionFetched: null,
+						status: 'error' as const,
+						error: 'Empty package name derived from input',
+						data: null,
+					};
+				}
+
+				try {
+					const response = await fetch(`https://registry.npmjs.org/${name}/${versionTag}`);
+					if (!response.ok) {
+						let errorMsg = `Failed to fetch package info: ${response.status} ${response.statusText}`;
+						if (response.status === 404) {
+							errorMsg = `Package ${name}@${versionTag} not found.`;
+						}
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							versionQueried: versionTag,
+							versionFetched: null,
+							status: 'error' as const,
+							error: errorMsg,
+							data: null,
+						};
+					}
+
+					const versionData = await response.json();
+					if (!isNpmPackageVersionData(versionData)) {
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							versionQueried: versionTag,
+							versionFetched: null, // Could use versionData.version if partially valid
+							status: 'error' as const,
+							error: 'Invalid package version data format received',
+							data: null,
+						};
+					}
+
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						versionQueried: versionTag,
+						versionFetched: versionData.version,
+						status: 'success' as const,
+						error: null,
+						data: {
+							license: versionData.license || 'UNKNOWN', // Default to UNKNOWN if null/undefined
+						},
+					};
+				} catch (error) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						versionQueried: versionTag,
+						versionFetched: null,
+						status: 'error' as const,
+						error: error instanceof Error ? error.message : 'Unknown processing error',
+						data: null,
+					};
+				}
 			}),
 		);
 
-		let text = '📜 License Compatibility Analysis\n\n';
-		text += 'Packages analyzed:\n';
-		for (const { package: pkg, license } of licenses) {
-			text += `• ${pkg}: ${license}\n`;
+		// Perform analysis based on fetched licenses
+		const warnings: string[] = [];
+		const licensesFound = processedResults
+			.filter((r) => r.status === 'success' && r.data)
+			.map((r) => r.data!.license.toUpperCase()); // Use toUpperCase for case-insensitive matching
+
+		const uniqueLicenses = [...new Set(licensesFound)];
+
+		const hasGPL = uniqueLicenses.some((lic) => lic.includes('GPL'));
+		const hasMIT = uniqueLicenses.some((lic) => lic === 'MIT');
+		const hasApache = uniqueLicenses.some((lic) => lic.includes('APACHE')); // Check for APACHE generally
+		const hasUnknown = uniqueLicenses.some((lic) => lic === 'UNKNOWN');
+		const allSuccess = processedResults.every((r) => r.status === 'success');
+
+		if (!allSuccess) {
+			warnings.push('Could not fetch license information for all packages.');
 		}
-		text += '\n';
-
-		// Basic license compatibility check
-		const hasGPL = licenses.some(({ license }) => license?.includes('GPL'));
-		const hasMIT = licenses.some(({ license }) => license === 'MIT');
-		const hasApache = licenses.some(({ license }) => license?.includes('Apache'));
-		const hasUnknown = licenses.some(({ license }) => license === 'UNKNOWN');
-
-		text += 'Compatibility Analysis:\n';
-		if (hasUnknown) {
-			text += '⚠️ Warning: Some packages have unknown licenses. Manual review recommended.\n';
+		if (hasUnknown && licensesFound.length > 0) {
+			warnings.push(
+				'Some packages have unknown or unspecified licenses. Manual review recommended.',
+			);
 		}
 		if (hasGPL) {
-			text += '⚠️ Contains GPL licensed code. Resulting work may need to be GPL licensed.\n';
+			warnings.push('Contains GPL licensed code. Resulting work may need to be GPL licensed.');
 			if (hasMIT || hasApache) {
-				text += '⚠️ Mixed GPL with MIT/Apache licenses. Review carefully for compliance.\n';
+				warnings.push(
+					'Mixed GPL with potentially incompatible licenses (e.g., MIT, Apache). Review carefully for compliance.',
+				);
 			}
-		} else if (hasMIT && hasApache) {
-			text += '✅ MIT and Apache 2.0 licenses are compatible.\n';
-		} else if (hasMIT) {
-			text += '✅ All MIT licensed. Generally safe to use.\n';
-		} else if (hasApache) {
-			text += '✅ All Apache licensed. Generally safe to use.\n';
+		}
+		// Further refined compatibility checks can be added here if needed
+
+		let summary = 'License compatibility analysis completed.';
+		if (warnings.length > 0) {
+			summary = 'License compatibility analysis completed with warnings.';
+		} else if (licensesFound.length === 0 && allSuccess) {
+			summary = 'No license information found for the queried packages.';
+		} else if (licensesFound.length > 0 && !hasGPL && !hasUnknown) {
+			summary = 'Licenses found appear to be generally compatible (non-GPL, known licenses).';
 		}
 
-		text +=
-			'\nNote: This is a basic analysis. For legal compliance, please consult with a legal expert.\n';
+		const analysis = {
+			summary: summary,
+			warnings: warnings,
+			uniqueLicensesFound: uniqueLicenses,
+		};
 
-		return { content: [{ type: 'text', text }], isError: false };
+		const finalResponse = {
+			queryPackages: args.packages,
+			results: processedResults,
+			analysis: analysis,
+			message: `License compatibility check for ${args.packages.length} package(s). Note: This is a basic analysis. For legal compliance, consult a legal expert.`,
+		};
+
+		const responseJson = JSON.stringify(finalResponse, null, 2);
+		return { content: [{ type: 'text', text: responseJson }], isError: false };
 	} catch (error) {
+		const errorResponse = JSON.stringify(
+			{
+				queryPackages: args.packages,
+				results: [],
+				analysis: null,
+				error: `General error analyzing license compatibility: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			},
+			null,
+			2,
+		);
 		return {
-			content: [
-				{
-					type: 'text',
-					text: `Error analyzing license compatibility: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				},
-			],
+			content: [{ type: 'text', text: errorResponse }],
 			isError: true,
 		};
 	}
