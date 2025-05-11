@@ -3193,10 +3193,24 @@ export async function handleNpmChangelogAnalysis(args: {
 					};
 				}
 
+				const cacheKey = generateCacheKey('handleNpmChangelogAnalysis', name);
+				const cachedResult = cacheGet<any>(cacheKey); // Expects the full result object to be cached
+
+				if (cachedResult) {
+					return {
+						...cachedResult,
+						packageInput: pkgInput, // Ensure these are current for this specific call
+						packageName: name,
+						versionQueried: versionQueried,
+						status: `${cachedResult.status}_cache` as const,
+						message: `${cachedResult.message} (from cache)`,
+					};
+				}
+
 				try {
 					const npmResponse = await fetch(`https://registry.npmjs.org/${name}`);
-				if (!npmResponse.ok) {
-						return {
+					if (!npmResponse.ok) {
+						const errorResult = {
 							packageInput: pkgInput,
 							packageName: name,
 							versionQueried: versionQueried,
@@ -3205,10 +3219,11 @@ export async function handleNpmChangelogAnalysis(args: {
 							data: null,
 							message: `Could not retrieve NPM package data for ${name}.`,
 						};
-				}
-				const npmData = await npmResponse.json();
-				if (!isNpmPackageInfo(npmData)) {
-						return {
+						return errorResult; // Do not cache this type of error
+					}
+					const npmData = await npmResponse.json();
+					if (!isNpmPackageInfo(npmData)) {
+						const errorResult = {
 							packageInput: pkgInput,
 							packageName: name,
 							versionQueried: versionQueried,
@@ -3217,11 +3232,12 @@ export async function handleNpmChangelogAnalysis(args: {
 							data: null,
 							message: `Received malformed NPM package data for ${name}.`,
 						};
+						return errorResult; // Do not cache this type of error
 					}
 
 					const repositoryUrl = npmData.repository?.url;
 					if (!repositoryUrl) {
-						return {
+						const resultNoRepo = {
 							packageInput: pkgInput,
 							packageName: name,
 							versionQueried: versionQueried,
@@ -3230,11 +3246,13 @@ export async function handleNpmChangelogAnalysis(args: {
 							data: null,
 							message: `No repository URL found in package data for ${name}.`,
 						};
+						cacheSet(cacheKey, resultNoRepo, CACHE_TTL_MEDIUM);
+						return resultNoRepo;
 					}
 
 					const githubMatch = repositoryUrl.match(/github\.com[:\/]([^\/]+)\/([^\/.]+)/);
 					if (!githubMatch) {
-						return {
+						const resultNotGitHub = {
 							packageInput: pkgInput,
 							packageName: name,
 							versionQueried: versionQueried,
@@ -3243,38 +3261,40 @@ export async function handleNpmChangelogAnalysis(args: {
 							data: { repositoryUrl: repositoryUrl },
 							message: `Repository URL (${repositoryUrl}) is not a standard GitHub URL.`,
 						};
+						cacheSet(cacheKey, resultNotGitHub, CACHE_TTL_MEDIUM);
+						return resultNotGitHub;
 					}
 
 					const [, owner, repo] = githubMatch;
 					const repoNameForUrl = repo.replace(/\.git$/, '');
 
-				const changelogFiles = [
-					'CHANGELOG.md',
-					'changelog.md',
-					'CHANGES.md',
-					'changes.md',
-					'HISTORY.md',
-					'history.md',
-					'NEWS.md',
-					'news.md',
-					'RELEASES.md',
-					'releases.md',
-				];
+					const changelogFiles = [
+						'CHANGELOG.md',
+						'changelog.md',
+						'CHANGES.md',
+						'changes.md',
+						'HISTORY.md',
+						'history.md',
+						'NEWS.md',
+						'news.md',
+						'RELEASES.md',
+						'releases.md',
+					];
 					let changelogContent: string | null = null;
 					let changelogSourceUrl: string | null = null;
 					let hasChangelogFile = false;
 
-				for (const file of changelogFiles) {
-					try {
+					for (const file of changelogFiles) {
+						try {
 							const rawChangelogUrl = `https://raw.githubusercontent.com/${owner}/${repoNameForUrl}/master/${file}`;
 							const response = await fetch(rawChangelogUrl);
-						if (response.ok) {
+							if (response.ok) {
 								changelogContent = await response.text();
 								changelogSourceUrl = rawChangelogUrl;
 								hasChangelogFile = true;
-							break;
-						}
-					} catch (error) {
+								break;
+							}
+						} catch (error) {
 							console.debug(`Error fetching changelog file ${file} for ${name}: ${error}`);
 						}
 					}
@@ -3283,13 +3303,13 @@ export async function handleNpmChangelogAnalysis(args: {
 					try {
 						const githubApiResponse = await fetch(
 							`https://api.github.com/repos/${owner}/${repoNameForUrl}/releases?per_page=5`,
-					{
-						headers: {
-							Accept: 'application/vnd.github.v3+json',
+							{
+								headers: {
+									Accept: 'application/vnd.github.v3+json',
 									'User-Agent': 'NPM-Sentinel-MCP',
-						},
-					},
-				);
+								},
+							},
+						);
 						if (githubApiResponse.ok) {
 							const releasesData = (await githubApiResponse.json()) as GithubRelease[];
 							githubReleases = releasesData.map((r) => ({
@@ -3319,26 +3339,28 @@ export async function handleNpmChangelogAnalysis(args: {
 								? `No changelog file or GitHub releases found for ${name}.`
 								: `Changelog analysis for ${name}.`;
 
-					return {
-						packageInput: pkgInput,
+					const resultToCache = {
+						packageInput: pkgInput, // This might differ on subsequent cache hits, so store the original reference for this specific cache entry
 						packageName: name,
 						versionQueried: versionQueried,
-						status: status,
+						status: status as 'success' | 'no_changelog_found',
 						error: null,
 						data: {
 							repositoryUrl: repositoryUrl,
 							changelogSourceUrl: changelogSourceUrl,
 							changelogContent: changelogContent
 								? `${changelogContent.split('\n').slice(0, 50).join('\n')}...`
-								: null, // First 50 lines
+								: null,
 							hasChangelogFile: hasChangelogFile,
 							githubReleases: githubReleases,
 							npmVersionHistory: npmVersionHistory,
 						},
 						message: message,
 					};
+					cacheSet(cacheKey, resultToCache, CACHE_TTL_MEDIUM);
+					return resultToCache;
 				} catch (error) {
-					return {
+					const errorResult = {
 						packageInput: pkgInput,
 						packageName: name,
 						versionQueried: versionQueried,
@@ -3347,6 +3369,7 @@ export async function handleNpmChangelogAnalysis(args: {
 						data: null,
 						message: `An unexpected error occurred while analyzing changelog for ${name}.`,
 					};
+					return errorResult; // Do not cache general errors
 				}
 			}),
 		);
