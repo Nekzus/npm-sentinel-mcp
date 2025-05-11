@@ -1755,7 +1755,8 @@ export async function handleNpmQuality(args: {
 						// by the npms.io v2 API in the same way. The overall quality score is the primary metric.
 					};
 
-					cacheSet(cacheKey, qualityData, CACHE_TTL_LONG);
+					const ttl = !collected.metadata.version.match(/^\d+\.\d+\.\d+$/) ? CACHE_TTL_SHORT : CACHE_TTL_LONG;
+					cacheSet(cacheKey, qualityData, ttl);
 
 				return {
 						packageInput: pkgInput,
@@ -1899,7 +1900,8 @@ export async function handleNpmMaintenance(args: { packages: string[] }): Promis
 						maintenanceScore: maintenanceScoreValue,
 					};
 
-					cacheSet(cacheKey, maintenanceData, CACHE_TTL_LONG);
+					const ttl = !collected.metadata.version.match(/^\d+\.\d+\.\d+$/) ? CACHE_TTL_SHORT : CACHE_TTL_LONG;
+					cacheSet(cacheKey, maintenanceData, ttl);
 
 				return {
 						packageInput: pkgInput,
@@ -2209,7 +2211,8 @@ export async function handleNpmScore(args: { packages: string[] }): Promise<Call
 							: null,
 					};
 
-					cacheSet(cacheKey, scoreData, CACHE_TTL_LONG);
+					const ttl = !collected.metadata.version.match(/^\d+\.\d+\.\d+$/) ? CACHE_TTL_SHORT : CACHE_TTL_LONG;
+					cacheSet(cacheKey, scoreData, ttl);
 
 				return {
 						packageInput: pkgInput,
@@ -2217,7 +2220,7 @@ export async function handleNpmScore(args: { packages: string[] }): Promise<Call
 						status: 'success' as const,
 						error: null,
 						data: scoreData,
-						message: `Successfully fetched score data for ${name} (version analyzed: ${collected.metadata.version}).`,
+							message: `Successfully fetched score data for ${name} (version analyzed: ${collected.metadata.version}).`,
 					};
 				} catch (error) {
 					return {
