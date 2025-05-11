@@ -3688,7 +3688,7 @@ export async function handleNpmAlternatives(args: { packages: string[] }): Promi
 // Create server instance
 const server = new McpServer({
 	name: 'npm-sentinel-mcp',
-	version: '1.6.1',
+	version: '1.7.0',
 	capabilities: {
 		resources: {},
 	},
