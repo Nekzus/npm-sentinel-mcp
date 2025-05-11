@@ -2439,6 +2439,14 @@ export async function handleNpmSearch(args: {
 			throw new Error('Limit must be between 1 and 250.');
 		}
 
+		const cacheKey = generateCacheKey('handleNpmSearch', query, limit);
+		const cachedData = cacheGet<any>(cacheKey);
+
+		if (cachedData) {
+			const cachedResponseJson = JSON.stringify(cachedData, null, 2);
+			return { content: [{ type: 'text', text: cachedResponseJson }], isError: false, message: `Search results for query '${query}' with limit ${limit} from cache.` };
+		}
+
 		const response = await fetch(
 			`https://registry.npmjs.org/-/v1/search?text=${encodeURIComponent(query)}&size=${limit}`,
 		);
@@ -2493,6 +2501,8 @@ export async function handleNpmSearch(args: {
 			results: resultsData,
 			message: `Search completed. Found ${total} total packages, returning ${resultsData.length}.`,
 		};
+
+		cacheSet(cacheKey, finalResponse, CACHE_TTL_MEDIUM);
 
 		const responseJson = JSON.stringify(finalResponse, null, 2);
 		return { content: [{ type: 'text', text: responseJson }], isError: false };
