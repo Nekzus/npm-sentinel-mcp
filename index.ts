@@ -2,7 +2,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import type { CallToolResult, Tool } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import fetch from 'node-fetch';
 import { z } from 'zod';
 
@@ -106,23 +106,6 @@ export const NpmDownloadsDataSchema = z.object({
 	start: z.string(),
 	end: z.string(),
 	package: z.string(),
-});
-
-// Schemas for NPM quality, maintenance and popularity metrics
-export const NpmQualitySchema = z.object({
-	score: z.number(),
-	tests: z.number(),
-	coverage: z.number(),
-	linting: z.number(),
-	types: z.number(),
-});
-
-export const NpmMaintenanceSchema = z.object({
-	score: z.number(),
-	issuesResolutionTime: z.number(),
-	commitsFrequency: z.number(),
-	releaseFrequency: z.number(),
-	lastUpdate: z.string(),
 });
 
 // Updated interface for npms.io response
@@ -295,257 +278,6 @@ const log = (...args: any[]) => {
 		console.error(...args);
 	}
 };
-
-// Define tools
-const TOOLS: Tool[] = [
-	// NPM Package Analysis Tools
-	{
-		name: 'npmVersions',
-		description: 'Get all available versions of an NPM package',
-		parameters: z.union([
-			z.object({
-				packageName: z.string().describe('The name of the package'),
-			}),
-			z.object({
-				packages: z.array(z.string()).describe('List of package names to get versions for'),
-			}),
-		]),
-		inputSchema: {
-			type: 'object',
-			properties: {
-				packageName: { type: 'string' },
-				packages: { type: 'array', items: { type: 'string' } },
-			},
-			oneOf: [{ required: ['packageName'] }, { required: ['packages'] }],
-		},
-	},
-	{
-		name: 'npmLatest',
-		description: 'Get the latest version and changelog of an NPM package',
-		parameters: z.union([
-			z.object({
-				packageName: z.string().describe('The name of the package'),
-			}),
-			z.object({
-				packages: z.array(z.string()).describe('List of package names to get latest versions for'),
-			}),
-		]),
-		inputSchema: {
-			type: 'object',
-			properties: {
-				packageName: { type: 'string' },
-				packages: { type: 'array', items: { type: 'string' } },
-			},
-			oneOf: [{ required: ['packageName'] }, { required: ['packages'] }],
-		},
-	},
-	{
-		name: 'npmDeps',
-		description: 'Analyze dependencies and devDependencies of an NPM package',
-		parameters: z.union([
-			z.object({
-				packageName: z.string().describe('The name of the package'),
-			}),
-			z.object({
-				packages: z.array(z.string()).describe('List of package names to analyze dependencies for'),
-			}),
-		]),
-		inputSchema: {
-			type: 'object',
-			properties: {
-				packageName: { type: 'string' },
-				packages: { type: 'array', items: { type: 'string' } },
-			},
-			oneOf: [{ required: ['packageName'] }, { required: ['packages'] }],
-		},
-	},
-	{
-		name: 'npmTypes',
-		description: 'Check TypeScript types availability and version for a package',
-		parameters: z.union([
-			z.object({
-				packageName: z.string().describe('The name of the package'),
-			}),
-			z.object({
-				packages: z.array(z.string()).describe('List of package names to check types for'),
-			}),
-		]),
-		inputSchema: {
-			type: 'object',
-			properties: {
-				packageName: { type: 'string' },
-				packages: { type: 'array', items: { type: 'string' } },
-			},
-			oneOf: [{ required: ['packageName'] }, { required: ['packages'] }],
-		},
-	},
-	{
-		name: 'npmSize',
-		description: 'Get package size information including dependencies and bundle size',
-		parameters: z.union([
-			z.object({
-				packageName: z.string().describe('The name of the package'),
-			}),
-			z.object({
-				packages: z.array(z.string()).describe('List of package names to get size information for'),
-			}),
-		]),
-		inputSchema: {
-			type: 'object',
-			properties: {
-				packageName: { type: 'string' },
-				packages: { type: 'array', items: { type: 'string' } },
-			},
-			oneOf: [{ required: ['packageName'] }, { required: ['packages'] }],
-		},
-	},
-	{
-		name: 'npmVulnerabilities',
-		description: 'Check for known vulnerabilities in packages',
-		parameters: z.union([
-			z.object({
-				packageName: z.string().describe('The name of the package'),
-			}),
-			z.object({
-				packages: z
-					.array(z.string())
-					.describe('List of package names to check for vulnerabilities'),
-			}),
-		]),
-		inputSchema: {
-			type: 'object',
-			properties: {
-				packageName: { type: 'string' },
-				packages: { type: 'array', items: { type: 'string' } },
-			},
-			oneOf: [{ required: ['packageName'] }, { required: ['packages'] }],
-		},
-	},
-	{
-		name: 'npmTrends',
-		description:
-			'Get download trends and popularity metrics for packages. Available periods: "last-week" (7 days), "last-month" (30 days), or "last-year" (365 days)',
-		parameters: z.object({
-			packages: z.array(z.string()).describe('List of package names to get trends for'),
-			period: z
-				.enum(['last-week', 'last-month', 'last-year'])
-				.describe('Time period for trends. Options: "last-week", "last-month", "last-year"')
-				.optional()
-				.default('last-month'),
-		}),
-		inputSchema: {
-			type: 'object',
-			properties: {
-				packages: {
-					type: 'array',
-					items: { type: 'string' },
-					description: 'List of package names to get trends for',
-				},
-				period: {
-					type: 'string',
-					enum: ['last-week', 'last-month', 'last-year'],
-					description:
-						'Time period for trends. Options: "last-week" (7 days), "last-month" (30 days), or "last-year" (365 days)',
-					default: 'last-month',
-				},
-			},
-			required: ['packages'],
-		},
-	},
-	{
-		name: 'npmCompare',
-		description: 'Compare multiple NPM packages based on various metrics',
-		parameters: z.object({
-			packages: z.array(z.string()).describe('List of package names to compare'),
-		}),
-		inputSchema: {
-			type: 'object',
-			properties: {
-				packages: {
-					type: 'array',
-					items: { type: 'string' },
-				},
-			},
-			required: ['packages'],
-		},
-	},
-	{
-		name: 'npmMaintainers',
-		description: 'Get maintainers for an NPM package',
-		parameters: z.object({
-			packageName: z.string().describe('The name of the package'),
-		}),
-		inputSchema: {
-			type: 'object',
-			properties: {
-				packageName: { type: 'string' },
-			},
-			required: ['packageName'],
-		},
-	},
-	{
-		name: 'npmScore',
-		description:
-			'Get consolidated package score based on quality, maintenance, and popularity metrics',
-		parameters: z.union([
-			z.object({
-				packageName: z.string().describe('The name of the package'),
-			}),
-			z.object({
-				packages: z.array(z.string()).describe('List of package names to get scores for'),
-			}),
-		]),
-		inputSchema: {
-			type: 'object',
-			properties: {
-				packageName: { type: 'string' },
-				packages: { type: 'array', items: { type: 'string' } },
-			},
-			oneOf: [{ required: ['packageName'] }, { required: ['packages'] }],
-		},
-	},
-	{
-		name: 'npmPackageReadme',
-		description: 'Get the README for an NPM package',
-		parameters: z.union([
-			z.object({
-				packageName: z.string().describe('The name of the package'),
-			}),
-			z.object({
-				packages: z.array(z.string()).describe('List of package names to get READMEs for'),
-			}),
-		]),
-		inputSchema: {
-			type: 'object',
-			properties: {
-				packageName: { type: 'string' },
-				packages: { type: 'array', items: { type: 'string' } },
-			},
-			oneOf: [{ required: ['packageName'] }, { required: ['packages'] }],
-		},
-	},
-	{
-		name: 'npmSearch',
-		description: 'Search for NPM packages',
-		parameters: z.object({
-			query: z.string().describe('Search query for packages'),
-			limit: z
-				.number()
-				.min(1)
-				.max(50)
-				.optional()
-				.describe('Maximum number of results to return (default: 10)'),
-		}),
-		inputSchema: {
-			type: 'object',
-			properties: {
-				query: { type: 'string' },
-				limit: { type: 'number', minimum: 1, maximum: 50 },
-			},
-			required: ['query'],
-		},
-	},
-];
 
 // Type guards for API responses
 function isNpmPackageInfo(data: unknown): data is NpmPackageInfo {
@@ -3509,8 +3241,8 @@ export async function handleNpmAlternatives(args: { packages: string[] }): Promi
 
 // Create server instance
 const server = new McpServer({
-	name: 'mcp-npm-tools',
-	version: '1.0.0',
+	name: 'npm-sentinel-mcp',
+	version: '1.5.7',
 });
 
 // Add NPM tools
