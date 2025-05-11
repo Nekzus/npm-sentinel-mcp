@@ -2749,16 +2749,10 @@ export async function handleNpmRepoStats(args: { packages: string[] }): Promise<
 		const processedResults = await Promise.all(
 			packagesToProcess.map(async (pkgInput) => {
 				let name = '';
-				// let versionTag: string | undefined = undefined; // Version not directly used for repo URL but good for consistency if needed later
 
 				if (typeof pkgInput === 'string') {
 					const atIdx = pkgInput.lastIndexOf('@');
-					if (atIdx > 0) {
-						name = pkgInput.slice(0, atIdx);
-						// versionTag = pkgInput.slice(atIdx + 1);
-					} else {
-						name = pkgInput;
-					}
+					name = atIdx > 0 ? pkgInput.slice(0, atIdx) : pkgInput; // Version typically ignored for repo stats
 				} else {
 					return {
 						packageInput: JSON.stringify(pkgInput),
@@ -2773,19 +2767,32 @@ export async function handleNpmRepoStats(args: { packages: string[] }): Promise<
 				if (!name) {
 					return {
 						packageInput: pkgInput,
-						packageName: 'empty_package_name',
-						status: 'error' as const,
-						error: 'Empty package name derived from input',
-						data: null,
-						message: 'Package name could not be determined from input.',
+							packageName: 'empty_package_name',
+							status: 'error' as const,
+							error: 'Empty package name derived from input',
+							data: null,
+							message: 'Package name could not be determined from input.',
+					};
+				}
+
+				const cacheKey = generateCacheKey('handleNpmRepoStats', name);
+				const cachedResult = cacheGet<any>(cacheKey); // Cache stores the entire result object structure
+
+				if (cachedResult) {
+					// Return the entire cached result object, which already includes status, data, message
+					return {
+						...cachedResult, // Spread the cached result
+						packageInput: pkgInput, // Add current input for context
+						packageName: name, // Add current name for context
+						status: `${cachedResult.status}_cache` as const, // Append _cache to status
+						message: `${cachedResult.message} (from cache)`,
 					};
 				}
 
 				try {
-					// Fetch package info from npm to find the repository URL (use /latest to get common package data)
 					const npmResponse = await fetch(`https://registry.npmjs.org/${name}/latest`);
-				if (!npmResponse.ok) {
-						return {
+					if (!npmResponse.ok) {
+						const errorData = {
 							packageInput: pkgInput,
 							packageName: name,
 							status: 'error' as const,
@@ -2793,11 +2800,12 @@ export async function handleNpmRepoStats(args: { packages: string[] }): Promise<
 							data: null,
 							message: `Could not retrieve NPM package data for ${name}.`,
 						};
+						// Do not cache primary API call failures
+						return errorData;
 					}
 					const npmData = await npmResponse.json();
-					// Use isNpmPackageVersionData as /latest returns a version-specific structure
 					if (!isNpmPackageVersionData(npmData)) {
-						return {
+						const errorData = {
 							packageInput: pkgInput,
 							packageName: name,
 							status: 'error' as const,
@@ -2805,11 +2813,12 @@ export async function handleNpmRepoStats(args: { packages: string[] }): Promise<
 							data: null,
 							message: `Malformed NPM package data for ${name}.`,
 						};
+						return errorData;
 					}
 
 					const repoUrl = npmData.repository?.url;
 					if (!repoUrl) {
-						return {
+						const resultNoRepo = {
 							packageInput: pkgInput,
 							packageName: name,
 							status: 'no_repo_found' as const,
@@ -2817,34 +2826,36 @@ export async function handleNpmRepoStats(args: { packages: string[] }): Promise<
 							data: null,
 							message: `No repository URL found in package data for ${name}.`,
 						};
+						cacheSet(cacheKey, resultNoRepo, CACHE_TTL_LONG);
+						return resultNoRepo;
 					}
 
-					const githubMatch = repoUrl.match(/github\.com[:/]([^/]+)\/([^/.]+)/);
+					const githubMatch = repoUrl.match(/github\.com[:\/]([^\/]+)\/([^\/.]+)/);
 					if (!githubMatch) {
-						return {
+						const resultNotGitHub = {
 							packageInput: pkgInput,
 							packageName: name,
 							status: 'not_github_repo' as const,
 							error: null,
-							data: { repositoryUrl: repoUrl }, // Provide the non-GitHub URL
+							data: { repositoryUrl: repoUrl },
 							message: `Repository URL found (${repoUrl}) is not a standard GitHub URL.`,
 						};
+						cacheSet(cacheKey, resultNotGitHub, CACHE_TTL_LONG);
+						return resultNotGitHub;
 					}
 
 					const [, owner, repo] = githubMatch;
 					const githubRepoApiUrl = `https://api.github.com/repos/${owner}/${repo.replace(/\.git$/, '')}`;
 
 					const githubResponse = await fetch(githubRepoApiUrl, {
-					headers: {
-						Accept: 'application/vnd.github.v3+json',
-							'User-Agent': 'NPM-Sentinel-MCP', // Updated User-Agent
-							// Add Authorization header if a token is available and rate limits are an issue
-							// 'Authorization': `token YOUR_GITHUB_TOKEN`
-					},
-				});
+						headers: {
+							Accept: 'application/vnd.github.v3+json',
+							'User-Agent': 'NPM-Sentinel-MCP',
+						},
+					});
 
-				if (!githubResponse.ok) {
-						return {
+					if (!githubResponse.ok) {
+						const errorData = {
 							packageInput: pkgInput,
 							packageName: name,
 							status: 'error' as const,
@@ -2852,11 +2863,13 @@ export async function handleNpmRepoStats(args: { packages: string[] }): Promise<
 							data: { githubRepoUrl: githubRepoApiUrl },
 							message: `Could not retrieve GitHub repository statistics from ${githubRepoApiUrl}.`,
 						};
+						// Do not cache GitHub API call failures for now
+						return errorData;
 					}
 
 					const githubData = (await githubResponse.json()) as GitHubRepoStats;
 
-					return {
+					const successResult = {
 						packageInput: pkgInput,
 						packageName: name,
 						status: 'success' as const,
@@ -2866,7 +2879,7 @@ export async function handleNpmRepoStats(args: { packages: string[] }): Promise<
 							stars: githubData.stargazers_count,
 							forks: githubData.forks_count,
 							openIssues: githubData.open_issues_count,
-							watchers: githubData.watchers_count, // Note: 'watchers_count' might be subscribers on GitHub API
+							watchers: githubData.watchers_count,
 							createdAt: githubData.created_at,
 							updatedAt: githubData.updated_at,
 							defaultBranch: githubData.default_branch,
@@ -2875,6 +2888,8 @@ export async function handleNpmRepoStats(args: { packages: string[] }): Promise<
 						},
 						message: 'GitHub repository statistics fetched successfully.',
 					};
+					cacheSet(cacheKey, successResult, CACHE_TTL_LONG);
+					return successResult;
 				} catch (error) {
 					return {
 						packageInput: pkgInput,
