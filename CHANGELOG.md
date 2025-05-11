@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.7.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.6.1...v1.7.0) (2025-05-11)
+
+
+### Features
+
+* add resource registration for server documentation ([f69535f](https://github.com/Nekzus/npm-sentinel-mcp/commit/f69535f3fbf5a951c83261e652f16649cd4f6391))
+* bump version to 1.7.0 ([584ae29](https://github.com/Nekzus/npm-sentinel-mcp/commit/584ae29e5ca2cd99abe0d32dc827f77875e69d91))
+
 ## [1.6.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.6.0...v1.6.1) (2025-05-11)
 
 
