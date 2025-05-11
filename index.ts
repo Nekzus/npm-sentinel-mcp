@@ -997,9 +997,21 @@ export async function handleNpmSize(args: {
 					};
 				}
 
-				// Use name@version for bundlephobia if version is specified, otherwise just name (it defaults to latest)
 				const bundlephobiaQuery = version === 'latest' ? name : `${name}@${version}`;
 				const packageNameForOutput = bundlephobiaQuery;
+
+				const cacheKey = generateCacheKey('handleNpmSize', bundlephobiaQuery);
+				const cachedData = cacheGet<any>(cacheKey);
+
+				if (cachedData) {
+					return {
+						package: packageNameForOutput, // Or cachedData.packageName if stored
+						status: 'success_cache',
+						error: null,
+						data: cachedData,
+						message: `Size information for ${packageNameForOutput} from cache.`,
+					};
+				}
 
 				try {
 					const response = await fetch(
@@ -1026,9 +1038,8 @@ export async function handleNpmSize(args: {
 						};
 					}
 
-					const rawData: any = await response.json(); // Cast to any for initial error check
+					const rawData: any = await response.json();
 
-					// Bundlephobia might return an error object in the JSON body for invalid package versions
 					if (rawData.error) {
 						return {
 							package: packageNameForOutput,
@@ -1049,12 +1060,7 @@ export async function handleNpmSize(args: {
 						};
 					}
 
-					// Bundlephobia provides the resolved version in its response if 'latest' was queried
-					// However, its response structure for `name` and `version` is not always consistent with NpmPackageDataSchema
-					// We will stick to `packageNameForOutput` for the package name in the result.
-					// If Bundlephobia returns a specific version (e.g. for `pkg@latest`), `rawData.version` might have it.
-
-					const typedRawData = rawData as BundlephobiaData; // Explicit cast after type guard
+					const typedRawData = rawData as BundlephobiaData;
 
 					const sizeData = {
 						name: (typedRawData as any).name || name,
@@ -1065,8 +1071,10 @@ export async function handleNpmSize(args: {
 						dependencyCount: typedRawData.dependencyCount,
 					};
 
+					cacheSet(cacheKey, sizeData, CACHE_TTL_MEDIUM);
+
 					return {
-						package: packageNameForOutput, // Or construct as `${sizeData.name}@${sizeData.version}` if preferred
+						package: packageNameForOutput,
 						status: 'success',
 						error: null,
 						data: sizeData,
