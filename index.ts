@@ -3013,6 +3013,20 @@ export async function handleNpmDeprecated(args: { packages: string[] }): Promise
 				}
 
 				const initialPackageNameForOutput = version === 'latest' ? name : `${name}@${version}`;
+				const cacheKey = generateCacheKey('handleNpmDeprecated', name, version);
+				const cachedResult = cacheGet<any>(cacheKey); 
+
+				if (cachedResult) {
+					// console.debug(`[handleNpmDeprecated] Cache hit for ${cacheKey}`);
+					return {
+						package: cachedResult.package, 
+						status: 'success_cache',
+						error: null,
+						data: cachedResult.data, 
+						message: `${cachedResult.message} (from cache)`,
+					};
+				}
+				// console.debug(`[handleNpmDeprecated] Cache miss for ${cacheKey}`);
 
 				try {
 					const mainPkgResponse = await fetch(`https://registry.npmjs.org/${name}`);
@@ -3032,17 +3046,14 @@ export async function handleNpmDeprecated(args: { packages: string[] }): Promise
 					if (version === 'latest') {
 						versionToFetch = mainPkgData['dist-tags']?.latest || 'latest';
 						if (versionToFetch === 'latest' && !mainPkgData.versions?.[versionToFetch]) {
-							// If 'latest' tag is missing or points to a non-existent version, try to get the highest semver version
 							const availableVersions = Object.keys(mainPkgData.versions || {});
 							if (availableVersions.length > 0) {
-								// A more robust semver sort would be better here, but for simplicity:
-								versionToFetch = availableVersions.sort().pop() || 'latest';
+								versionToFetch = availableVersions.sort().pop() || 'latest'; // Basic sort
 							}
 						}
 					}
 
 					const finalPackageNameForOutput = `${name}@${versionToFetch}`;
-
 					const versionInfo = mainPkgData.versions?.[versionToFetch];
 
 					if (!versionInfo) {
@@ -3058,40 +3069,69 @@ export async function handleNpmDeprecated(args: { packages: string[] }): Promise
 					const isPackageDeprecated = !!versionInfo.deprecated;
 					const packageDeprecationMessage = versionInfo.deprecated || null;
 
-					const processDependencies = async (deps: Record<string, string> | undefined) => {
+					const processDependencies = async (
+						deps: Record<string, string> | undefined,
+					): Promise<
+						Array<{
+							name: string;
+							version: string;
+							lookedUpAs: string;
+							isDeprecated: boolean;
+							deprecationMessage: string | null;
+							statusMessage: string;
+						}>
+					> => {
 						if (!deps) return [];
 						const depChecks = Object.entries(deps).map(async ([depName, depSemVer]) => {
+							const lookedUpAs = depName; // Strategy: always use original name, no cleaning.
+							let statusMessage = '';
+
 							try {
-								// For dependencies, we check their 'latest' tag to see if the *package itself* is deprecated,
-								// not a specific version. A more granular check could be to resolve semver and check that specific version.
-								const depResponse = await fetch(`https://registry.npmjs.org/${depName}`);
-								if (!depResponse.ok) {
+								// console.debug(`[handleNpmDeprecated] Checking dependency: ${depName}@${depSemVer}`);
+								const depInfoResponse = await fetch(
+									`https://registry.npmjs.org/${encodeURIComponent(depName)}`,
+								);
+
+								if (!depInfoResponse.ok) {
+									statusMessage = `Could not fetch dependency info for '${depName}' (status: ${depInfoResponse.status}). Deprecation status unknown.`;
+									// console.warn(`[handleNpmDeprecated] ${statusMessage}`);
 									return {
 										name: depName,
 										version: depSemVer,
-										isDeprecated: false, // Assume not deprecated if fetch fails
-										deprecationMessage: 'Could not fetch dependency info',
+										lookedUpAs: lookedUpAs,
+										isDeprecated: false, // Assume not deprecated as status is unknown
+										deprecationMessage: null,
+										statusMessage: statusMessage,
 									};
 								}
-								const depData = (await depResponse.json()) as NpmRegistryResponse;
+
+								const depData = (await depInfoResponse.json()) as NpmRegistryResponse;
 								const latestDepVersionTag = depData['dist-tags']?.latest;
 								const latestDepVersionInfo = latestDepVersionTag
 									? depData.versions?.[latestDepVersionTag]
 									: undefined;
 
+								statusMessage = `Successfully checked '${depName}'.`;
 								return {
 									name: depName,
 									version: depSemVer,
+									lookedUpAs: lookedUpAs,
 									isDeprecated: !!latestDepVersionInfo?.deprecated,
 									deprecationMessage: latestDepVersionInfo?.deprecated || null,
+									statusMessage: statusMessage,
 								};
 							} catch (error) {
+								const errorMessage =
+									error instanceof Error ? error.message : 'Unknown processing error';
+								statusMessage = `Error processing dependency '${depName}': ${errorMessage}. Deprecation status unknown.`;
+								// console.warn(`[handleNpmDeprecated] ${statusMessage}`);
 								return {
 									name: depName,
 									version: depSemVer,
-									isDeprecated: false, // Assume not deprecated on error
-									deprecationMessage:
-										error instanceof Error ? error.message : 'Unknown error checking dependency',
+									lookedUpAs: lookedUpAs,
+									isDeprecated: false, // Assume not deprecated as status is unknown
+									deprecationMessage: null,
+									statusMessage: statusMessage,
 								};
 							}
 						});
@@ -3102,24 +3142,53 @@ export async function handleNpmDeprecated(args: { packages: string[] }): Promise
 					const devDeps = await processDependencies(versionInfo.devDependencies);
 					const peerDeps = await processDependencies(versionInfo.peerDependencies);
 
+					const allDeps = [...directDeps, ...devDeps, ...peerDeps];
+					const unverifiableDepsCount = allDeps.filter((dep) => {
+						const msg = dep.statusMessage.toLowerCase();
+						return msg.includes('could not fetch') || msg.includes('error processing');
+					}).length;
+
+					let dependencySummaryMessage = `Processed ${allDeps.length} total dependencies.`;
+					if (unverifiableDepsCount > 0) {
+						dependencySummaryMessage += ` Could not verify the status for ${unverifiableDepsCount} dependencies (e.g., package name not found in registry or network issues). Their deprecation status is unknown.`;
+					}
+
+					const resultData = {
+						isPackageDeprecated,
+						packageDeprecationMessage,
+						dependencies: {
+							direct: directDeps,
+							development: devDeps,
+							peer: peerDeps,
+						},
+						dependencySummary: {
+							totalDependencies: allDeps.length,
+							unverifiableDependencies: unverifiableDepsCount,
+							message: dependencySummaryMessage,
+						},
+					};
+					
+					const fullMessage = `Deprecation status for ${finalPackageNameForOutput}. ${dependencySummaryMessage}`;
+
+					const resultToCache = {
+						package: finalPackageNameForOutput, 
+						data: resultData,
+						message: fullMessage, 
+					};
+					cacheSet(cacheKey, resultToCache, CACHE_TTL_MEDIUM);
+					// console.debug(`[handleNpmDeprecated] Set cache for ${cacheKey}`);
+
 					return {
 						package: finalPackageNameForOutput,
 						status: 'success',
 						error: null,
-						data: {
-							isPackageDeprecated,
-							packageDeprecationMessage,
-							dependencies: {
-								direct: directDeps,
-								development: devDeps,
-								peer: peerDeps,
-							},
-						},
-						message: `Deprecation status for ${finalPackageNameForOutput} and its dependencies.`,
+						data: resultData,
+						message: fullMessage,
 					};
 				} catch (error) {
+					// console.error(`[handleNpmDeprecated] Error processing ${initialPackageNameForOutput}: ${error}`);
 					return {
-						package: initialPackageNameForOutput, // Use initial name as resolution might have failed
+						package: initialPackageNameForOutput,
 						status: 'error',
 						error: error instanceof Error ? error.message : 'Unknown processing error',
 						data: null,
@@ -3132,6 +3201,7 @@ export async function handleNpmDeprecated(args: { packages: string[] }): Promise
 		const responseJson = JSON.stringify({ results: processedResults }, null, 2);
 		return { content: [{ type: 'text', text: responseJson }], isError: false };
 	} catch (error) {
+		// console.error(`[handleNpmDeprecated] General error: ${error}`);
 		const errorResponse = JSON.stringify(
 			{
 				results: [],
