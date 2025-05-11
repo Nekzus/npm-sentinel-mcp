@@ -196,7 +196,7 @@ interface NpmsApiResponse {
 
 function isValidNpmsResponse(data: unknown): data is NpmsApiResponse {
 	if (typeof data !== 'object' || data === null) {
-		console.debug('Response is not an object or is null');
+		console.debug('NpmsApiResponse validation: Response is not an object or is null');
 		return false;
 	}
 
@@ -211,7 +211,7 @@ function isValidNpmsResponse(data: unknown): data is NpmsApiResponse {
 		!('detail' in response.score) ||
 		typeof response.score.detail !== 'object'
 	) {
-		console.debug('Invalid score structure');
+		console.debug('NpmsApiResponse validation: Invalid score structure');
 		return false;
 	}
 
@@ -222,7 +222,7 @@ function isValidNpmsResponse(data: unknown): data is NpmsApiResponse {
 		typeof detail.popularity !== 'number' ||
 		typeof detail.maintenance !== 'number'
 	) {
-		console.debug('Invalid score detail metrics');
+		console.debug('NpmsApiResponse validation: Invalid score detail metrics');
 		return false;
 	}
 
@@ -235,7 +235,7 @@ function isValidNpmsResponse(data: unknown): data is NpmsApiResponse {
 		typeof response.collected.metadata.name !== 'string' ||
 		typeof response.collected.metadata.version !== 'string'
 	) {
-		console.debug('Invalid collected data structure');
+		console.debug('NpmsApiResponse validation: Invalid collected data structure');
 		return false;
 	}
 
@@ -246,7 +246,7 @@ function isValidNpmsResponse(data: unknown): data is NpmsApiResponse {
 		!Array.isArray(response.collected.npm.downloads) ||
 		typeof response.collected.npm.starsCount !== 'number'
 	) {
-		console.debug('Invalid npm data structure');
+		console.debug('NpmsApiResponse validation: Invalid npm data structure');
 		return false;
 	}
 
@@ -262,7 +262,7 @@ function isValidNpmsResponse(data: unknown): data is NpmsApiResponse {
 			typeof response.collected.github.issues.count !== 'number' ||
 			typeof response.collected.github.issues.openCount !== 'number'
 		) {
-			console.debug('Invalid github data structure');
+			console.debug('NpmsApiResponse validation: Invalid github data structure');
 			return false;
 		}
 	}
@@ -913,6 +913,7 @@ export async function handleNpmTypes(args: { packages: string[] }): Promise<Call
 							};
 						}
 					} catch (typesError) {
+						// Keep this debug for visibility on @types fetch failures
 						console.debug(`Could not fetch @types package ${typesPackageName}: ${typesError}`);
 					}
 
