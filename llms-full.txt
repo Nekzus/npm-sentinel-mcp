@@ -52,11 +52,13 @@ Description: Package analytics and statistics interface
 
 ## Tool Specifications
 
-### Package Analysis
+// Note: For all tools below, the response payload, typically as described by its `XYZResponse` interface 
+// (or a textual summary if the response is simpler), is JSON stringified and placed within the `text` field 
+// of the standard MCP content object: {"type": "text", "text": "...", "isError": boolean}.
 
 #### npmVersions
 ```typescript
-interface VersionsInput {
+interface NpmVersionsInput {
   packages: string[];
 }
 
@@ -67,53 +69,51 @@ interface VersionInfo {
   description?: string;
 }
 
-interface VersionsResponse {
-  [package: string]: VersionInfo[];
+interface NpmVersionsResponse {
+  [packageName: string]: VersionInfo[];
 }
 ```
 
-#### npmSecurity
+#### npmLatest
 ```typescript
-interface SecurityInput {
+interface NpmLatestInput {
   packages: string[];
 }
 
-interface Vulnerability {
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  description: string;
-  affectedVersions: string;
-  recommendation: string;
+interface LatestInfo {
+  version: string;
+  releaseDate: string;
+  changelog?: string;
 }
 
-interface SecurityResponse {
-  [package: string]: Vulnerability[];
+interface NpmLatestResponse {
+  [packageName: string]: LatestInfo;
 }
 ```
 
-#### npmMetrics
+#### npmDeps
 ```typescript
-interface MetricsInput {
+interface NpmDepsInput {
   packages: string[];
 }
 
-interface PackageMetrics {
-  downloads: number;
-  stars: number;
-  issues: number;
-  lastUpdate: string;
-  score: number;
+interface DependencyNode {
+  name: string;
+  version: string;
+  dependencies?: { [dependencyName: string]: string };
 }
 
-interface MetricsResponse {
-  [package: string]: PackageMetrics;
+interface NpmDepsResponse {
+  [packageName: string]: {
+    dependencyTree?: DependencyNode;
+    analysisSummary?: string;
+  };
 }
 ```
-
-### TypeScript Support
 
 #### npmTypes
 ```typescript
-interface TypesInput {
+interface NpmTypesInput {
   packages: string[];
 }
 
@@ -124,54 +124,312 @@ interface TypeSupport {
   typeVersion?: string;
 }
 
-interface TypesResponse {
-  [package: string]: TypeSupport;
+interface NpmTypesResponse {
+  [packageName: string]: TypeSupport;
 }
 ```
 
-### Performance Analysis
-
 #### npmSize
 ```typescript
-interface SizeInput {
+interface NpmSizeInput {
   packages: string[];
 }
 
 interface SizeMetrics {
-  size: number;
-  gzip: number;
-  dependencies: number;
-  treeshakeable: boolean;
+  size: number; 
+  gzip: number; 
+  dependenciesCount: number;
+  treeshakeable?: boolean; 
+  assetSizes?: { assetName: string; size: number }[];
 }
 
-interface SizeResponse {
-  [package: string]: SizeMetrics;
+interface NpmSizeResponse {
+  [packageName: string]: SizeMetrics;
 }
 ```
 
-### Trend Analysis
+#### npmVulnerabilities
+```typescript
+interface NpmVulnerabilitiesInput {
+  packages: string[];
+}
+
+interface Vulnerability {
+  severity: 'low' | 'medium' | 'high' | 'critical' | 'unknown';
+  title: string;
+  description: string;
+  affectedVersions: string;
+  recommendation?: string;
+  cvssScore?: number;
+  url?: string;
+}
+
+interface NpmVulnerabilitiesResponse {
+  [packageName: string]: Vulnerability[];
+}
+```
 
 #### npmTrends
 ```typescript
-interface TrendsInput {
+interface NpmTrendsInput {
   packages: string[];
-  period: 'last-week' | 'last-month' | 'last-year';
+  period: 'last-day' | 'last-week' | 'last-month' | 'last-year';
+}
+
+interface TrendDataPoint {
+  date: string;
+  downloads: number;
 }
 
 interface TrendMetrics {
-  downloads: number[];
-  growth: number;
-  popularity: number;
+  period: string;
+  downloads: TrendDataPoint[];
+  growth?: number;
+  popularityScore?: number;
 }
 
-interface TrendsResponse {
-  [package: string]: TrendMetrics;
+interface NpmTrendsResponse {
+  [packageName: string]: TrendMetrics;
+}
+```
+
+#### npmCompare
+```typescript
+interface NpmCompareInput {
+  packages: string[];
+}
+
+interface ComparisonAspects {
+  latestVersion?: string;
+  size?: SizeMetrics;
+  vulnerabilitiesCount?: number;
+  averageDownloads?: number;
+  qualityScore?: number;
+}
+
+interface NpmCompareResponse {
+  [packageName: string]: ComparisonAspects;
+  comparisonSummary?: string;
+}
+```
+
+#### npmMaintainers
+```typescript
+interface NpmMaintainersInput {
+  packages: string[];
+}
+
+interface Maintainer {
+  name: string;
+  email?: string;
+  githubUsername?: string;
+}
+
+interface NpmMaintainersResponse {
+  [packageName: string]: Maintainer[];
+}
+```
+
+#### npmScore
+```typescript
+interface NpmScoreInput {
+  packages: string[];
+}
+
+interface ScoreDetails {
+  quality: number;
+  popularity: number;
+  maintenance: number;
+  overall: number;
+}
+
+interface NpmScoreResponse {
+  [packageName: string]: ScoreDetails;
+}
+```
+
+#### npmPackageReadme
+```typescript
+interface NpmPackageReadmeInput {
+  packages: string[];
+}
+
+interface NpmPackageReadmeResponse {
+  [packageName: string]: {
+    content: string;
+    format: 'markdown' | 'text';
+    error?: string;
+  };
+}
+```
+
+#### npmSearch
+```typescript
+interface NpmSearchInput {
+  query: string;
+  limit?: number;
+}
+
+interface SearchResultPackage {
+  name: string;
+  version: string;
+  description?: string;
+  keywords?: string[];
+  score?: ScoreDetails;
+}
+
+interface NpmSearchResponse {
+  query: string;
+  results: SearchResultPackage[];
+  totalResults?: number;
+}
+```
+
+#### npmLicenseCompatibility
+```typescript
+interface NpmLicenseCompatibilityInput {
+  packages: string[];
+  projectLicense?: string;
+}
+
+interface LicenseInfo {
+  spdxId: string;
+  name: string;
+  isCompatible?: boolean;
+  issues?: string[];
+}
+
+interface NpmLicenseCompatibilityResponse {
+  [packageName: string]: LicenseInfo;
+  compatibilitySummary?: string;
+}
+```
+
+#### npmRepoStats
+```typescript
+interface NpmRepoStatsInput {
+  packages: string[];
+}
+
+interface RepoStats {
+  stars?: number;
+  forks?: number;
+  openIssues?: number;
+  lastCommitDate?: string;
+  contributorsCount?: number;
+  repoUrl?: string;
+}
+
+interface NpmRepoStatsResponse {
+  [packageName: string]: RepoStats;
+}
+```
+
+#### npmDeprecated
+```typescript
+interface NpmDeprecatedInput {
+  packages: string[];
+}
+
+interface DeprecationInfo {
+  isDeprecated: boolean;
+  message?: string;
+  alternative?: string;
+}
+
+interface NpmDeprecatedResponse {
+  [packageName: string]: DeprecationInfo;
+}
+```
+
+#### npmChangelogAnalysis
+```typescript
+interface NpmChangelogAnalysisInput {
+  packages: string[];
+  targetVersion?: string;
+  sinceVersion?: string;
+}
+
+interface ChangelogEntry {
+  version: string;
+  date?: string;
+  summary?: string;
+  changes?: { type: 'added' | 'fixed' | 'changed' | 'removed'; description: string }[];
+}
+
+interface NpmChangelogAnalysisResponse {
+  [packageName: string]: {
+    changelogUrl?: string;
+    entries?: ChangelogEntry[];
+    analysisSummary?: string;
+  };
+}
+```
+
+#### npmAlternatives
+```typescript
+interface NpmAlternativesInput {
+  packages: string[];
+}
+
+interface AlternativePackageInfo {
+  name: string;
+  reason?: string;
+  score?: ScoreDetails;
+}
+
+interface NpmAlternativesResponse {
+  [packageName: string]: {
+    alternatives: AlternativePackageInfo[];
+  };
+}
+```
+
+#### npmQuality
+```typescript
+interface NpmQualityInput {
+  packages: string[];
+}
+
+interface QualityMetrics {
+  codeComplexity?: number;
+  testCoverage?: number;
+  documentationScore?: number;
+  communityEngagement?: number;
+  npmsQualityScore?: number;
+  npmsPopularityScore?: number;
+  npmsMaintenanceScore?: number;
+}
+
+interface NpmQualityResponse {
+  [packageName: string]: QualityMetrics;
+}
+```
+
+#### npmMaintenance
+```typescript
+interface NpmMaintenanceInput {
+  packages: string[];
+}
+
+interface MaintenanceMetrics {
+  lastPublishDate?: string;
+  commitFrequency?: string;
+  openIssuesRatio?: number;
+  timeSinceLastCommit?: string;
+  npmsMaintenanceScore?: number;
+}
+
+interface NpmMaintenanceResponse {
+  [packageName: string]: MaintenanceMetrics;
 }
 ```
 
 ## Error Handling
 
 ### Standard Error Format
+// When an error occurs, the standard MCP response 'content' object will have 'isError: true'.
+// The 'text' field of that content object will contain a JSON stringified MCPError object, as defined below.
 ```typescript
 interface MCPError {
   error: {

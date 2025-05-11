@@ -38,6 +38,7 @@ Schema: {
     "description": "List of package names to analyze"
   }
 }
+Returns: Version history with release dates for each package. The response is provided within the standard MCP wrapper: {"content": [{"type": "text", "text": "<output>", "isError": boolean}]}.
 
 npmLatest
 Description: Get latest version information for packages
@@ -48,6 +49,7 @@ Schema: {
     "description": "List of package names to check"
   }
 }
+Returns: Latest version details and changelog for each package. The response is provided within the standard MCP wrapper: {"content": [{"type": "text", "text": "<output>", "isError": boolean}]}.
 
 npmDeps
 Description: Analyze package dependencies
@@ -58,6 +60,7 @@ Schema: {
     "description": "List of package names to analyze"
   }
 }
+Returns: Complete dependency tree analysis for each package. The response is provided within the standard MCP wrapper: {"content": [{"type": "text", "text": "<output>", "isError": boolean}]}.
 
 npmTypes
 Description: TypeScript compatibility verification
@@ -68,6 +71,7 @@ Schema: {
     "description": "List of package names to check"
   }
 }
+Returns: TypeScript compatibility status for each package. The response is provided within the standard MCP wrapper: {"content": [{"type": "text", "text": "<output>", "isError": boolean}]}.
 
 npmSize
 Description: Bundle size and performance impact analysis
@@ -78,6 +82,7 @@ Schema: {
     "description": "List of package names to analyze"
   }
 }
+Returns: Bundle size and import cost analysis for each package. The response is provided within the standard MCP wrapper: {"content": [{"type": "text", "text": "<output>", "isError": boolean}]}.
 
 npmVulnerabilities
 Description: Security vulnerability analysis
@@ -88,6 +93,7 @@ Schema: {
     "description": "List of package names to analyze"
   }
 }
+Returns: Security advisories and severity ratings for each package. The response is provided within the standard MCP wrapper: {"content": [{"type": "text", "text": "<output>", "isError": boolean}]}.
 
 npmTrends
 Description: Download trends and adoption metrics
@@ -103,6 +109,7 @@ Schema: {
     "description": "Time period for analysis"
   }
 }
+Returns: Download statistics over the specified time period for each package. The response is provided within the standard MCP wrapper: {"content": [{"type": "text", "text": "<output>", "isError": boolean}]}.
 
 npmCompare
 Description: Compare multiple packages
@@ -113,6 +120,7 @@ Schema: {
     "description": "List of package names to compare"
   }
 }
+Returns: Detailed comparison metrics across the specified packages. The response is provided within the standard MCP wrapper: {"content": [{"type": "text", "text": "<output>", "isError": boolean}]}.
 
 npmQuality
 Description: Package quality metrics analysis
@@ -123,6 +131,7 @@ Schema: {
     "description": "List of package names to analyze"
   }
 }
+Returns: Quality metrics and scores for each package. The response is provided within the standard MCP wrapper: {"content": [{"type": "text", "text": "<output>", "isError": boolean}]}.
 
 npmMaintenance
 Description: Package maintenance metrics
@@ -133,6 +142,7 @@ Schema: {
     "description": "List of package names to analyze"
   }
 }
+Returns: Maintenance activity metrics for each package. The response is provided within the standard MCP wrapper: {"content": [{"type": "text", "text": "<output>", "isError": boolean}]}.
 
 npmMaintainers
 Description: Get package maintainers information
@@ -143,6 +153,7 @@ Schema: {
     "description": "List of package names to check"
   }
 }
+Returns: Maintainer information and activity for each package. The response is provided within the standard MCP wrapper: {"content": [{"type": "text", "text": "<output>", "isError": boolean}]}.
 
 npmScore
 Description: Get package quality scores
@@ -153,6 +164,7 @@ Schema: {
     "description": "List of package names to analyze"
   }
 }
+Returns: Comprehensive quality scores (e.g., from npms.io) for each package. The response is provided within the standard MCP wrapper: {"content": [{"type": "text", "text": "<output>", "isError": boolean}]}.
 
 npmPackageReadme
 Description: Get package README content
@@ -163,6 +175,7 @@ Schema: {
     "description": "List of package names to get READMEs for"
   }
 }
+Returns: Formatted README content for each package. The response is provided within the standard MCP wrapper: {"content": [{"type": "text", "text": "<output>", "isError": boolean}]}.
 
 npmSearch
 Description: Search for NPM packages
@@ -178,6 +191,7 @@ Schema: {
     "maximum": 50
   }
 }
+Returns: Matching packages with metadata based on the search query. The response is provided within the standard MCP wrapper: {"content": [{"type": "text", "text": "<output>", "isError": boolean}]}.
 
 npmLicenseCompatibility
 Description: Check license compatibility between packages
@@ -188,6 +202,7 @@ Schema: {
     "description": "List of package names to check"
   }
 }
+Returns: License analysis and compatibility information for the specified packages. The response is provided within the standard MCP wrapper: {"content": [{"type": "text", "text": "<output>", "isError": boolean}]}.
 
 npmRepoStats
 Description: Get repository statistics
@@ -198,16 +213,18 @@ Schema: {
     "description": "List of package names to analyze"
   }
 }
+Returns: GitHub/repository metrics for each package. The response is provided within the standard MCP wrapper: {"content": [{"type": "text", "text": "<output>", "isError": boolean}]}.
 
 npmDeprecated
-Description: Check for deprecated packages and versions
+Description: Check for deprecation
 Schema: {
   "packages": {
     "type": "array",
     "items": { "type": "string" },
-    "description": "List of package names to check"
+    "description": "List of package names to analyze"
   }
 }
+Returns: Deprecation status and alternatives for each package. The response is provided within the standard MCP wrapper: {"content": [{"type": "text", "text": "<output>", "isError": boolean}]}.
 
 npmChangelogAnalysis
 Description: Analyze package changelogs
@@ -218,16 +235,18 @@ Schema: {
     "description": "List of package names to analyze"
   }
 }
+Returns: Changelog summaries and impact analysis for each package. The response is provided within the standard MCP wrapper: {"content": [{"type": "text", "text": "<output>", "isError": boolean}]}.
 
 npmAlternatives
-Description: Find alternative packages
+Description: Find package alternatives
 Schema: {
   "packages": {
     "type": "array",
     "items": { "type": "string" },
-    "description": "List of package names to find alternatives for"
+    "description": "List of package names to analyze"
   }
 }
+Returns: Similar packages with comparisons for each specified package. The response is provided within the standard MCP wrapper: {"content": [{"type": "text", "text": "<output>", "isError": boolean}]}.
 
 ## Error Format
 {

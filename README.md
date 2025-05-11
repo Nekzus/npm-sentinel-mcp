@@ -20,15 +20,15 @@ A powerful Model Context Protocol (MCP) server that revolutionizes NPM package a
 
 ## Features
 
-- Version analysis and tracking
-- Dependency analysis and mapping
-- Security vulnerability scanning
-- Package quality metrics
-- Download trends and statistics
-- TypeScript support verification
-- Package size analysis
-- Maintenance metrics
-- Real-time package comparisons
+- **Version analysis and tracking**
+- **Dependency analysis and mapping**
+- **Security vulnerability scanning**
+- **Package quality metrics**
+- **Download trends and statistics**
+- **TypeScript support verification**
+- **Package size analysis**
+- **Maintenance metrics**
+- **Real-time package comparisons**
 - **Standardized error handling and MCP response formats**
 - **Efficient caching for improved performance and API rate limit management**
 - **Rigorous schema validation and type safety using Zod**

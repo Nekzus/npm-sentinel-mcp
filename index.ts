@@ -430,13 +430,13 @@ export async function handleNpmVersions(args: {
 
 				try {
 					const response = await fetch(`https://registry.npmjs.org/${name}`, {
-					headers: {
-						Accept: 'application/json',
-						'User-Agent': 'NPM-Sentinel-MCP',
-					},
-				});
+						headers: {
+							Accept: 'application/json',
+							'User-Agent': 'NPM-Sentinel-MCP',
+						},
+					});
 
-				if (!response.ok) {
+					if (!response.ok) {
 						return {
 							packageInput: pkgInput,
 							packageName: name,
@@ -445,10 +445,10 @@ export async function handleNpmVersions(args: {
 							data: null,
 							message: `Could not retrieve information for package ${name}.`,
 						};
-				}
+					}
 
-				const data = await response.json();
-				if (!isNpmPackageInfo(data)) {
+					const data = await response.json();
+					if (!isNpmPackageInfo(data)) {
 						return {
 							packageInput: pkgInput,
 							packageName: name,
@@ -471,26 +471,26 @@ export async function handleNpmVersions(args: {
 
 					cacheSet(cacheKey, resultData, CACHE_TTL_MEDIUM);
 
-				return {
+					return {
 						packageInput: pkgInput,
 						packageName: name,
 						status: 'success',
 						error: null,
 						data: resultData,
 						message: `Successfully fetched versions for ${name}.`,
-				};
-			} catch (error) {
-				return {
+					};
+				} catch (error) {
+					return {
 						packageInput: pkgInput,
 						packageName: name,
 						status: 'error',
 						error: error instanceof Error ? error.message : 'Unknown processing error',
 						data: null,
 						message: `An unexpected error occurred while processing ${name}.`,
-				};
-			}
-		}),
-	);
+					};
+				}
+			}),
+		);
 
 		const responseJson = JSON.stringify({ results: processedResults }, null, 2);
 		return { content: [{ type: 'text', text: responseJson }], isError: false };
@@ -583,13 +583,13 @@ export async function handleNpmLatest(args: {
 
 				try {
 					const response = await fetch(`https://registry.npmjs.org/${name}/${versionTag}`, {
-					headers: {
-						Accept: 'application/json',
-						'User-Agent': 'NPM-Sentinel-MCP',
-					},
-				});
+						headers: {
+							Accept: 'application/json',
+							'User-Agent': 'NPM-Sentinel-MCP',
+						},
+					});
 
-				if (!response.ok) {
+					if (!response.ok) {
 						let errorMsg = `Failed to fetch package version: ${response.status} ${response.statusText}`;
 						if (response.status === 404) {
 							errorMsg = `Package ${name}@${versionTag} not found.`;
@@ -603,12 +603,12 @@ export async function handleNpmLatest(args: {
 							data: null,
 							message: `Could not retrieve version ${versionTag} for package ${name}.`,
 						};
-				}
+					}
 
-				const data = await response.json();
+					const data = await response.json();
 
 					if (!isNpmPackageVersionData(data)) {
-				return {
+						return {
 							packageInput: pkgInput,
 							packageName: name,
 							versionQueried: versionTag,
@@ -638,7 +638,7 @@ export async function handleNpmLatest(args: {
 
 					cacheSet(cacheKey, versionData, CACHE_TTL_MEDIUM);
 
-				return {
+					return {
 						packageInput: pkgInput,
 						packageName: name,
 						versionQueried: versionTag,
@@ -656,10 +656,10 @@ export async function handleNpmLatest(args: {
 						error: error instanceof Error ? error.message : 'Unknown processing error',
 						data: null,
 						message: `An unexpected error occurred while processing ${pkgInput}.`,
-				};
-			}
-		}),
-	);
+					};
+				}
+			}),
+		);
 
 		const responseJson = JSON.stringify({ results: processedResults }, null, 2);
 		return { content: [{ type: 'text', text: responseJson }], isError: false };
@@ -853,7 +853,7 @@ export async function handleNpmTypes(args: { packages: string[] }): Promise<Call
 				const cachedData = cacheGet<any>(cacheKey);
 
 				if (cachedData) {
-		return {
+					return {
 						package: cachedData.finalPackageName || packageNameForOutput,
 						status: 'success_cache',
 						error: null,
@@ -864,13 +864,13 @@ export async function handleNpmTypes(args: { packages: string[] }): Promise<Call
 
 				try {
 					const response = await fetch(`https://registry.npmjs.org/${name}/${version}`, {
-					headers: {
-						Accept: 'application/json',
-						'User-Agent': 'NPM-Sentinel-MCP',
-					},
-				});
+						headers: {
+							Accept: 'application/json',
+							'User-Agent': 'NPM-Sentinel-MCP',
+						},
+					});
 
-				if (!response.ok) {
+					if (!response.ok) {
 						return {
 							package: packageNameForOutput,
 							status: 'error',
@@ -898,14 +898,14 @@ export async function handleNpmTypes(args: { packages: string[] }): Promise<Call
 						const typesResponse = await fetch(
 							`https://registry.npmjs.org/${typesPackageName}/latest`,
 							{
-					headers: {
-						Accept: 'application/json',
-						'User-Agent': 'NPM-Sentinel-MCP',
-					},
+								headers: {
+									Accept: 'application/json',
+									'User-Agent': 'NPM-Sentinel-MCP',
+								},
 							},
 						);
 						if (typesResponse.ok) {
-					const typesData = (await typesResponse.json()) as NpmPackageData;
+							const typesData = (await typesResponse.json()) as NpmPackageData;
 							typesPackageInfo = {
 								name: typesPackageName,
 								version: typesData.version || 'unknown',
@@ -1018,14 +1018,14 @@ export async function handleNpmSize(args: {
 					const response = await fetch(
 						`https://bundlephobia.com/api/size?package=${bundlephobiaQuery}`,
 						{
-					headers: {
-						Accept: 'application/json',
-						'User-Agent': 'NPM-Sentinel-MCP',
-					},
+							headers: {
+								Accept: 'application/json',
+								'User-Agent': 'NPM-Sentinel-MCP',
+							},
 						},
 					);
 
-				if (!response.ok) {
+					if (!response.ok) {
 						let errorMsg = `Failed to fetch package size: ${response.status} ${response.statusText}`;
 						if (response.status === 404) {
 							errorMsg = `Package ${packageNameForOutput} not found or version not available on Bundlephobia.`;
@@ -1051,7 +1051,7 @@ export async function handleNpmSize(args: {
 						};
 					}
 
-				if (!isBundlephobiaData(rawData)) {
+					if (!isBundlephobiaData(rawData)) {
 						return {
 							package: packageNameForOutput,
 							status: 'error',
@@ -1074,7 +1074,7 @@ export async function handleNpmSize(args: {
 
 					cacheSet(cacheKey, sizeData, CACHE_TTL_MEDIUM);
 
-				return {
+					return {
 						package: packageNameForOutput,
 						status: 'success',
 						error: null,
@@ -1288,7 +1288,7 @@ export async function handleNpmVulnerabilities(args: {
 				};
 				cacheSet(cacheKey, resultToCache, CACHE_TTL_MEDIUM);
 
-		return {
+				return {
 					package: packageNameForOutput,
 					versionQueried: version || null,
 					status: 'success' as const,
@@ -1381,18 +1381,18 @@ export async function handleNpmTrends(args: {
 
 				try {
 					const response = await fetch(`https://api.npmjs.org/downloads/point/${period}/${name}`, {
-					headers: {
-						Accept: 'application/json',
-						'User-Agent': 'NPM-Sentinel-MCP',
-					},
-				});
+						headers: {
+							Accept: 'application/json',
+							'User-Agent': 'NPM-Sentinel-MCP',
+						},
+					});
 
-				if (!response.ok) {
+					if (!response.ok) {
 						let errorMsg = `Failed to fetch download trends: ${response.status} ${response.statusText}`;
 						if (response.status === 404) {
 							errorMsg = `Package ${name} not found or no download data for the period.`;
 						}
-					return {
+						return {
 							packageInput: pkgInput,
 							packageName: name,
 							status: 'error' as const,
@@ -1401,28 +1401,28 @@ export async function handleNpmTrends(args: {
 						};
 					}
 
-				const data = await response.json();
-				if (!isNpmDownloadsData(data)) {
-					return {
+					const data = await response.json();
+					if (!isNpmDownloadsData(data)) {
+						return {
 							packageInput: pkgInput,
 							packageName: name,
 							status: 'error' as const,
-						error: 'Invalid response format from npm downloads API',
+							error: 'Invalid response format from npm downloads API',
 							data: null,
+						};
+					}
+
+					const trendData = {
+						downloads: data.downloads,
+						period: period,
+						startDate: data.start,
+						endDate: data.end,
+						averageDailyDownloads: Math.round(data.downloads / daysInPeriod),
 					};
-				}
 
-				const trendData = {
-					downloads: data.downloads,
-					period: period,
-					startDate: data.start,
-					endDate: data.end,
-					averageDailyDownloads: Math.round(data.downloads / daysInPeriod),
-				};
+					cacheSet(cacheKey, trendData, CACHE_TTL_MEDIUM);
 
-				cacheSet(cacheKey, trendData, CACHE_TTL_MEDIUM);
-
-				return {
+					return {
 						packageInput: pkgInput,
 						packageName: name,
 						status: 'success' as const,
@@ -1513,7 +1513,7 @@ export async function handleNpmCompare(args: { packages: string[] }): Promise<Ca
 						name = pkgInput;
 					}
 				} else {
-				return {
+					return {
 						packageInput: JSON.stringify(pkgInput),
 						packageName: 'unknown_package_input',
 						versionQueried: versionTag,
@@ -1710,14 +1710,14 @@ export async function handleNpmQuality(args: {
 					const response = await fetch(
 						`https://api.npms.io/v2/package/${encodeURIComponent(name)}`,
 						{
-					headers: {
-						Accept: 'application/json',
-						'User-Agent': 'NPM-Sentinel-MCP',
-					},
+							headers: {
+								Accept: 'application/json',
+								'User-Agent': 'NPM-Sentinel-MCP',
+							},
 						},
 					);
 
-				if (!response.ok) {
+					if (!response.ok) {
 						let errorMsg = `Failed to fetch quality data: ${response.status} ${response.statusText}`;
 						if (response.status === 404) {
 							errorMsg = `Package ${name} not found on npms.io.`;
@@ -1732,9 +1732,9 @@ export async function handleNpmQuality(args: {
 						};
 					}
 
-				const rawData = await response.json();
+					const rawData = await response.json();
 
-				if (!isValidNpmsResponse(rawData)) {
+					if (!isValidNpmsResponse(rawData)) {
 						return {
 							packageInput: pkgInput,
 							packageName: name,
@@ -1756,10 +1756,12 @@ export async function handleNpmQuality(args: {
 						// by the npms.io v2 API in the same way. The overall quality score is the primary metric.
 					};
 
-					const ttl = !collected.metadata.version.match(/^\d+\.\d+\.\d+$/) ? CACHE_TTL_SHORT : CACHE_TTL_LONG;
+					const ttl = !collected.metadata.version.match(/^\d+\.\d+\.\d+$/)
+						? CACHE_TTL_SHORT
+						: CACHE_TTL_LONG;
 					cacheSet(cacheKey, qualityData, ttl);
 
-				return {
+					return {
 						packageInput: pkgInput,
 						packageName: name,
 						status: 'success' as const,
@@ -1857,14 +1859,14 @@ export async function handleNpmMaintenance(args: { packages: string[] }): Promis
 					const response = await fetch(
 						`https://api.npms.io/v2/package/${encodeURIComponent(name)}`,
 						{
-					headers: {
-							Accept: 'application/json',
-							'User-Agent': 'NPM-Sentinel-MCP',
-						},
+							headers: {
+								Accept: 'application/json',
+								'User-Agent': 'NPM-Sentinel-MCP',
+							},
 						},
 					);
 
-				if (!response.ok) {
+					if (!response.ok) {
 						let errorMsg = `Failed to fetch maintenance data: ${response.status} ${response.statusText}`;
 						if (response.status === 404) {
 							errorMsg = `Package ${name} not found on npms.io.`;
@@ -1879,9 +1881,9 @@ export async function handleNpmMaintenance(args: { packages: string[] }): Promis
 						};
 					}
 
-				const rawData = await response.json();
+					const rawData = await response.json();
 
-				if (!isValidNpmsResponse(rawData)) {
+					if (!isValidNpmsResponse(rawData)) {
 						return {
 							packageInput: pkgInput,
 							packageName: name,
@@ -1901,10 +1903,12 @@ export async function handleNpmMaintenance(args: { packages: string[] }): Promis
 						maintenanceScore: maintenanceScoreValue,
 					};
 
-					const ttl = !collected.metadata.version.match(/^\d+\.\d+\.\d+$/) ? CACHE_TTL_SHORT : CACHE_TTL_LONG;
+					const ttl = !collected.metadata.version.match(/^\d+\.\d+\.\d+$/)
+						? CACHE_TTL_SHORT
+						: CACHE_TTL_LONG;
 					cacheSet(cacheKey, maintenanceData, ttl);
 
-				return {
+					return {
 						packageInput: pkgInput,
 						packageName: name,
 						status: 'success' as const,
@@ -1975,7 +1979,7 @@ export async function handleNpmMaintainers(args: {
 				}
 
 				if (!name) {
-				return {
+					return {
 						packageInput: pkgInput,
 						packageName: 'empty_package_name',
 						status: 'error' as const,
@@ -2040,16 +2044,16 @@ export async function handleNpmMaintainers(args: {
 
 					cacheSet(cacheKey, maintainersData, CACHE_TTL_VERY_LONG);
 
-		return {
+					return {
 						packageInput: pkgInput,
 						packageName: name,
 						status: 'success' as const,
 						error: null,
 						data: maintainersData,
 						message: `Successfully fetched maintainer information for ${name}.`,
-		};
-	} catch (error) {
-		return {
+					};
+				} catch (error) {
+					return {
 						packageInput: pkgInput,
 						packageName: name,
 						status: 'error' as const,
@@ -2149,22 +2153,22 @@ export async function handleNpmScore(args: { packages: string[] }): Promise<Call
 							error: errorMsg,
 							data: null,
 						};
-				}
+					}
 
-				const rawData = await response.json();
+					const rawData = await response.json();
 
-				if (!isValidNpmsResponse(rawData)) {
-					return {
+					if (!isValidNpmsResponse(rawData)) {
+						return {
 							packageInput: pkgInput,
 							packageName: name,
 							status: 'error' as const,
-						error: 'Invalid or incomplete response from npms.io API',
+							error: 'Invalid or incomplete response from npms.io API',
 							data: null,
-					};
-				}
+						};
+					}
 
 					const { score, collected, analyzedAt } = rawData;
-				const { detail } = score;
+					const { detail } = score;
 
 					// Calculate total downloads for the last month from the typically first entry in downloads array
 					const lastMonthDownloads =
@@ -2212,16 +2216,18 @@ export async function handleNpmScore(args: { packages: string[] }): Promise<Call
 							: null,
 					};
 
-					const ttl = !collected.metadata.version.match(/^\d+\.\d+\.\d+$/) ? CACHE_TTL_SHORT : CACHE_TTL_LONG;
+					const ttl = !collected.metadata.version.match(/^\d+\.\d+\.\d+$/)
+						? CACHE_TTL_SHORT
+						: CACHE_TTL_LONG;
 					cacheSet(cacheKey, scoreData, ttl);
 
-				return {
+					return {
 						packageInput: pkgInput,
 						packageName: name,
 						status: 'success' as const,
 						error: null,
 						data: scoreData,
-							message: `Successfully fetched score data for ${name} (version analyzed: ${collected.metadata.version}).`,
+						message: `Successfully fetched score data for ${name} (version analyzed: ${collected.metadata.version}).`,
 					};
 				} catch (error) {
 					return {
@@ -2296,7 +2302,7 @@ export async function handleNpmPackageReadme(args: {
 				}
 
 				if (!name) {
-		return {
+					return {
 						packageInput: pkgInput,
 						packageName: 'empty_package_name',
 						versionQueried: versionTag,
@@ -2325,7 +2331,7 @@ export async function handleNpmPackageReadme(args: {
 
 				try {
 					const response = await fetch(`https://registry.npmjs.org/${name}`);
-				if (!response.ok) {
+					if (!response.ok) {
 						let errorMsg = `Failed to fetch package info: ${response.status} ${response.statusText}`;
 						if (response.status === 404) {
 							errorMsg = `Package ${name} not found.`;
@@ -2448,7 +2454,11 @@ export async function handleNpmSearch(args: {
 
 		if (cachedData) {
 			const cachedResponseJson = JSON.stringify(cachedData, null, 2);
-			return { content: [{ type: 'text', text: cachedResponseJson }], isError: false, message: `Search results for query '${query}' with limit ${limit} from cache.` };
+			return {
+				content: [{ type: 'text', text: cachedResponseJson }],
+				isError: false,
+				message: `Search results for query '${query}' with limit ${limit} from cache.`,
+			};
 		}
 
 		const response = await fetch(
@@ -2595,12 +2605,12 @@ export async function handleNpmLicenseCompatibility(args: {
 
 				try {
 					const response = await fetch(`https://registry.npmjs.org/${name}/${versionTag}`);
-				if (!response.ok) {
+					if (!response.ok) {
 						let errorMsg = `Failed to fetch package info: ${response.status} ${response.statusText}`;
 						if (response.status === 404) {
 							errorMsg = `Package ${name}@${versionTag} not found.`;
-				}
-				return {
+						}
+						return {
 							packageInput: pkgInput,
 							packageName: name,
 							versionQueried: versionTag,
@@ -2771,11 +2781,11 @@ export async function handleNpmRepoStats(args: { packages: string[] }): Promise<
 				if (!name) {
 					return {
 						packageInput: pkgInput,
-							packageName: 'empty_package_name',
-							status: 'error' as const,
-							error: 'Empty package name derived from input',
-							data: null,
-							message: 'Package name could not be determined from input.',
+						packageName: 'empty_package_name',
+						status: 'error' as const,
+						error: 'Empty package name derived from input',
+						data: null,
+						message: 'Package name could not be determined from input.',
 					};
 				}
 
@@ -3018,15 +3028,15 @@ export async function handleNpmDeprecated(args: { packages: string[] }): Promise
 
 				const initialPackageNameForOutput = version === 'latest' ? name : `${name}@${version}`;
 				const cacheKey = generateCacheKey('handleNpmDeprecated', name, version);
-				const cachedResult = cacheGet<any>(cacheKey); 
+				const cachedResult = cacheGet<any>(cacheKey);
 
 				if (cachedResult) {
 					// console.debug(`[handleNpmDeprecated] Cache hit for ${cacheKey}`);
 					return {
-						package: cachedResult.package, 
+						package: cachedResult.package,
 						status: 'success_cache',
 						error: null,
-						data: cachedResult.data, 
+						data: cachedResult.data,
 						message: `${cachedResult.message} (from cache)`,
 					};
 				}
@@ -3171,13 +3181,13 @@ export async function handleNpmDeprecated(args: { packages: string[] }): Promise
 							message: dependencySummaryMessage,
 						},
 					};
-					
+
 					const fullMessage = `Deprecation status for ${finalPackageNameForOutput}. ${dependencySummaryMessage}`;
 
 					const resultToCache = {
-						package: finalPackageNameForOutput, 
+						package: finalPackageNameForOutput,
 						data: resultData,
-						message: fullMessage, 
+						message: fullMessage,
 					};
 					cacheSet(cacheKey, resultToCache, CACHE_TTL_MEDIUM);
 					// console.debug(`[handleNpmDeprecated] Set cache for ${cacheKey}`);
@@ -3676,7 +3686,7 @@ export async function handleNpmAlternatives(args: { packages: string[] }): Promi
 // Create server instance
 const server = new McpServer({
 	name: 'npm-sentinel-mcp',
-	version: '1.5.7',
+	version: '1.6.1',
 });
 
 // Add NPM tools
