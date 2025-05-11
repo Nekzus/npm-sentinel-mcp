@@ -848,6 +848,20 @@ export async function handleNpmTypes(args: { packages: string[] }): Promise<Call
 
 				const packageNameForOutput = version === 'latest' ? name : `${name}@${version}`;
 
+				// As with handleNpmDeps, we cache based on the input version string for simplicity.
+				const cacheKey = generateCacheKey('handleNpmTypes', name, version);
+				const cachedData = cacheGet<any>(cacheKey);
+
+				if (cachedData) {
+					return {
+						package: cachedData.finalPackageName || packageNameForOutput,
+						status: 'success_cache',
+						error: null,
+						data: cachedData.typesData,
+						message: `TypeScript information for ${cachedData.finalPackageName || packageNameForOutput} from cache.`,
+					};
+				}
+
 				try {
 					const response = await fetch(`https://registry.npmjs.org/${name}/${version}`, {
 						headers: {
@@ -899,23 +913,26 @@ export async function handleNpmTypes(args: { packages: string[] }): Promise<Call
 							};
 						}
 					} catch (typesError) {
-						// Error fetching @types package, isAvailable remains false
 						console.debug(`Could not fetch @types package ${typesPackageName}: ${typesError}`);
 					}
+
+					const resultData = {
+						mainPackage: {
+							name: name,
+							version: actualVersion,
+							hasBuiltInTypes: hasBuiltInTypes,
+							typesPath: typesPath,
+						},
+						typesPackage: typesPackageInfo,
+					};
+
+					cacheSet(cacheKey, { typesData: resultData, finalPackageName }, CACHE_TTL_LONG);
 
 					return {
 						package: finalPackageName,
 						status: 'success',
 						error: null,
-						data: {
-							mainPackage: {
-								name: name,
-								version: actualVersion,
-								hasBuiltInTypes: hasBuiltInTypes,
-								typesPath: typesPath,
-							},
-							typesPackage: typesPackageInfo,
-						},
+						data: resultData,
 						message: `TypeScript information for ${finalPackageName}`,
 					};
 				} catch (error) {
