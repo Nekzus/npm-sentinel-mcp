@@ -3,6 +3,38 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.6.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.5.6...v1.6.0) (2025-05-11)
+
+
+### Bug Fixes
+
+* improve debug messages in isValidNpmsResponse function ([fc75624](https://github.com/Nekzus/npm-sentinel-mcp/commit/fc7562413e790597a5da3c5b7b5a5b5db05c0ffd))
+
+
+### Features
+
+* add caching support for npm version retrieval ([c9e51bb](https://github.com/Nekzus/npm-sentinel-mcp/commit/c9e51bb5f4dacfbdfb5e88c11ac86846532dbdc1))
+* enhance caching logic in handleNpmAlternatives function ([489a99b](https://github.com/Nekzus/npm-sentinel-mcp/commit/489a99b7a0e39e9109e8fd236dd6f25ad507ab85))
+* enhance caching logic in handleNpmChangelogAnalysis function ([41e91e6](https://github.com/Nekzus/npm-sentinel-mcp/commit/41e91e6cab9203d2bf7a4c57e6d06daf9525986f))
+* enhance caching logic in handleNpmCompare function ([2a0435f](https://github.com/Nekzus/npm-sentinel-mcp/commit/2a0435fdfbc401f5f6e07a9dc5678b3b576ccda8))
+* enhance caching logic in handleNpmDeprecated function ([2a46038](https://github.com/Nekzus/npm-sentinel-mcp/commit/2a46038ebfb229b45cf5c6dd5025d350c1da3667))
+* enhance caching logic in handleNpmDeps function ([492b266](https://github.com/Nekzus/npm-sentinel-mcp/commit/492b266ca5159cf29075c4d7d77ace9d0ebd8822))
+* enhance caching logic in handleNpmLicenseCompatibility function ([7ef0b99](https://github.com/Nekzus/npm-sentinel-mcp/commit/7ef0b99feda96bbff4d52547dc2aa690f2515da4))
+* enhance caching logic in handleNpmMaintainers function ([0c83709](https://github.com/Nekzus/npm-sentinel-mcp/commit/0c837091218d8318557f8cf448f08f234fe33ceb))
+* enhance caching logic in handleNpmMaintenance function ([f9a53d1](https://github.com/Nekzus/npm-sentinel-mcp/commit/f9a53d162596060b9e7e0bbe0033855bc900651e))
+* enhance caching logic in handleNpmPackageReadme function ([93ad407](https://github.com/Nekzus/npm-sentinel-mcp/commit/93ad407153aba48c092eeab7f70b0f053e7f8bea))
+* enhance caching logic in handleNpmQuality and handleNpmMaintenance functions ([2317189](https://github.com/Nekzus/npm-sentinel-mcp/commit/2317189b4f5bfcac62f198f2965a64cba950db0a))
+* enhance caching logic in handleNpmQuality function ([b6f9fe9](https://github.com/Nekzus/npm-sentinel-mcp/commit/b6f9fe973f49494b39a881e8a8fff950f17dd764))
+* enhance caching logic in handleNpmRepoStats function ([0cf4dcf](https://github.com/Nekzus/npm-sentinel-mcp/commit/0cf4dcf1541ebb2ef342dc6ff8fd31b59ec76c6d))
+* enhance caching logic in handleNpmScore function ([17e56bc](https://github.com/Nekzus/npm-sentinel-mcp/commit/17e56bcd829402bae6ba7fc3b460329e3b057ef8))
+* enhance caching logic in handleNpmSearch function ([8245fcf](https://github.com/Nekzus/npm-sentinel-mcp/commit/8245fcf077243d187f2f5da0023b2efc1cee1394))
+* enhance caching logic in handleNpmSize function ([7af7871](https://github.com/Nekzus/npm-sentinel-mcp/commit/7af78716ae7380f308075b503634c5598a8f2171))
+* enhance caching logic in handleNpmTypes function ([9ce4f53](https://github.com/Nekzus/npm-sentinel-mcp/commit/9ce4f53996460208131bed1ae6548e96eebacb68))
+* enhance caching logic in handleNpmVulnerabilities function ([1c30d56](https://github.com/Nekzus/npm-sentinel-mcp/commit/1c30d5697a4109d517597cbd030109d1de7888ef))
+* implement caching mechanism for npm version retrieval ([29f9808](https://github.com/Nekzus/npm-sentinel-mcp/commit/29f9808eddee30416db6681e9a85cebabc677645))
+* improve error handling and response formatting in handleNpm functions ([5b10ccd](https://github.com/Nekzus/npm-sentinel-mcp/commit/5b10ccdfda0a4853ee52040c96efcfec8c9a1675))
+* update README to reflect new features and API response format ([077ab2a](https://github.com/Nekzus/npm-sentinel-mcp/commit/077ab2acf104c41b30ee0222fe7148f4bb62d165))
+
 ## [1.5.6](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.5.5...v1.5.6) (2025-04-24)
 
 
