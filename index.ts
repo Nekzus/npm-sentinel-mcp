@@ -2559,91 +2559,173 @@ interface GitHubRepoStats {
 // Repository statistics analyzer
 export async function handleNpmRepoStats(args: { packages: string[] }): Promise<CallToolResult> {
 	try {
-		const results = await Promise.all(
-			args.packages.map(async (pkg) => {
-				// First get the package info from npm to find the repository URL
-				const npmResponse = await fetch(`https://registry.npmjs.org/${pkg}/latest`);
-				if (!npmResponse.ok) {
-					throw new Error(`Failed to fetch npm info for ${pkg}: ${npmResponse.statusText}`);
-				}
-				const npmData = (await npmResponse.json()) as {
-					repository?: { url?: string; type?: string };
-				};
+		const packagesToProcess = args.packages || [];
+		if (packagesToProcess.length === 0) {
+			throw new Error('No package names provided for repository statistics analysis.');
+		}
 
-				if (!npmData.repository?.url) {
-					return { name: pkg, text: `No repository URL found for package ${pkg}` };
-				}
+		const processedResults = await Promise.all(
+			packagesToProcess.map(async (pkgInput) => {
+				let name = '';
+				// let versionTag: string | undefined = undefined; // Version not directly used for repo URL but good for consistency if needed later
 
-				// Extract GitHub repo info from URL
-				const repoUrl = npmData.repository.url;
-				const match = repoUrl.match(/github\.com[:/]([^/]+)\/([^/.]+)/);
-				if (!match) {
-					return { name: pkg, text: `Could not parse GitHub repository URL: ${repoUrl}` };
-				}
-
-				const [, owner, repo] = match;
-
-				// Fetch repository stats from GitHub API
-				const githubResponse = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
-					headers: {
-						Accept: 'application/vnd.github.v3+json',
-						'User-Agent': 'MCP-Server',
-					},
-				});
-
-				if (!githubResponse.ok) {
-					throw new Error(`Failed to fetch GitHub stats: ${githubResponse.statusText}`);
+				if (typeof pkgInput === 'string') {
+					const atIdx = pkgInput.lastIndexOf('@');
+					if (atIdx > 0) {
+						name = pkgInput.slice(0, atIdx);
+						// versionTag = pkgInput.slice(atIdx + 1);
+					} else {
+						name = pkgInput;
+					}
+				} else {
+					return {
+						packageInput: JSON.stringify(pkgInput),
+						packageName: 'unknown_package_input',
+						status: 'error' as const,
+						error: 'Invalid package input type',
+						data: null,
+						message: 'Package input was not a string.',
+					};
 				}
 
-				const data = (await githubResponse.json()) as GitHubRepoStats;
+				if (!name) {
+					return {
+						packageInput: pkgInput,
+						packageName: 'empty_package_name',
+						status: 'error' as const,
+						error: 'Empty package name derived from input',
+						data: null,
+						message: 'Package name could not be determined from input.',
+					};
+				}
 
-				const text = [
-					`${'='.repeat(80)}`,
-					`📊 Repository Statistics for ${pkg}`,
-					`${'='.repeat(80)}\n`,
-					'🌟 Engagement Metrics',
-					`${'─'.repeat(40)}`,
-					`• Stars:       ${data.stargazers_count.toLocaleString().padEnd(10)} ⭐`,
-					`• Forks:       ${data.forks_count.toLocaleString().padEnd(10)} 🔄`,
-					`• Watchers:    ${data.watchers_count.toLocaleString().padEnd(10)} 👀`,
-					`• Open Issues: ${data.open_issues_count.toLocaleString().padEnd(10)} 🔍\n`,
-					'📅 Timeline',
-					`${'─'.repeat(40)}`,
-					`• Created:      ${new Date(data.created_at).toLocaleDateString()}`,
-					`• Last Updated: ${new Date(data.updated_at).toLocaleDateString()}\n`,
-					'🔧 Repository Details',
-					`${'─'.repeat(40)}`,
-					`• Default Branch: ${data.default_branch}`,
-					`• Wiki Enabled:   ${data.has_wiki ? 'Yes' : 'No'}\n`,
-					'🏷️ Topics',
-					`${'─'.repeat(40)}`,
-					data.topics.length
-						? data.topics.map((topic) => `• ${topic}`).join('\n')
-						: '• No topics found',
-					'',
-				].join('\n');
+				try {
+					// Fetch package info from npm to find the repository URL (use /latest to get common package data)
+					const npmResponse = await fetch(`https://registry.npmjs.org/${name}/latest`);
+					if (!npmResponse.ok) {
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							status: 'error' as const,
+							error: `Failed to fetch npm info for ${name}: ${npmResponse.status} ${npmResponse.statusText}`,
+							data: null,
+							message: `Could not retrieve NPM package data for ${name}.`,
+						};
+					}
+					const npmData = await npmResponse.json();
+					// Use isNpmPackageVersionData as /latest returns a version-specific structure
+					if (!isNpmPackageVersionData(npmData)) {
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							status: 'error' as const,
+							error: 'Invalid NPM package data format received.',
+							data: null,
+							message: `Malformed NPM package data for ${name}.`,
+						};
+					}
 
-				return { name: pkg, text };
+					const repoUrl = npmData.repository?.url;
+					if (!repoUrl) {
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							status: 'no_repo_found' as const,
+							error: null,
+							data: null,
+							message: `No repository URL found in package data for ${name}.`,
+						};
+					}
+
+					const githubMatch = repoUrl.match(/github\.com[:/]([^/]+)\/([^/.]+)/);
+					if (!githubMatch) {
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							status: 'not_github_repo' as const,
+							error: null,
+							data: { repositoryUrl: repoUrl }, // Provide the non-GitHub URL
+							message: `Repository URL found (${repoUrl}) is not a standard GitHub URL.`,
+						};
+					}
+
+					const [, owner, repo] = githubMatch;
+					const githubRepoApiUrl = `https://api.github.com/repos/${owner}/${repo.replace(/\.git$/, '')}`;
+
+					const githubResponse = await fetch(githubRepoApiUrl, {
+						headers: {
+							Accept: 'application/vnd.github.v3+json',
+							'User-Agent': 'NPM-Sentinel-MCP', // Updated User-Agent
+							// Add Authorization header if a token is available and rate limits are an issue
+							// 'Authorization': `token YOUR_GITHUB_TOKEN`
+						},
+					});
+
+					if (!githubResponse.ok) {
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							status: 'error' as const,
+							error: `Failed to fetch GitHub repo stats for ${owner}/${repo}: ${githubResponse.status} ${githubResponse.statusText}`,
+							data: { githubRepoUrl: githubRepoApiUrl },
+							message: `Could not retrieve GitHub repository statistics from ${githubRepoApiUrl}.`,
+						};
+					}
+
+					const githubData = (await githubResponse.json()) as GitHubRepoStats;
+
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						status: 'success' as const,
+						error: null,
+						data: {
+							githubRepoUrl: `https://github.com/${owner}/${repo.replace(/\.git$/, '')}`,
+							stars: githubData.stargazers_count,
+							forks: githubData.forks_count,
+							openIssues: githubData.open_issues_count,
+							watchers: githubData.watchers_count, // Note: 'watchers_count' might be subscribers on GitHub API
+							createdAt: githubData.created_at,
+							updatedAt: githubData.updated_at,
+							defaultBranch: githubData.default_branch,
+							hasWiki: githubData.has_wiki,
+							topics: githubData.topics || [],
+						},
+						message: 'GitHub repository statistics fetched successfully.',
+					};
+				} catch (error) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						status: 'error' as const,
+						error: error instanceof Error ? error.message : 'Unknown processing error',
+						data: null,
+						message: `An unexpected error occurred while processing ${name}.`,
+					};
+				}
 			}),
 		);
 
-		let text = '';
-		for (const result of results) {
-			text += result.text;
-			if (results.indexOf(result) < results.length - 1) {
-				text += '\n\n';
-			}
-		}
+		const finalResponse = {
+			queryPackages: args.packages,
+			results: processedResults,
+			message: `Repository statistics analysis for ${args.packages.length} package(s).`,
+		};
 
-		return { content: [{ type: 'text', text }], isError: false };
+		const responseJson = JSON.stringify(finalResponse, null, 2);
+		return { content: [{ type: 'text', text: responseJson }], isError: false };
 	} catch (error) {
+		const errorResponse = JSON.stringify(
+			{
+				queryPackages: args.packages,
+				results: [],
+				error: `General error analyzing repository stats: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			},
+			null,
+			2,
+		);
 		return {
-			content: [
-				{
-					type: 'text',
-					text: `Error analyzing repository stats: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				},
-			],
+			content: [{ type: 'text', text: errorResponse }],
 			isError: true,
 		};
 	}
