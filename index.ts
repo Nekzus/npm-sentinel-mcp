@@ -4,6 +4,8 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import fetch from 'node-fetch';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { z } from 'zod';
 
 // Cache configuration
@@ -3687,16 +3689,87 @@ export async function handleNpmAlternatives(args: { packages: string[] }): Promi
 const server = new McpServer({
 	name: 'npm-sentinel-mcp',
 	version: '1.6.1',
+	capabilities: {
+		resources: {},
+	},
 });
 
-// Add NPM tools
+const README_PATH = path.resolve(process.cwd(), 'README.md');
+const LLMS_FULL_TEXT_PATH = path.resolve(process.cwd(), 'llms-full.txt');
+
+// Register README.md resource
+server.resource(
+	'serverReadme',
+	'doc://server/readme',
+	{
+		name: 'Server README',
+		description: 'Main documentation and usage guide for this NPM Info Server.',
+		mimeType: 'text/markdown',
+	},
+	async (uri: URL): Promise<{ contents: { uri: string; text: string; mimeType: string }[] }> => {
+		try {
+			const readmeContent = fs.readFileSync(README_PATH, 'utf-8');
+			return {
+				contents: [
+					{
+						uri: uri.href,
+						text: readmeContent,
+						mimeType: 'text/markdown',
+					},
+				],
+			};
+		} catch (error: any) {
+			console.error(`Error reading README.md for resource ${uri.href}:`, error.message);
+			throw {
+				code: -32002,
+				message: `Resource not found or unreadable: ${uri.href}`,
+				data: { uri: uri.href, cause: error.message },
+			};
+		}
+	},
+);
+
+// Register llms-full.txt resource (MCP Specification)
+server.resource(
+	'mcpSpecification',
+	'doc://mcp/specification',
+	{
+		name: 'MCP Full Specification',
+		description:
+			'The llms-full.txt content providing a comprehensive overview of the Model Context Protocol.',
+		mimeType: 'text/plain',
+	},
+	async (uri: URL): Promise<{ contents: { uri: string; text: string; mimeType: string }[] }> => {
+		try {
+			const specContent = fs.readFileSync(LLMS_FULL_TEXT_PATH, 'utf-8');
+			return {
+				contents: [
+					{
+						uri: uri.href,
+						text: specContent,
+						mimeType: 'text/plain',
+					},
+				],
+			};
+		} catch (error: any) {
+			console.error(`Error reading llms-full.txt for resource ${uri.href}:`, error.message);
+			throw {
+				code: -32002,
+				message: `Resource not found or unreadable: ${uri.href}`,
+				data: { uri: uri.href, cause: error.message },
+			};
+		}
+	},
+);
+
+// Add NPM tools - Ensuring each tool registration is complete and correct
 server.tool(
 	'npmVersions',
 	'Get all available versions of an NPM package',
 	{
 		packages: z.array(z.string()).describe('List of package names to get versions for'),
 	},
-	async (args, extra) => {
+	async (args) => {
 		return await handleNpmVersions(args);
 	},
 );
@@ -3707,7 +3780,7 @@ server.tool(
 	{
 		packages: z.array(z.string()).describe('List of package names to get latest versions for'),
 	},
-	async (args, extra) => {
+	async (args) => {
 		return await handleNpmLatest(args);
 	},
 );
