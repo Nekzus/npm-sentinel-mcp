@@ -1532,6 +1532,21 @@ export async function handleNpmCompare(args: { packages: string[] }): Promise<Ca
 					};
 				}
 
+				const cacheKey = generateCacheKey('handleNpmCompare', name, versionTag);
+				const cachedData = cacheGet<any>(cacheKey);
+
+				if (cachedData) {
+					return {
+						packageInput: pkgInput,
+						packageName: name, // Or cachedData.name if preferred
+						versionQueried: versionTag,
+						status: 'success_cache' as const,
+						error: null,
+						data: cachedData,
+						message: `Comparison data for ${name}@${versionTag} from cache.`,
+					};
+				}
+
 				try {
 					// Fetch package version details from registry
 					const pkgResponse = await fetch(`https://registry.npmjs.org/${name}/${versionTag}`);
@@ -1576,24 +1591,29 @@ export async function handleNpmCompare(args: { packages: string[] }): Promise<Ca
 						console.debug(`Could not fetch time info for ${name}: ${timeError}`);
 					}
 
+					const comparisonData = {
+						name: pkgData.name,
+						version: pkgData.version,
+						description: pkgData.description || null,
+						license: pkgData.license || null,
+						dependenciesCount: Object.keys(pkgData.dependencies || {}).length,
+						devDependenciesCount: Object.keys(pkgData.devDependencies || {}).length,
+						peerDependenciesCount: Object.keys(pkgData.peerDependencies || {}).length,
+						monthlyDownloads: monthlyDownloads,
+						publishDate: publishDate,
+						repositoryUrl: pkgData.repository?.url || null,
+					};
+
+					cacheSet(cacheKey, comparisonData, CACHE_TTL_MEDIUM);
+
 					return {
 						packageInput: pkgInput,
-						packageName: name,
+						packageName: name, // or comparisonData.name
 						versionQueried: versionTag,
 						status: 'success' as const,
 						error: null,
-						data: {
-							name: pkgData.name,
-							version: pkgData.version,
-							description: pkgData.description || null,
-							license: pkgData.license || null,
-							dependenciesCount: Object.keys(pkgData.dependencies || {}).length,
-							devDependenciesCount: Object.keys(pkgData.devDependencies || {}).length,
-							peerDependenciesCount: Object.keys(pkgData.peerDependencies || {}).length,
-							monthlyDownloads: monthlyDownloads,
-							publishDate: publishDate,
-							repositoryUrl: pkgData.repository?.url || null,
-						},
+						data: comparisonData,
+						message: `Successfully fetched comparison data for ${name}@${pkgData.version}.`,
 					};
 				} catch (error) {
 					return {
