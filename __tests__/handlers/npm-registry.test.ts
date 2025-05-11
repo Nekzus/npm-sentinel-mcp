@@ -23,9 +23,9 @@ const createMockResponse = (body: any, ok = true, status = 200) => {
 	return Promise.resolve({
 		ok,
 		status,
-		statusText: ok ? 'OK' : 'Not Found', // Simplified statusText
+		statusText: ok ? 'OK' : 'Not Found',
 		json: () => Promise.resolve(body),
-		text: () => Promise.resolve(JSON.stringify(body)), // For READMEs or other text responses
+		text: () => Promise.resolve(JSON.stringify(body)),
 	});
 };
 
@@ -45,15 +45,12 @@ const createMockErrorResponse = (
 vi.mock('node-fetch', () => {
 	return {
 		default: vi.fn().mockImplementation((url: string) => {
-			// console.debug(`Mock fetch called with URL: ${url}`); // For debugging tests
-
 			if (url.includes('registry.npmjs.org/-/v1/search')) {
 				const queryMatch = url.match(/text=([^&]+)/);
 				const query = queryMatch ? decodeURIComponent(queryMatch[1]) : '';
 				if (mockResponses.has(`search:${query}`)) {
 					return mockResponses.get(`search:${query}`)!();
 				}
-				// Default search response for tests not setting it up
 				return createMockResponse({
 					total: 1,
 					objects: [
@@ -79,26 +76,18 @@ vi.mock('node-fetch', () => {
 				const [, name, version] = packageNameMatch;
 				lookupKey = version ? `${name}@${version}` : name;
 				if (mockResponses.has(lookupKey)) {
-					// console.debug(`Mock fetch: Found response for key: ${lookupKey}`);
 					return mockResponses.get(lookupKey)!();
 				}
 				if (mockResponses.has(name)) {
-					// console.debug(`Mock fetch: Found response for key (fallback to name): ${name}`);
 					return mockResponses.get(name)!();
 				}
 			} else {
 				if (mockResponses.has(url)) {
-					// console.debug(`Mock fetch: Found response for key (direct URL): ${url}`);
 					return mockResponses.get(url)!();
 				}
 			}
 
-			// console.warn(`Mock fetch: No specific mock response for URL: ${url} (lookupKey: ${lookupKey}). Returning generic 404.`);
-			// Default for non-search, non-matched URLs:
-			// Try to provide a minimal valid-like structure for 'express' if it's requested and not specifically mocked,
-			// to prevent some existing tests from breaking immediately.
 			if (lookupKey.startsWith('express') || url.includes('express')) {
-				// console.debug(\'Mock fetch: Providing default express response for unmocked request to express\');
 				return createMockResponse({
 					name: 'express',
 					'dist-tags': { latest: '4.18.2' },
@@ -113,7 +102,6 @@ vi.mock('node-fetch', () => {
 					},
 				});
 			}
-			// console.warn(`Mock fetch: No specific mock response found for URL: ${url} (lookupKey: ${lookupKey}). Returning generic 404.`);
 			return createMockErrorResponse(404, 'Not Found - Mock Default');
 		}),
 	};
@@ -122,7 +110,7 @@ vi.mock('node-fetch', () => {
 describe('npm registry handlers', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockResponses.clear(); // Clear our custom mock responses before each test
+		mockResponses.clear();
 	});
 
 	describe('handleNpmLatest', () => {
@@ -141,6 +129,7 @@ describe('npm registry handlers', () => {
 
 		test('should handle invalid package name', async () => {
 			const packageName = 'invalid-package-name';
+			mockResponses.set(packageName, () => createMockErrorResponse(404, 'Not Found'));
 			const result = await handleNpmLatest({ packages: [packageName] });
 			validateToolResponse(result);
 			const parsed = JSON.parse(result.content[0].text as string);
@@ -189,7 +178,6 @@ describe('npm registry handlers', () => {
 
 		test('should handle invalid package name', async () => {
 			const packageName = 'invalid-package-name';
-			// Mock the fetch call for this specific invalid package
 			mockResponses.set(packageName, () => createMockErrorResponse(404, 'Not Found'));
 			const result = await handleNpmMaintainers({ packages: [packageName] });
 			validateToolResponse(result);
@@ -204,27 +192,10 @@ describe('npm registry handlers', () => {
 			expect(res.error).toContain(`Package ${packageName} not found`);
 			expect(res.data).toBeNull();
 		});
-
-		// The following test block (lines 210-217) is being removed as it's a duplicate
-		// and incorrectly placed/asserted test for handleNpmSearch.
-		// A corrected version exists in the 'handleNpmSearch' describe block.
-		/*
-		test('should handle empty search results', async () => {
-			const query = 'thisisaninvalidpackagename123456789';
-			mockResponses.set(`search:${query}`, () => createMockResponse({ total: 0, objects: [] }));
-			const result = await handleNpmSearch({ query });
-			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
-			expect(parsed.query).toBe(query);
-			expect(parsed.data).toBeUndefined();
-			expect(parsed.message).toContain('Found 0 packages');
-		});
-		*/
 	});
 
 	describe('handleNpmSearch', () => {
 		test('should return search results', async () => {
-			// Mock setup for 'express' search if not covered by default mock
 			mockResponses.set('search:express', () =>
 				createMockResponse({
 					total: 1,
@@ -250,7 +221,7 @@ describe('npm registry handlers', () => {
 			validateToolResponse(result);
 			const parsed = JSON.parse(result.content[0].text as string);
 			expect(parsed.query).toBe('express');
-			expect(parsed.results[0].name).toBe('express'); // Corrected from parsed.data.packages[0].name
+			expect(parsed.results[0].name).toBe('express');
 			expect(parsed.message).toContain('Search completed. Found 1 total packages, returning 1.');
 		});
 
@@ -261,8 +232,8 @@ describe('npm registry handlers', () => {
 			validateToolResponse(result);
 			const parsed = JSON.parse(result.content[0].text as string);
 			expect(parsed.query).toBe(query);
-			expect(parsed.results).toEqual([]); // Expect an empty array for results
-			expect(parsed.message).toContain('Found 0 total packages, returning 0.'); // Corrected message
+			expect(parsed.results).toEqual([]);
+			expect(parsed.message).toContain('Found 0 total packages, returning 0.');
 		});
 	});
 
@@ -338,7 +309,6 @@ describe('npm registry handlers', () => {
 			const parsed = JSON.parse(result.content[0].text as string);
 			expect(result.content[0].isError).toBeUndefined();
 
-			// Adjusted based on consistent stderr for handleNpmDeprecated: "Package input was not a string."
 			expect(parsed.results?.[0]?.package).toBe('unknown_package_input');
 			expect(parsed.results?.[0]?.status).toBe('error');
 			expect(parsed.results?.[0]?.error).toBe('Invalid package input type');
@@ -366,7 +336,6 @@ describe('npm registry handlers', () => {
 			const parsed = JSON.parse(result.content[0].text as string);
 			expect(result.content[0].isError).toBeUndefined();
 
-			// Adjusted based on stderr: "Package input was not a string."
 			expect(parsed.results?.[0]?.package).toBe('unknown_package_input');
 			expect(parsed.results?.[0]?.status).toBe('error');
 			expect(parsed.results?.[0]?.error).toBe('Invalid package input type');
@@ -396,7 +365,6 @@ describe('npm registry handlers', () => {
 			const parsed = JSON.parse(result.content[0].text as string);
 			expect(result.content[0].isError).toBeUndefined();
 
-			// Adjusted based on stderr: "Package input was not a string."
 			expect(parsed.results?.[0]?.package).toBe('unknown_package_input');
 			expect(parsed.results?.[0]?.status).toBe('error');
 			expect(parsed.results?.[0]?.error).toBe('Invalid package input type');
@@ -422,7 +390,6 @@ describe('npm registry handlers', () => {
 			validateToolResponse(result1);
 			const parsedResult1 = JSON.parse(result1.content[0].text as string);
 
-			// Adjusted based on stderr: "Package input was not a string."
 			expect(parsedResult1.results?.[0]?.package).toBe('unknown_package_input');
 			expect(parsedResult1.results?.[0]?.status).toBe('error');
 			expect(parsedResult1.results?.[0]?.error).toBe('Invalid package input type');
@@ -435,7 +402,6 @@ describe('npm registry handlers', () => {
 			validateToolResponse(result2);
 			const parsedResult2 = JSON.parse(result2.content[0].text as string);
 
-			// Adjusted based on stderr: "Package input was not a string."
 			expect(parsedResult2.results?.[0]?.package).toBe('unknown_package_input');
 			expect(parsedResult2.results?.[0]?.status).toBe('error');
 			expect(parsedResult2.results?.[0]?.error).toBe('Invalid package input type');
@@ -450,7 +416,6 @@ describe('npm registry handlers', () => {
 			const parsed = JSON.parse(result.content[0].text as string);
 
 			expect(result.content[0].isError).toBeUndefined();
-			// Adjusted based on stderr for other deprecated tests and this test's specific failure
 			expect(parsed.results?.[0]?.package).toBe('unknown_package_input');
 			expect(parsed.results?.[0]?.status).toBe('error');
 			expect(parsed.results?.[0]?.error).toBe('Invalid package input type');
@@ -616,6 +581,4 @@ describe('npm registry handlers', () => {
 			expect(parsed.results[0].error).toContain('not found or no download data');
 		});
 	});
-
-	// handleNpmLicenseCompatibility tests are in npm-security.test.ts
 });

@@ -301,10 +301,6 @@ describe('npm security handlers', () => {
 			// TODO: Investigate why 'MIT' is not included in uniqueLicensesFound when express is processed with another package.
 			// Current behavior from test log: parsed.analysis.uniqueLicensesFound is ['GPL-3.0']
 			expect(parsed.analysis.uniqueLicensesFound).toEqual(['GPL-3.0']);
-			// expect(parsed.analysis.uniqueLicensesFound).toEqual(
-			// 	expect.arrayContaining(['MIT', 'GPL-3.0']),
-			// );
-			// expect(parsed.analysis.uniqueLicensesFound.length).toBe(2);
 
 			expect(parsed.message).toContain('License compatibility check for 2 package(s)');
 			expect(parsed.analysis.warnings).toEqual(
