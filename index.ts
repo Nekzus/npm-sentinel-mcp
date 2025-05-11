@@ -702,7 +702,6 @@ export async function handleNpmDeps(args: {
 						name = pkgInput;
 					}
 				} else {
-					// Should not happen with current schema, but good for robustness
 					return {
 						package: 'unknown_package_input',
 						status: 'error',
@@ -713,6 +712,23 @@ export async function handleNpmDeps(args: {
 				}
 
 				const packageNameForOutput = version === 'latest' ? name : `${name}@${version}`;
+
+				// Note: The cache key should ideally use the *resolved* version if 'latest' is input.
+				// However, to get the resolved version, we need an API call. For simplicity in this step,
+				// we'll cache based on the input version string. This means 'latest' will be cached as 'latest'.
+				// A more advanced caching would fetch resolved version first if 'latest' is given.
+				const cacheKey = generateCacheKey('handleNpmDeps', name, version);
+				const cachedData = cacheGet<any>(cacheKey);
+
+				if (cachedData) {
+					return {
+						package: cachedData.packageNameForCache || packageNameForOutput, // Use cached name if available
+						status: 'success_cache',
+						error: null,
+						data: cachedData.depData,
+						message: `Dependencies for ${cachedData.packageNameForCache || packageNameForOutput} from cache.`,
+					};
+				}
 
 				try {
 					const response = await fetch(`https://registry.npmjs.org/${name}/${version}`, {
@@ -758,13 +774,17 @@ export async function handleNpmDeps(args: {
 					};
 
 					const actualVersion = rawData.version || version; // Use version from response if available
+					const finalPackageName = `${name}@${actualVersion}`;
+
+					// Store with the actual resolved package name if 'latest' was used
+					cacheSet(cacheKey, { depData, packageNameForCache: finalPackageName }, CACHE_TTL_MEDIUM);
 
 					return {
-						package: `${name}@${actualVersion}`,
+						package: finalPackageName,
 						status: 'success',
 						error: null,
 						data: depData,
-						message: `Dependencies for ${name}@${actualVersion}`,
+						message: `Dependencies for ${finalPackageName}`,
 					};
 				} catch (error) {
 					return {
