@@ -1837,14 +1837,28 @@ export async function handleNpmMaintenance(args: { packages: string[] }): Promis
 					};
 				}
 
+				const cacheKey = generateCacheKey('handleNpmMaintenance', name);
+				const cachedData = cacheGet<any>(cacheKey);
+
+				if (cachedData) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						status: 'success_cache' as const,
+						error: null,
+						data: cachedData,
+						message: `Maintenance score for ${name} (version analyzed: ${cachedData.versionInScore}) from cache.`,
+					};
+				}
+
 				try {
 					const response = await fetch(
 						`https://api.npms.io/v2/package/${encodeURIComponent(name)}`,
 						{
 					headers: {
-						Accept: 'application/json',
-						'User-Agent': 'NPM-Sentinel-MCP',
-					},
+							Accept: 'application/json',
+							'User-Agent': 'NPM-Sentinel-MCP',
+						},
 						},
 					);
 
@@ -1884,6 +1898,8 @@ export async function handleNpmMaintenance(args: { packages: string[] }): Promis
 						versionInScore: collected.metadata.version,
 						maintenanceScore: maintenanceScoreValue,
 					};
+
+					cacheSet(cacheKey, maintenanceData, CACHE_TTL_LONG);
 
 				return {
 						packageInput: pkgInput,
