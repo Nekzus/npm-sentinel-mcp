@@ -29,6 +29,9 @@ A powerful Model Context Protocol (MCP) server that revolutionizes NPM package a
 - Package size analysis
 - Maintenance metrics
 - Real-time package comparisons
+- **Standardized error handling and MCP response formats**
+- **Efficient caching for improved performance and API rate limit management**
+- **Rigorous schema validation and type safety using Zod**
 
 Note: The server provides AI-assisted analysis through MCP integration.
 
@@ -148,6 +151,20 @@ Configuration file locations:
 ```
 
 ## API
+
+The server exposes its tools via the Model Context Protocol. All tools adhere to a standardized response format:
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "string",
+      "isError": boolean // Optional
+    }
+    // ... more content items if necessary
+  ]
+}
+```
 
 ### Resources
 
