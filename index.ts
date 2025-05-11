@@ -1741,62 +1741,133 @@ export async function handleNpmCompare(args: { packages: string[] }): Promise<Ca
 }
 
 // Function to get package quality metrics
-export async function handleNpmQuality(args: { packages: string[] }): Promise<CallToolResult> {
+export async function handleNpmQuality(args: {
+	packages: string[];
+}): Promise<CallToolResult> {
 	try {
-		const results = await Promise.all(
-			args.packages.map(async (pkg) => {
-				const response = await fetch(`https://api.npms.io/v2/package/${encodeURIComponent(pkg)}`, {
-					headers: {
-						Accept: 'application/json',
-						'User-Agent': 'NPM-Sentinel-MCP',
-					},
-				});
-				if (!response.ok) {
-					return { name: pkg, error: `Failed to fetch quality data: ${response.statusText}` };
+		const packagesToProcess = args.packages || [];
+		if (packagesToProcess.length === 0) {
+			throw new Error('No package names provided to fetch quality metrics.');
+		}
+
+		const processedResults = await Promise.all(
+			packagesToProcess.map(async (pkgInput) => {
+				let name = '';
+				if (typeof pkgInput === 'string') {
+					const atIdx = pkgInput.lastIndexOf('@');
+					name = atIdx > 0 ? pkgInput.slice(0, atIdx) : pkgInput; // Version is ignored by npms.io API endpoint for the main query
+				} else {
+					return {
+						packageInput: JSON.stringify(pkgInput),
+						packageName: 'unknown_package_input',
+						status: 'error' as const,
+						error: 'Invalid package input type',
+						data: null,
+						message: 'Package input was not a string.',
+					};
 				}
-				const rawData = await response.json();
 
-				if (!isValidNpmsResponse(rawData)) {
-					return { name: pkg, error: 'Invalid response format from npms.io API' };
+				if (!name) {
+					return {
+						packageInput: pkgInput,
+						packageName: 'empty_package_name',
+						status: 'error' as const,
+						error: 'Empty package name derived from input',
+						data: null,
+						message: 'Package name could not be determined from input.',
+					};
 				}
 
-				const quality = rawData.score.detail.quality;
+				try {
+					const response = await fetch(
+						`https://api.npms.io/v2/package/${encodeURIComponent(name)}`,
+						{
+							headers: {
+								Accept: 'application/json',
+								'User-Agent': 'NPM-Sentinel-MCP',
+							},
+						},
+					);
 
-				return {
-					name: pkg,
-					...NpmQualitySchema.parse({
-						score: Math.round(quality * 100) / 100,
-						tests: 0, // These values are no longer available in the API
-						coverage: 0,
-						linting: 0,
-						types: 0,
-					}),
-				};
+					if (!response.ok) {
+						let errorMsg = `Failed to fetch quality data: ${response.status} ${response.statusText}`;
+						if (response.status === 404) {
+							errorMsg = `Package ${name} not found on npms.io.`;
+						}
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							status: 'error' as const,
+							error: errorMsg,
+							data: null,
+							message: `Could not retrieve quality information for ${name}.`,
+						};
+					}
+
+					const rawData = await response.json();
+
+					if (!isValidNpmsResponse(rawData)) {
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							status: 'error' as const,
+							error: 'Invalid or incomplete response from npms.io API for quality data',
+							data: null,
+							message: `Received malformed quality data for ${name}.`,
+						};
+					}
+
+					const { score, collected, analyzedAt } = rawData;
+					const qualityScore = score.detail.quality;
+
+					const qualityData = {
+						analyzedAt: analyzedAt,
+						versionInScore: collected.metadata.version,
+						qualityScore: qualityScore,
+						// Detailed sub-metrics like tests, coverage, linting, types are no longer directly provided
+						// by the npms.io v2 API in the same way. The overall quality score is the primary metric.
+					};
+
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						status: 'success' as const,
+						error: null,
+						data: qualityData,
+						message: `Successfully fetched quality score for ${name} (version analyzed: ${collected.metadata.version}).`,
+					};
+				} catch (error) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						status: 'error' as const,
+						error: error instanceof Error ? error.message : 'Unknown processing error',
+						data: null,
+						message: `An unexpected error occurred while processing quality for ${name}.`,
+					};
+				}
 			}),
 		);
 
-		let text = '📊 Quality Metrics\n\n';
-		for (const result of results) {
-			if ('error' in result) {
-				text += `❌ ${result.name}: ${result.error}\n\n`;
-				continue;
-			}
+		const finalResponse = {
+			queryPackages: args.packages,
+			results: processedResults,
+		};
 
-			text += `📦 ${result.name}\n`;
-			text += `- Overall Score: ${result.score}\n`;
-			text +=
-				'- Note: Detailed metrics (tests, coverage, linting, types) are no longer provided by the API\n\n';
-		}
-
-		return { content: [{ type: 'text', text }], isError: false };
+		const responseJson = JSON.stringify(finalResponse, null, 2);
+		return { content: [{ type: 'text', text: responseJson }], isError: false };
 	} catch (error) {
+		const errorResponse = JSON.stringify(
+			{
+				queryPackages: args.packages,
+				results: [],
+				error: `General error fetching quality metrics: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			},
+			null,
+			2,
+		);
 		return {
-			content: [
-				{
-					type: 'text',
-					text: `Error fetching quality metrics: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				},
-			],
+			content: [{ type: 'text', text: errorResponse }],
 			isError: true,
 		};
 	}
@@ -1804,52 +1875,127 @@ export async function handleNpmQuality(args: { packages: string[] }): Promise<Ca
 
 export async function handleNpmMaintenance(args: { packages: string[] }): Promise<CallToolResult> {
 	try {
-		const results = await Promise.all(
-			args.packages.map(async (pkg) => {
-				const response = await fetch(`https://api.npms.io/v2/package/${encodeURIComponent(pkg)}`, {
-					headers: {
-						Accept: 'application/json',
-						'User-Agent': 'NPM-Sentinel-MCP',
-					},
-				});
-				if (!response.ok) {
-					return { name: pkg, error: `Failed to fetch maintenance data: ${response.statusText}` };
+		const packagesToProcess = args.packages || [];
+		if (packagesToProcess.length === 0) {
+			throw new Error('No package names provided to fetch maintenance metrics.');
+		}
+
+		const processedResults = await Promise.all(
+			packagesToProcess.map(async (pkgInput) => {
+				let name = '';
+				if (typeof pkgInput === 'string') {
+					const atIdx = pkgInput.lastIndexOf('@');
+					name = atIdx > 0 ? pkgInput.slice(0, atIdx) : pkgInput;
+				} else {
+					return {
+						packageInput: JSON.stringify(pkgInput),
+						packageName: 'unknown_package_input',
+						status: 'error' as const,
+						error: 'Invalid package input type',
+						data: null,
+						message: 'Package input was not a string.',
+					};
 				}
-				const rawData = await response.json();
 
-				if (!isValidNpmsResponse(rawData)) {
-					return { name: pkg, error: 'Invalid response format from npms.io API' };
+				if (!name) {
+					return {
+						packageInput: pkgInput,
+						packageName: 'empty_package_name',
+						status: 'error' as const,
+						error: 'Empty package name derived from input',
+						data: null,
+						message: 'Package name could not be determined from input.',
+					};
 				}
 
-				const maintenance = rawData.score.detail.maintenance;
+				try {
+					const response = await fetch(
+						`https://api.npms.io/v2/package/${encodeURIComponent(name)}`,
+						{
+							headers: {
+								Accept: 'application/json',
+								'User-Agent': 'NPM-Sentinel-MCP',
+							},
+						},
+					);
 
-				return {
-					name: pkg,
-					score: Math.round(maintenance * 100) / 100,
-				};
+					if (!response.ok) {
+						let errorMsg = `Failed to fetch maintenance data: ${response.status} ${response.statusText}`;
+						if (response.status === 404) {
+							errorMsg = `Package ${name} not found on npms.io.`;
+						}
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							status: 'error' as const,
+							error: errorMsg,
+							data: null,
+							message: `Could not retrieve maintenance information for ${name}.`,
+						};
+					}
+
+					const rawData = await response.json();
+
+					if (!isValidNpmsResponse(rawData)) {
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							status: 'error' as const,
+							error: 'Invalid or incomplete response from npms.io API for maintenance data',
+							data: null,
+							message: `Received malformed maintenance data for ${name}.`,
+						};
+					}
+
+					const { score, collected, analyzedAt } = rawData;
+					const maintenanceScoreValue = score.detail.maintenance;
+
+					const maintenanceData = {
+						analyzedAt: analyzedAt,
+						versionInScore: collected.metadata.version,
+						maintenanceScore: maintenanceScoreValue,
+					};
+
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						status: 'success' as const,
+						error: null,
+						data: maintenanceData,
+						message: `Successfully fetched maintenance score for ${name} (version analyzed: ${collected.metadata.version}).`,
+					};
+				} catch (error) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						status: 'error' as const,
+						error: error instanceof Error ? error.message : 'Unknown processing error',
+						data: null,
+						message: `An unexpected error occurred while processing maintenance for ${name}.`,
+					};
+				}
 			}),
 		);
 
-		let text = '🛠️ Maintenance Metrics\n\n';
-		for (const result of results) {
-			if ('error' in result) {
-				text += `❌ ${result.name}: ${result.error}\n\n`;
-				continue;
-			}
+		const finalResponse = {
+			queryPackages: args.packages,
+			results: processedResults,
+		};
 
-			text += `📦 ${result.name}\n`;
-			text += `- Maintenance Score: ${result.score}\n\n`;
-		}
-
-		return { content: [{ type: 'text', text }], isError: false };
+		const responseJson = JSON.stringify(finalResponse, null, 2);
+		return { content: [{ type: 'text', text: responseJson }], isError: false };
 	} catch (error) {
+		const errorResponse = JSON.stringify(
+			{
+				queryPackages: args.packages,
+				results: [],
+				error: `General error fetching maintenance metrics: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			},
+			null,
+			2,
+		);
 		return {
-			content: [
-				{
-					type: 'text',
-					text: `Error fetching maintenance metrics: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				},
-			],
+			content: [{ type: 'text', text: errorResponse }],
 			isError: true,
 		};
 	}
@@ -2954,127 +3100,225 @@ export async function handleNpmChangelogAnalysis(args: {
 	packages: string[];
 }): Promise<CallToolResult> {
 	try {
-		const results = await Promise.all(
-			args.packages.map(async (pkg) => {
-				// First get the package info from npm to find the repository URL
-				const npmResponse = await fetch(`https://registry.npmjs.org/${pkg}`);
-				if (!npmResponse.ok) {
-					throw new Error(`Failed to fetch npm info for ${pkg}: ${npmResponse.statusText}`);
+		const packagesToProcess = args.packages || [];
+		if (packagesToProcess.length === 0) {
+			throw new Error('No package names provided for changelog analysis.');
+		}
+
+		const processedResults = await Promise.all(
+			packagesToProcess.map(async (pkgInput) => {
+				let name = '';
+				let versionQueried: string | undefined = undefined;
+
+				if (typeof pkgInput === 'string') {
+					const atIdx = pkgInput.lastIndexOf('@');
+					if (atIdx > 0) {
+						name = pkgInput.slice(0, atIdx);
+						versionQueried = pkgInput.slice(atIdx + 1);
+					} else {
+						name = pkgInput;
+					}
+				} else {
+					return {
+						packageInput: JSON.stringify(pkgInput),
+						packageName: 'unknown_package_input',
+						versionQueried: versionQueried,
+						status: 'error' as const,
+						error: 'Invalid package input type',
+						data: null,
+						message: 'Package input was not a string.',
+					};
 				}
-				const npmData = await npmResponse.json();
-				if (!isNpmPackageInfo(npmData)) {
-					throw new Error('Invalid package info data received');
+
+				if (!name) {
+					return {
+						packageInput: pkgInput,
+						packageName: 'empty_package_name',
+						versionQueried: versionQueried,
+						status: 'error' as const,
+						error: 'Empty package name derived from input',
+						data: null,
+						message: 'Package name could not be determined from input.',
+					};
 				}
 
-				const repository = npmData.repository?.url;
-				if (!repository) {
-					return { name: pkg, text: `No repository found for package ${pkg}` };
-				}
+				try {
+					const npmResponse = await fetch(`https://registry.npmjs.org/${name}`);
+					if (!npmResponse.ok) {
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							versionQueried: versionQueried,
+							status: 'error' as const,
+							error: `Failed to fetch npm info for ${name}: ${npmResponse.status} ${npmResponse.statusText}`,
+							data: null,
+							message: `Could not retrieve NPM package data for ${name}.`,
+						};
+					}
+					const npmData = await npmResponse.json();
+					if (!isNpmPackageInfo(npmData)) {
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							versionQueried: versionQueried,
+							status: 'error' as const,
+							error: 'Invalid NPM package info data received',
+							data: null,
+							message: `Received malformed NPM package data for ${name}.`,
+						};
+					}
 
-				// Extract GitHub repo info from URL
-				const match = repository.match(/github\.com[:/]([^/]+)\/([^/.]+)/);
-				if (!match) {
-					return { name: pkg, text: `Could not parse GitHub repository URL: ${repository}` };
-				}
+					const repositoryUrl = npmData.repository?.url;
+					if (!repositoryUrl) {
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							versionQueried: versionQueried,
+							status: 'no_repo_found' as const,
+							error: null,
+							data: null,
+							message: `No repository URL found in package data for ${name}.`,
+						};
+					}
 
-				const [, owner, repo] = match;
+					const githubMatch = repositoryUrl.match(/github\.com[:\/]([^\/]+)\/([^\/.]+)/);
+					if (!githubMatch) {
+						return {
+							packageInput: pkgInput,
+							packageName: name,
+							versionQueried: versionQueried,
+							status: 'not_github_repo' as const,
+							error: null,
+							data: { repositoryUrl: repositoryUrl },
+							message: `Repository URL (${repositoryUrl}) is not a standard GitHub URL.`,
+						};
+					}
 
-				// Check common changelog file names
-				const changelogFiles = [
-					'CHANGELOG.md',
-					'changelog.md',
-					'CHANGES.md',
-					'changes.md',
-					'HISTORY.md',
-					'history.md',
-					'NEWS.md',
-					'news.md',
-					'RELEASES.md',
-					'releases.md',
-				];
+					const [, owner, repo] = githubMatch;
+					const repoNameForUrl = repo.replace(/\.git$/, '');
 
-				let changelog = null;
-				for (const file of changelogFiles) {
+					const changelogFiles = [
+						'CHANGELOG.md',
+						'changelog.md',
+						'CHANGES.md',
+						'changes.md',
+						'HISTORY.md',
+						'history.md',
+						'NEWS.md',
+						'news.md',
+						'RELEASES.md',
+						'releases.md',
+					];
+					let changelogContent: string | null = null;
+					let changelogSourceUrl: string | null = null;
+					let hasChangelogFile = false;
+
+					for (const file of changelogFiles) {
+						try {
+							const rawChangelogUrl = `https://raw.githubusercontent.com/${owner}/${repoNameForUrl}/master/${file}`;
+							const response = await fetch(rawChangelogUrl);
+							if (response.ok) {
+								changelogContent = await response.text();
+								changelogSourceUrl = rawChangelogUrl;
+								hasChangelogFile = true;
+								break;
+							}
+						} catch (error) {
+							console.debug(`Error fetching changelog file ${file} for ${name}: ${error}`);
+						}
+					}
+
+					let githubReleases: any[] = [];
 					try {
-						const response = await fetch(
-							`https://raw.githubusercontent.com/${owner}/${repo}/master/${file}`,
+						const githubApiResponse = await fetch(
+							`https://api.github.com/repos/${owner}/${repoNameForUrl}/releases?per_page=5`,
+							{
+								headers: {
+									Accept: 'application/vnd.github.v3+json',
+									'User-Agent': 'NPM-Sentinel-MCP',
+								},
+							},
 						);
-						if (response.ok) {
-							changelog = await response.text();
-							break;
+						if (githubApiResponse.ok) {
+							const releasesData = (await githubApiResponse.json()) as GithubRelease[];
+							githubReleases = releasesData.map((r) => ({
+								tag_name: r.tag_name || null,
+								name: r.name || null,
+								published_at: r.published_at || null,
+							}));
 						}
 					} catch (error) {
-						console.error(`Error fetching ${file}:`, error);
+						console.debug(`Error fetching GitHub releases for ${name}: ${error}`);
 					}
-				}
 
-				// Get release information from GitHub API
-				const githubResponse = await fetch(
-					`https://api.github.com/repos/${owner}/${repo}/releases`,
-					{
-						headers: {
-							Accept: 'application/vnd.github.v3+json',
-							'User-Agent': 'MCP-Server',
+					const versions = Object.keys(npmData.versions || {});
+					const npmVersionHistory = {
+						totalVersions: versions.length,
+						latestVersion:
+							npmData['dist-tags']?.latest || (versions.length > 0 ? versions.sort().pop() : null),
+						firstVersion: versions.length > 0 ? versions.sort()[0] : null,
+					};
+
+					const status =
+						changelogContent || githubReleases.length > 0 ? 'success' : 'no_changelog_found';
+					const message =
+						status === 'success'
+							? `Changelog and release information retrieved for ${name}.`
+							: status === 'no_changelog_found'
+								? `No changelog file or GitHub releases found for ${name}.`
+								: `Changelog analysis for ${name}.`;
+
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						versionQueried: versionQueried,
+						status: status,
+						error: null,
+						data: {
+							repositoryUrl: repositoryUrl,
+							changelogSourceUrl: changelogSourceUrl,
+							changelogContent: changelogContent
+								? `${changelogContent.split('\n').slice(0, 50).join('\n')}...`
+								: null, // First 50 lines
+							hasChangelogFile: hasChangelogFile,
+							githubReleases: githubReleases,
+							npmVersionHistory: npmVersionHistory,
 						},
-					},
-				);
-
-				const releases = (githubResponse.ok ? await githubResponse.json() : []) as GithubRelease[];
-
-				let text = `📋 Changelog Analysis for ${pkg}\n\n`;
-
-				// Analyze version history from npm
-				const versions = Object.keys(npmData.versions || {}).sort((a, b) => {
-					const [aMajor = 0, aMinor = 0] = a.split('.').map(Number);
-					const [bMajor = 0, bMinor = 0] = b.split('.').map(Number);
-					return bMajor - aMajor || bMinor - aMinor;
-				});
-
-				text += '📦 Version History:\n';
-				text += `• Total versions: ${versions.length}\n`;
-				text += `• Latest version: ${versions[0]}\n`;
-				text += `• First version: ${versions[versions.length - 1]}\n\n`;
-
-				if (changelog) {
-					text += '📝 Changelog found!\n\n';
-					// Extract and analyze the last few versions from changelog
-					const recentChanges = changelog.split('\n').slice(0, 20).join('\n');
-					text += `Recent changes:\n${recentChanges}\n...\n\n`;
-				} else {
-					text += '⚠️ No changelog file found in repository root\n\n';
+						message: message,
+					};
+				} catch (error) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						versionQueried: versionQueried,
+						status: 'error' as const,
+						error: error instanceof Error ? error.message : 'Unknown processing error',
+						data: null,
+						message: `An unexpected error occurred while analyzing changelog for ${name}.`,
+					};
 				}
-
-				if (releases.length > 0) {
-					text += '🚀 Recent GitHub Releases:\n\n';
-					for (const release of releases.slice(0, 5)) {
-						text += `${release.tag_name || 'No tag'}\n`;
-						if (release.name) text += `Title: ${release.name}\n`;
-						if (release.published_at)
-							text += `Published: ${new Date(release.published_at).toLocaleDateString()}\n`;
-						text += '\n';
-					}
-				} else {
-					text += 'ℹ️ No GitHub releases found\n';
-				}
-
-				return { name: pkg, text };
 			}),
 		);
 
-		let text = '';
-		for (const result of results) {
-			text += result.text;
-		}
+		const finalResponse = {
+			queryPackages: args.packages,
+			results: processedResults,
+		};
 
-		return { content: [{ type: 'text', text }], isError: false };
+		const responseJson = JSON.stringify(finalResponse, null, 2);
+		return { content: [{ type: 'text', text: responseJson }], isError: false };
 	} catch (error) {
+		const errorResponse = JSON.stringify(
+			{
+				queryPackages: args.packages,
+				results: [],
+				error: `General error analyzing changelogs: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			},
+			null,
+			2,
+		);
 		return {
-			content: [
-				{
-					type: 'text',
-					text: `Error analyzing changelog: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				},
-			],
+			content: [{ type: 'text', text: errorResponse }],
 			isError: true,
 		};
 	}
@@ -3082,82 +3326,182 @@ export async function handleNpmChangelogAnalysis(args: {
 
 export async function handleNpmAlternatives(args: { packages: string[] }): Promise<CallToolResult> {
 	try {
-		const results = await Promise.all(
-			args.packages.map(async (pkg) => {
-				const response = await fetch(
-					`https://registry.npmjs.org/-/v1/search?text=keywords:${pkg}&size=10`,
-				);
-				if (!response.ok) {
-					throw new Error(`Failed to search for alternatives: ${response.statusText}`);
+		const packagesToProcess = args.packages || [];
+		if (packagesToProcess.length === 0) {
+			throw new Error('No package names provided to find alternatives.');
+		}
+
+		const processedResults = await Promise.all(
+			packagesToProcess.map(async (pkgInput) => {
+				let originalPackageName = '';
+				let versionQueried: string | undefined = undefined;
+
+				if (typeof pkgInput === 'string') {
+					const atIdx = pkgInput.lastIndexOf('@');
+					if (atIdx > 0) {
+						originalPackageName = pkgInput.slice(0, atIdx);
+						versionQueried = pkgInput.slice(atIdx + 1); // Version is not used for search query but recorded
+					} else {
+						originalPackageName = pkgInput;
+					}
+				} else {
+					return {
+						packageInput: JSON.stringify(pkgInput),
+						packageName: 'unknown_package_input',
+						status: 'error' as const,
+						error: 'Invalid package input type',
+						data: null,
+						message: 'Package input was not a string.',
+					};
 				}
 
-				const data = (await response.json()) as NpmSearchResponse;
-				const alternatives = data.objects;
+				if (!originalPackageName) {
+					return {
+						packageInput: pkgInput,
+						packageName: 'empty_package_name',
+						status: 'error' as const,
+						error: 'Empty package name derived from input',
+						data: null,
+						message: 'Package name could not be determined from input.',
+					};
+				}
 
-				const downloadCounts = await Promise.all(
-					alternatives.map(async (alt) => {
-						try {
-							const response = await fetch(
-								`https://api.npmjs.org/downloads/point/last-month/${alt.package.name}`,
-							);
-							if (!response.ok) return 0;
+				try {
+					// Fetch alternatives using keywords of the original package (or the package name itself as a keyword)
+					// For simplicity, we'll use the package name as the primary keyword query
+					const searchResponse = await fetch(
+						`https://registry.npmjs.org/-/v1/search?text=keywords:${encodeURIComponent(originalPackageName)}&size=10`,
+					);
+					if (!searchResponse.ok) {
+						return {
+							packageInput: pkgInput,
+							packageName: originalPackageName,
+							status: 'error' as const,
+							error: `Failed to search for alternatives: ${searchResponse.status} ${searchResponse.statusText}`,
+							data: null,
+							message: 'Could not perform search for alternatives.',
+						};
+					}
 
-							const downloadData = (await response.json()) as DownloadCount;
-							return downloadData.downloads;
-						} catch (error) {
-							console.error(`Error fetching download count for ${alt.package.name}:`, error);
-							return 0;
+					const searchData = (await searchResponse.json()) as NpmSearchResponse;
+					const alternativePackagesRaw = searchData.objects || [];
+
+					// Fetch download count for the original package
+					let originalPackageDownloads = 0;
+					try {
+						const dlResponse = await fetch(
+							`https://api.npmjs.org/downloads/point/last-month/${originalPackageName}`,
+						);
+						if (dlResponse.ok) {
+							originalPackageDownloads =
+								((await dlResponse.json()) as DownloadCount).downloads || 0;
 						}
-					}),
-				);
+					} catch (e) {
+						console.debug(
+							`Failed to fetch downloads for original package ${originalPackageName}: ${e}`,
+						);
+					}
 
-				// Get original package downloads for comparison
-				const originalDownloads = await fetch(
-					`https://api.npmjs.org/downloads/point/last-month/${pkg}`,
-				)
-					.then((res) => res.json() as Promise<DownloadCount>)
-					.then((data) => data.downloads)
-					.catch(() => 0);
+					// Placeholder for keywords for the original package - this might require another fetch or be part of initial data if available
+					const originalPackageKeywords =
+						alternativePackagesRaw.find((p) => p.package.name === originalPackageName)?.package
+							.keywords || [];
 
-				let text = `🔄 Alternative Packages to ${pkg}\n\n`;
-				text += 'Original package:\n';
-				text += `📦 ${pkg}\n`;
-				text += `Downloads: ${originalDownloads.toLocaleString()}/month\n`;
-				text += `Keywords: ${alternatives[0].package.keywords?.join(', ')}\n\n`;
-				text += 'Alternative packages found:\n\n';
+					const originalPackageStats = {
+						name: originalPackageName,
+						monthlyDownloads: originalPackageDownloads,
+						keywords: originalPackageKeywords,
+					};
 
-				alternatives.forEach((alt, index) => {
-					const downloads = downloadCounts[index];
-					const score = alt.score.final;
+					if (
+						alternativePackagesRaw.length === 0 ||
+						(alternativePackagesRaw.length === 1 &&
+							alternativePackagesRaw[0].package.name === originalPackageName)
+					) {
+						return {
+							packageInput: pkgInput,
+							packageName: originalPackageName,
+							status: 'no_alternatives_found' as const,
+							error: null,
+							data: { originalPackageStats, alternatives: [] },
+							message: `No significant alternatives found for ${originalPackageName} based on keyword search.`,
+						};
+					}
 
-					text += `${index + 1}. 📦 ${alt.package.name}\n`;
-					if (alt.package.description) text += `   ${alt.package.description}\n`;
-					text += `   Downloads: ${downloads.toLocaleString()}/month\n`;
-					text += `   Score: ${(score * 100).toFixed(0)}%\n`;
-					if (alt.package.links?.repository) text += `   Repo: ${alt.package.links.repository}\n`;
-					if (alt.package.keywords?.length)
-						text += `   Keywords: ${alt.package.keywords.join(', ')}\n`;
-					text += '\n';
-				});
+					const alternativesData = await Promise.all(
+						alternativePackagesRaw
+							.filter((alt) => alt.package.name !== originalPackageName) // Exclude the original package itself
+							.slice(0, 5) // Limit to top 5 alternatives
+							.map(async (alt) => {
+								let altDownloads = 0;
+								try {
+									const altDlResponse = await fetch(
+										`https://api.npmjs.org/downloads/point/last-month/${alt.package.name}`,
+									);
+									if (altDlResponse.ok) {
+										altDownloads = ((await altDlResponse.json()) as DownloadCount).downloads || 0;
+									}
+								} catch (e) {
+									console.debug(
+										`Failed to fetch downloads for alternative ${alt.package.name}: ${e}`,
+									);
+								}
 
-				return { name: pkg, text };
+								return {
+									name: alt.package.name,
+									description: alt.package.description || null,
+									version: alt.package.version,
+									monthlyDownloads: altDownloads,
+									score: alt.score.final,
+									repositoryUrl: alt.package.links?.repository || null,
+									keywords: alt.package.keywords || [],
+								};
+							}),
+					);
+
+					return {
+						packageInput: pkgInput,
+						packageName: originalPackageName,
+						status: 'success' as const,
+						error: null,
+						data: {
+							originalPackageStats: originalPackageStats,
+							alternatives: alternativesData,
+						},
+						message: `Found ${alternativesData.length} alternative(s) for ${originalPackageName}.`,
+					};
+				} catch (error) {
+					return {
+						packageInput: pkgInput,
+						packageName: originalPackageName,
+						status: 'error' as const,
+						error: error instanceof Error ? error.message : 'Unknown processing error',
+						data: null,
+						message: `An unexpected error occurred while finding alternatives for ${originalPackageName}.`,
+					};
+				}
 			}),
 		);
 
-		let text = '';
-		for (const result of results) {
-			text += result.text;
-		}
+		const finalResponse = {
+			queryPackages: args.packages,
+			results: processedResults,
+		};
 
-		return { content: [{ type: 'text', text }], isError: false };
+		const responseJson = JSON.stringify(finalResponse, null, 2);
+		return { content: [{ type: 'text', text: responseJson }], isError: false };
 	} catch (error) {
+		const errorResponse = JSON.stringify(
+			{
+				queryPackages: args.packages,
+				results: [],
+				error: `General error finding alternatives: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			},
+			null,
+			2,
+		);
 		return {
-			content: [
-				{
-					type: 'text',
-					text: `Error finding alternatives: ${error instanceof Error ? error.message : 'Unknown error'}`,
-				},
-			],
+			content: [{ type: 'text', text: errorResponse }],
 			isError: true,
 		};
 	}
