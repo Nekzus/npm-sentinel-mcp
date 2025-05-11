@@ -1691,6 +1691,20 @@ export async function handleNpmQuality(args: {
 					};
 				}
 
+				const cacheKey = generateCacheKey('handleNpmQuality', name);
+				const cachedData = cacheGet<any>(cacheKey);
+
+				if (cachedData) {
+					return {
+						packageInput: pkgInput,
+						packageName: name, // Or cachedData.packageName if stored differently
+						status: 'success_cache' as const,
+						error: null,
+						data: cachedData,
+						message: `Quality score for ${name} (version analyzed: ${cachedData.versionInScore}) from cache.`,
+					};
+				}
+
 				try {
 					const response = await fetch(
 						`https://api.npms.io/v2/package/${encodeURIComponent(name)}`,
@@ -1740,6 +1754,8 @@ export async function handleNpmQuality(args: {
 						// Detailed sub-metrics like tests, coverage, linting, types are no longer directly provided
 						// by the npms.io v2 API in the same way. The overall quality score is the primary metric.
 					};
+
+					cacheSet(cacheKey, qualityData, CACHE_TTL_LONG);
 
 				return {
 						packageInput: pkgInput,
