@@ -6,6 +6,55 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import fetch from 'node-fetch';
 import { z } from 'zod';
 
+// Cache configuration
+const CACHE_TTL_SHORT = 15 * 60 * 1000; // 15 minutes
+const CACHE_TTL_MEDIUM = 60 * 60 * 1000; // 1 hour
+const CACHE_TTL_LONG = 6 * 60 * 60 * 1000; // 6 hours
+const CACHE_TTL_VERY_LONG = 24 * 60 * 60 * 1000; // 24 hours
+const MAX_CACHE_SIZE = 500; // Max number of items in cache
+
+interface CacheEntry<T> {
+	data: T;
+	expiresAt: number;
+}
+
+const apiCache = new Map<string, CacheEntry<any>>();
+
+function generateCacheKey(
+	toolName: string,
+	...args: (string | number | boolean | undefined | null)[]
+): string {
+	// Simple key generation, ensure consistent order and stringification of args
+	return `${toolName}:${args.map((arg) => String(arg)).join(':')}`;
+}
+
+function cacheGet<T>(key: string): T | undefined {
+	const entry = apiCache.get(key);
+	if (entry && entry.expiresAt > Date.now()) {
+		return entry.data as T;
+	}
+	if (entry && entry.expiresAt <= Date.now()) {
+		apiCache.delete(key); // Remove stale entry
+	}
+	return undefined;
+}
+
+function cacheSet<T>(key: string, value: T, ttlMilliseconds: number): void {
+	if (ttlMilliseconds <= 0) return; // Do not cache if TTL is zero or negative
+
+	const expiresAt = Date.now() + ttlMilliseconds;
+	apiCache.set(key, { data: value, expiresAt });
+
+	// Basic FIFO eviction strategy if cache exceeds max size
+	if (apiCache.size > MAX_CACHE_SIZE) {
+		// To make it FIFO, we need to ensure Map iteration order is insertion order (which it is)
+		const oldestKey = apiCache.keys().next().value;
+		if (oldestKey) {
+			apiCache.delete(oldestKey);
+		}
+	}
+}
+
 // Zod schemas for npm package data
 export const NpmMaintainerSchema = z
 	.object({
@@ -335,20 +384,17 @@ export async function handleNpmVersions(args: {
 		const processedResults = await Promise.all(
 			packagesToProcess.map(async (pkgInput) => {
 				let name = '';
-				// Version from input is not directly used to filter, but can be reported
-				// let version: string | undefined = undefined;
 
 				if (typeof pkgInput === 'string') {
 					const atIdx = pkgInput.lastIndexOf('@');
 					if (atIdx > 0) {
 						name = pkgInput.slice(0, atIdx);
-						// version = pkgInput.slice(atIdx + 1); // We don't need to store version for this tool's core logic
 					} else {
 						name = pkgInput;
 					}
 				} else {
 					return {
-						packageInput: JSON.stringify(pkgInput), // Handle non-string input gracefully
+						packageInput: JSON.stringify(pkgInput),
 						packageName: 'unknown_package_input',
 						status: 'error',
 						error: 'Invalid package input type',
@@ -358,7 +404,6 @@ export async function handleNpmVersions(args: {
 				}
 
 				if (!name) {
-					// Should not happen if pkgInput is a non-empty string
 					return {
 						packageInput: pkgInput,
 						packageName: 'empty_package_name',
@@ -366,6 +411,20 @@ export async function handleNpmVersions(args: {
 						error: 'Empty package name derived from input',
 						data: null,
 						message: 'Package name could not be determined from input.',
+					};
+				}
+
+				const cacheKey = generateCacheKey('handleNpmVersions', name);
+				const cachedData = cacheGet<any>(cacheKey); // Using any for the diverse structure from this endpoint
+
+				if (cachedData) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						status: 'success_cache',
+						error: null,
+						data: cachedData,
+						message: `Successfully fetched versions for ${name} from cache.`,
 					};
 				}
 
@@ -404,16 +463,20 @@ export async function handleNpmVersions(args: {
 					const tags = data['dist-tags'] || {};
 					const latestVersionTag = tags.latest || null;
 
+					const resultData = {
+						allVersions,
+						tags,
+						latestVersionTag,
+					};
+
+					cacheSet(cacheKey, resultData, CACHE_TTL_MEDIUM);
+
 					return {
 						packageInput: pkgInput,
 						packageName: name,
 						status: 'success',
 						error: null,
-						data: {
-							allVersions,
-							tags,
-							latestVersionTag,
-						},
+						data: resultData,
 						message: `Successfully fetched versions for ${name}.`,
 					};
 				} catch (error) {
