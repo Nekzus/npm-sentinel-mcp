@@ -2573,6 +2573,22 @@ export async function handleNpmLicenseCompatibility(args: {
 					};
 				}
 
+				const cacheKey = generateCacheKey('npmLicenseInfoForCompatibility', name, versionTag);
+				const cachedLicenseData = cacheGet<{ license: string; versionFetched: string }>(cacheKey);
+
+				if (cachedLicenseData) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						versionQueried: versionTag,
+						versionFetched: cachedLicenseData.versionFetched,
+						status: 'success_cache' as const,
+						error: null,
+						data: { license: cachedLicenseData.license },
+						message: `License info for ${name}@${cachedLicenseData.versionFetched} from cache.`,
+					};
+				}
+
 				try {
 					const response = await fetch(`https://registry.npmjs.org/${name}/${versionTag}`);
 				if (!response.ok) {
@@ -2604,6 +2620,12 @@ export async function handleNpmLicenseCompatibility(args: {
 						};
 					}
 
+					const licenseInfoToCache = {
+						license: versionData.license || 'UNKNOWN', // Default to UNKNOWN if null/undefined
+						versionFetched: versionData.version,
+					};
+					cacheSet(cacheKey, licenseInfoToCache, CACHE_TTL_VERY_LONG);
+
 					return {
 						packageInput: pkgInput,
 						packageName: name,
@@ -2614,6 +2636,7 @@ export async function handleNpmLicenseCompatibility(args: {
 						data: {
 							license: versionData.license || 'UNKNOWN', // Default to UNKNOWN if null/undefined
 						},
+						message: `Successfully fetched license info for ${name}@${versionData.version}.`,
 					};
 				} catch (error) {
 					return {
