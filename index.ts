@@ -566,6 +566,21 @@ export async function handleNpmLatest(args: {
 					};
 				}
 
+				const cacheKey = generateCacheKey('handleNpmLatest', name, versionTag);
+				const cachedData = cacheGet<any>(cacheKey); // Using any for the diverse structure from this endpoint
+
+				if (cachedData) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						versionQueried: versionTag,
+						status: 'success_cache',
+						error: null,
+						data: cachedData,
+						message: `Successfully fetched details for ${name}@${versionTag} from cache.`,
+					};
+				}
+
 				try {
 					const response = await fetch(`https://registry.npmjs.org/${name}/${versionTag}`, {
 						headers: {
@@ -620,6 +635,8 @@ export async function handleNpmLatest(args: {
 						dist: data.dist || null,
 						types: data.types || data.typings || null,
 					};
+
+					cacheSet(cacheKey, versionData, CACHE_TTL_MEDIUM);
 
 					return {
 						packageInput: pkgInput,
