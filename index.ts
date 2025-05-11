@@ -2115,6 +2115,20 @@ export async function handleNpmScore(args: { packages: string[] }): Promise<Call
 					};
 				}
 
+				const cacheKey = generateCacheKey('handleNpmScore', name);
+				const cachedData = cacheGet<any>(cacheKey);
+
+				if (cachedData) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						status: 'success_cache' as const,
+						error: null,
+						data: cachedData,
+						message: `Score data for ${name} (version analyzed: ${cachedData.versionInScore}) from cache.`,
+					};
+				}
+
 				try {
 					const response = await fetch(
 						`https://api.npms.io/v2/package/${encodeURIComponent(name)}`,
@@ -2195,12 +2209,15 @@ export async function handleNpmScore(args: { packages: string[] }): Promise<Call
 							: null,
 					};
 
+					cacheSet(cacheKey, scoreData, CACHE_TTL_LONG);
+
 				return {
 						packageInput: pkgInput,
 						packageName: name,
 						status: 'success' as const,
 						error: null,
 						data: scoreData,
+						message: `Successfully fetched score data for ${name} (version analyzed: ${collected.metadata.version}).`,
 					};
 				} catch (error) {
 					return {
