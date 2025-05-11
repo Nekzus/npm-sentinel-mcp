@@ -1,7 +1,7 @@
 # NPM Sentinel MCP Server - Full Documentation
 
 ## Protocol Specification
-Version: 2025-03-26
+Version: 2025-05-11
 Transport: stdio
 Features: resources, tools, error handling
 

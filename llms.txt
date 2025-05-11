@@ -1,5 +1,5 @@
 # NPM Sentinel MCP Server
-Protocol Version: 2025-03-26
+Protocol Version: 2025-05-11
 Transport: stdio
 Features: resources, tools, websocket
 Storage: ephemeral
