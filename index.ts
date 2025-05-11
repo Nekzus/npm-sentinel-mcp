@@ -3414,7 +3414,7 @@ export async function handleNpmAlternatives(args: { packages: string[] }): Promi
 					const atIdx = pkgInput.lastIndexOf('@');
 					if (atIdx > 0) {
 						originalPackageName = pkgInput.slice(0, atIdx);
-						versionQueried = pkgInput.slice(atIdx + 1); // Version is not used for search query but recorded
+						versionQueried = pkgInput.slice(atIdx + 1);
 					} else {
 						originalPackageName = pkgInput;
 					}
@@ -3440,14 +3440,28 @@ export async function handleNpmAlternatives(args: { packages: string[] }): Promi
 					};
 				}
 
+				const cacheKey = generateCacheKey('handleNpmAlternatives', originalPackageName);
+				const cachedResult = cacheGet<any>(cacheKey); // Expects the full result object
+
+				if (cachedResult) {
+					return {
+						...cachedResult,
+						packageInput: pkgInput, // current input context
+						packageName: originalPackageName, // current name context
+						// versionQueried is part of cachedResult.data or similar if stored, or add if needed
+						status: `${cachedResult.status}_cache` as const,
+						message: `${cachedResult.message} (from cache)`,
+					};
+				}
+
 				try {
-					// Fetch alternatives using keywords of the original package (or the package name itself as a keyword)
-					// For simplicity, we'll use the package name as the primary keyword query
 					const searchResponse = await fetch(
-						`https://registry.npmjs.org/-/v1/search?text=keywords:${encodeURIComponent(originalPackageName)}&size=10`,
+						`https://registry.npmjs.org/-/v1/search?text=keywords:${encodeURIComponent(
+							originalPackageName,
+						)}&size=10`,
 					);
 					if (!searchResponse.ok) {
-						return {
+						const errorResult = {
 							packageInput: pkgInput,
 							packageName: originalPackageName,
 							status: 'error' as const,
@@ -3455,12 +3469,12 @@ export async function handleNpmAlternatives(args: { packages: string[] }): Promi
 							data: null,
 							message: 'Could not perform search for alternatives.',
 						};
+						return errorResult; // Do not cache API errors for search
 					}
 
 					const searchData = (await searchResponse.json()) as NpmSearchResponse;
 					const alternativePackagesRaw = searchData.objects || [];
 
-					// Fetch download count for the original package
 					let originalPackageDownloads = 0;
 					try {
 						const dlResponse = await fetch(
@@ -3476,7 +3490,6 @@ export async function handleNpmAlternatives(args: { packages: string[] }): Promi
 						);
 					}
 
-					// Placeholder for keywords for the original package - this might require another fetch or be part of initial data if available
 					const originalPackageKeywords =
 						alternativePackagesRaw.find((p) => p.package.name === originalPackageName)?.package
 							.keywords || [];
@@ -3492,7 +3505,7 @@ export async function handleNpmAlternatives(args: { packages: string[] }): Promi
 						(alternativePackagesRaw.length === 1 &&
 							alternativePackagesRaw[0].package.name === originalPackageName)
 					) {
-						return {
+						const resultNoAlternatives = {
 							packageInput: pkgInput,
 							packageName: originalPackageName,
 							status: 'no_alternatives_found' as const,
@@ -3500,12 +3513,14 @@ export async function handleNpmAlternatives(args: { packages: string[] }): Promi
 							data: { originalPackageStats, alternatives: [] },
 							message: `No significant alternatives found for ${originalPackageName} based on keyword search.`,
 						};
+						cacheSet(cacheKey, resultNoAlternatives, CACHE_TTL_MEDIUM);
+						return resultNoAlternatives;
 					}
 
 					const alternativesData = await Promise.all(
 						alternativePackagesRaw
-							.filter((alt) => alt.package.name !== originalPackageName) // Exclude the original package itself
-							.slice(0, 5) // Limit to top 5 alternatives
+							.filter((alt) => alt.package.name !== originalPackageName)
+							.slice(0, 5)
 							.map(async (alt) => {
 								let altDownloads = 0;
 								try {
@@ -3530,10 +3545,10 @@ export async function handleNpmAlternatives(args: { packages: string[] }): Promi
 									repositoryUrl: alt.package.links?.repository || null,
 									keywords: alt.package.keywords || [],
 								};
-			}),
-		);
+							}),
+					);
 
-					return {
+					const successResult = {
 						packageInput: pkgInput,
 						packageName: originalPackageName,
 						status: 'success' as const,
@@ -3544,8 +3559,10 @@ export async function handleNpmAlternatives(args: { packages: string[] }): Promi
 						},
 						message: `Found ${alternativesData.length} alternative(s) for ${originalPackageName}.`,
 					};
+					cacheSet(cacheKey, successResult, CACHE_TTL_MEDIUM);
+					return successResult;
 				} catch (error) {
-					return {
+					const errorResult = {
 						packageInput: pkgInput,
 						packageName: originalPackageName,
 						status: 'error' as const,
@@ -3553,6 +3570,7 @@ export async function handleNpmAlternatives(args: { packages: string[] }): Promi
 						data: null,
 						message: `An unexpected error occurred while finding alternatives for ${originalPackageName}.`,
 					};
+					return errorResult; // Do not cache general errors
 				}
 			}),
 		);
