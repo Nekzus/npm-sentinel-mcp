@@ -250,6 +250,7 @@ export const NpmSearchResultSchema = z
 					publisher: z
 						.object({
 							username: z.string(),
+							email: z.string().optional(),
 						})
 						.optional(),
 					links: z
@@ -257,8 +258,10 @@ export const NpmSearchResultSchema = z
 							npm: z.string().optional(),
 							homepage: z.string().optional(),
 							repository: z.string().optional(),
+							bugs: z.string().optional(),
 						})
 						.optional(),
+					date: z.string().optional(),
 				}),
 				score: z.object({
 					final: z.number(),
@@ -271,7 +274,7 @@ export const NpmSearchResultSchema = z
 				searchScore: z.number(),
 			}),
 		),
-		total: z.number(),
+		total: z.number(), // total is a sibling of objects
 	})
 	.passthrough();
 
@@ -2280,59 +2283,85 @@ export async function handleNpmSearch(args: {
 	limit?: number;
 }): Promise<CallToolResult> {
 	try {
+		const query = args.query;
 		const limit = args.limit || 10;
+		if (limit < 1 || limit > 250) {
+			// NPM API search limit is typically 250
+			throw new Error('Limit must be between 1 and 250.');
+		}
+
 		const response = await fetch(
-			`https://registry.npmjs.org/-/v1/search?text=${encodeURIComponent(args.query)}&size=${limit}`,
+			`https://registry.npmjs.org/-/v1/search?text=${encodeURIComponent(query)}&size=${limit}`,
 		);
 		if (!response.ok) {
-			throw new Error(`Failed to search packages: ${response.statusText}`);
+			throw new Error(`Failed to search packages: ${response.status} ${response.statusText}`);
 		}
 
 		const rawData = await response.json();
 		const parseResult = NpmSearchResultSchema.safeParse(rawData);
 		if (!parseResult.success) {
-			throw new Error('Invalid search results data received');
+			console.error('Invalid search results data received:', parseResult.error.issues);
+			throw new Error('Invalid search results data received from NPM registry.');
 		}
 
 		const { objects, total } = parseResult.data;
-		let text = `🔍 Search results for "${args.query}"\n`;
-		text += `Found ${total.toLocaleString()} packages (showing top ${limit})\n\n`;
 
-		for (const result of objects) {
+		const resultsData = objects.map((result) => {
 			const pkg = result.package;
-			const score = result.score;
-
-			text += `📦 ${pkg.name}@${pkg.version}\n`;
-			if (pkg.description) text += `${pkg.description}\n`;
-
-			// Normalize and format score to ensure it's between 0 and 1
-			const normalizedScore = Math.min(1, score.final / 100);
-			const finalScore = normalizedScore.toFixed(2);
-			text += `Score: ${finalScore} (${(normalizedScore * 100).toFixed(0)}%)\n`;
-
-			if (pkg.keywords && pkg.keywords.length > 0) {
-				text += `Keywords: ${pkg.keywords.join(', ')}\n`;
-			}
-
-			if (pkg.links) {
-				text += 'Links:\n';
-				if (pkg.links.npm) text += `• NPM: ${pkg.links.npm}\n`;
-				if (pkg.links.homepage) text += `• Homepage: ${pkg.links.homepage}\n`;
-				if (pkg.links.repository) text += `• Repository: ${pkg.links.repository}\n`;
-			}
-
-			text += '\n';
-		}
-
-		return { content: [{ type: 'text', text }], isError: false };
-	} catch (error) {
-		return {
-			content: [
-				{
-					type: 'text',
-					text: `Error searching packages: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			const scoreDetail = result.score.detail;
+			return {
+				name: pkg.name,
+				version: pkg.version,
+				description: pkg.description || null,
+				keywords: pkg.keywords || [],
+				publisher: pkg.publisher
+					? { username: pkg.publisher.username, email: (pkg.publisher as any).email || null }
+					: null, // publisher might not have email
+				date: pkg.date || null,
+				links: {
+					npm: pkg.links?.npm || null,
+					homepage: pkg.links?.homepage || null,
+					repository: pkg.links?.repository || null,
+					bugs: pkg.links?.bugs || null, // NpmSearchResultSchema needs to be updated if bugs is not there
 				},
-			],
+				score: {
+					final: result.score.final,
+					detail: {
+						quality: scoreDetail.quality,
+						popularity: scoreDetail.popularity,
+						maintenance: scoreDetail.maintenance,
+					},
+				},
+				searchScore: result.searchScore,
+			};
+		});
+
+		const finalResponse = {
+			query: query,
+			limitUsed: limit,
+			totalResults: total,
+			resultsCount: resultsData.length,
+			results: resultsData,
+			message: `Search completed. Found ${total} total packages, returning ${resultsData.length}.`,
+		};
+
+		const responseJson = JSON.stringify(finalResponse, null, 2);
+		return { content: [{ type: 'text', text: responseJson }], isError: false };
+	} catch (error) {
+		const errorResponse = JSON.stringify(
+			{
+				query: args.query,
+				limitUsed: args.limit || 10,
+				totalResults: 0,
+				resultsCount: 0,
+				results: [],
+				error: `Error searching packages: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			},
+			null,
+			2,
+		);
+		return {
+			content: [{ type: 'text', text: errorResponse }],
 			isError: true,
 		};
 	}
