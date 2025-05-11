@@ -1981,6 +1981,20 @@ export async function handleNpmMaintainers(args: {
 					};
 				}
 
+				const cacheKey = generateCacheKey('handleNpmMaintainers', name);
+				const cachedData = cacheGet<any>(cacheKey);
+
+				if (cachedData) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						status: 'success_cache' as const,
+						error: null,
+						data: cachedData,
+						message: `Maintainer information for ${name} from cache.`,
+					};
+				}
+
 				try {
 					const response = await fetch(`https://registry.npmjs.org/${encodeURIComponent(name)}`);
 
@@ -2016,15 +2030,20 @@ export async function handleNpmMaintainers(args: {
 						url: m.url || null, // NpmMaintainerSchema has url optional
 					}));
 
+					const maintainersData = {
+						maintainers: maintainers,
+						maintainersCount: maintainers.length,
+					};
+
+					cacheSet(cacheKey, maintainersData, CACHE_TTL_VERY_LONG);
+
 		return {
 						packageInput: pkgInput,
 						packageName: name,
 						status: 'success' as const,
 						error: null,
-						data: {
-							maintainers: maintainers,
-							maintainersCount: maintainers.length,
-						},
+						data: maintainersData,
+						message: `Successfully fetched maintainer information for ${name}.`,
 		};
 	} catch (error) {
 		return {
