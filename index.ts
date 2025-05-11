@@ -1136,6 +1136,20 @@ export async function handleNpmVulnerabilities(args: {
 					version = (pkgInput as any).version;
 				}
 
+				const packageNameForOutput = version ? `${name}@${version}` : name;
+				const cacheKey = generateCacheKey('handleNpmVulnerabilities', name, version || 'all');
+				const cachedData = cacheGet<any>(cacheKey);
+
+				if (cachedData) {
+					return {
+						package: packageNameForOutput,
+						versionQueried: version || null,
+						status: 'success_cache',
+						vulnerabilities: cachedData.vulnerabilities,
+						message: `${cachedData.message} (from cache)`,
+					};
+				}
+
 				const osvBody: any = {
 					package: {
 						name,
@@ -1155,16 +1169,17 @@ export async function handleNpmVulnerabilities(args: {
 				});
 
 				const queryVersionSpecified = !!version;
-				const packageNameForOutput = version ? `${name}@${version}` : name;
 
 				if (!response.ok) {
-					return {
+					const errorResult = {
 						package: packageNameForOutput,
 						versionQueried: version || null,
-						status: 'error',
+						status: 'error' as const,
 						error: `OSV API Error: ${response.statusText}`,
 						vulnerabilities: [],
 					};
+					// Do not cache error responses from OSV API as they might be temporary
+					return errorResult;
 				}
 
 				const data = (await response.json()) as {
@@ -1185,98 +1200,99 @@ export async function handleNpmVulnerabilities(args: {
 				};
 
 				const vulns = data.vulns || [];
+				let message: string;
 				if (vulns.length === 0) {
-					return {
-						package: packageNameForOutput,
-						versionQueried: version || null,
-						status: 'success',
-						vulnerabilities: [],
-						message: `No known vulnerabilities found${queryVersionSpecified ? ' for the specified version' : ''}.`,
-					};
+					message = `No known vulnerabilities found${queryVersionSpecified ? ' for the specified version' : ''}.`;
+				} else {
+					message = `${vulns.length} vulnerability(ies) found${queryVersionSpecified ? ' for the specified version' : ''}.`;
 				}
+
+				const processedVulns = vulns.map((vuln) => {
+					const sev =
+						typeof vuln.severity === 'object'
+							? vuln.severity.type || 'Unknown'
+							: vuln.severity || 'Unknown';
+					const refs = vuln.references ? vuln.references.map((r) => r.url) : [];
+					const affectedRanges: any[] = [];
+					const affectedVersionsListed: string[] = [];
+
+					const vulnerabilityDetails: any = {
+						summary: vuln.summary,
+						severity: sev,
+						references: refs,
+					};
+
+					if (vuln.affected && vuln.affected.length > 0) {
+						const lifecycle: { introduced?: string; fixed?: string } = {};
+						const firstAffectedEvents = vuln.affected[0]?.ranges?.[0]?.events;
+						if (firstAffectedEvents) {
+							const introducedEvent = firstAffectedEvents.find((e) => e.introduced);
+							const fixedEvent = firstAffectedEvents.find((e) => e.fixed);
+							if (introducedEvent?.introduced) lifecycle.introduced = introducedEvent.introduced;
+							if (fixedEvent?.fixed) lifecycle.fixed = fixedEvent.fixed;
+						}
+						if (Object.keys(lifecycle).length > 0) {
+							vulnerabilityDetails.lifecycle = lifecycle;
+							if (queryVersionSpecified && version && lifecycle.fixed) {
+								const queriedParts = version.split('.').map(Number);
+								const fixedParts = lifecycle.fixed.split('.').map(Number);
+								let isFixedDecision = false;
+								const maxLength = Math.max(queriedParts.length, fixedParts.length);
+
+								for (let i = 0; i < maxLength; i++) {
+									const qp = queriedParts[i] || 0;
+									const fp = fixedParts[i] || 0;
+
+									if (fp < qp) {
+										isFixedDecision = true;
+										break;
+									}
+									if (fp > qp) {
+										isFixedDecision = false;
+										break;
+									}
+									if (i === maxLength - 1) {
+										isFixedDecision = fixedParts.length <= queriedParts.length;
+									}
+								}
+								vulnerabilityDetails.isFixedInQueriedVersion = isFixedDecision;
+							}
+						}
+					}
+
+					if (!queryVersionSpecified && vuln.affected) {
+						for (const aff of vuln.affected) {
+							if (aff.ranges) {
+								for (const range of aff.ranges) {
+									affectedRanges.push({ type: range.type, events: range.events });
+								}
+							}
+							if (aff.versions && aff.versions.length > 0) {
+								affectedVersionsListed.push(...aff.versions);
+							}
+						}
+						if (affectedRanges.length > 0) {
+							vulnerabilityDetails.affectedRanges = affectedRanges;
+						}
+						if (affectedVersionsListed.length > 0) {
+							vulnerabilityDetails.affectedVersionsListed = affectedVersionsListed;
+						}
+					}
+					return vulnerabilityDetails;
+				});
+
+				const resultToCache = {
+					vulnerabilities: processedVulns,
+					message: message,
+				};
+				cacheSet(cacheKey, resultToCache, CACHE_TTL_MEDIUM);
 
 				return {
 					package: packageNameForOutput,
 					versionQueried: version || null,
-					status: 'success',
-					vulnerabilities: vulns.map((vuln) => {
-						const sev =
-							typeof vuln.severity === 'object'
-								? vuln.severity.type || 'Unknown'
-								: vuln.severity || 'Unknown';
-						const refs = vuln.references ? vuln.references.map((r) => r.url) : [];
-						const affectedRanges: any[] = [];
-						const affectedVersionsListed: string[] = [];
-
-						const vulnerabilityDetails: any = {
-							summary: vuln.summary,
-							severity: sev,
-							references: refs,
-						};
-
-						if (vuln.affected && vuln.affected.length > 0) {
-							const lifecycle: { introduced?: string; fixed?: string } = {};
-							const firstAffectedEvents = vuln.affected[0]?.ranges?.[0]?.events;
-							if (firstAffectedEvents) {
-								const introducedEvent = firstAffectedEvents.find((e) => e.introduced);
-								const fixedEvent = firstAffectedEvents.find((e) => e.fixed);
-								if (introducedEvent?.introduced) lifecycle.introduced = introducedEvent.introduced;
-								if (fixedEvent?.fixed) lifecycle.fixed = fixedEvent.fixed;
-							}
-							if (Object.keys(lifecycle).length > 0) {
-								vulnerabilityDetails.lifecycle = lifecycle;
-								// Check if the vulnerability is fixed in the queried version
-								if (queryVersionSpecified && version && lifecycle.fixed) {
-									// Basic semver comparison: assumes simple x.y.z versions
-									const queriedParts = version.split('.').map(Number);
-									const fixedParts = lifecycle.fixed.split('.').map(Number);
-									let isFixedDecision = false; // Default to not fixed if loop completes without decision
-									const maxLength = Math.max(queriedParts.length, fixedParts.length);
-
-									for (let i = 0; i < maxLength; i++) {
-										const qp = queriedParts[i] || 0;
-										const fp = fixedParts[i] || 0;
-
-										if (fp < qp) {
-											isFixedDecision = true;
-											break;
-										}
-										if (fp > qp) {
-											isFixedDecision = false;
-											break;
-										}
-										// If parts are equal, continue to the next part
-										// If loop finishes and all parts were equal or fixed was shorter, it means fixed <= queried
-										if (i === maxLength - 1) {
-											isFixedDecision = fixedParts.length <= queriedParts.length;
-										}
-									}
-									vulnerabilityDetails.isFixedInQueriedVersion = isFixedDecision;
-								}
-							}
-						}
-
-						if (!queryVersionSpecified && vuln.affected) {
-							for (const aff of vuln.affected) {
-								if (aff.ranges) {
-									for (const range of aff.ranges) {
-										affectedRanges.push({ type: range.type, events: range.events });
-									}
-								}
-								if (aff.versions && aff.versions.length > 0) {
-									affectedVersionsListed.push(...aff.versions);
-								}
-							}
-							if (affectedRanges.length > 0) {
-								vulnerabilityDetails.affectedRanges = affectedRanges;
-							}
-							if (affectedVersionsListed.length > 0) {
-								vulnerabilityDetails.affectedVersionsListed = affectedVersionsListed;
-							}
-						}
-						return vulnerabilityDetails;
-					}),
-					message: `${vulns.length} vulnerability(ies) found${queryVersionSpecified ? ' for the specified version' : ''}.`,
+					status: 'success' as const,
+					vulnerabilities: processedVulns,
+					message: message,
 				};
 			}),
 		);
