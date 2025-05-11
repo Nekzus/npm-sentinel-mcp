@@ -2303,6 +2303,22 @@ export async function handleNpmPackageReadme(args: {
 					};
 				}
 
+				const cacheKey = generateCacheKey('handleNpmPackageReadme', name, versionTag);
+				const cachedData = cacheGet<any>(cacheKey);
+
+				if (cachedData) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						versionQueried: versionTag,
+						versionFetched: cachedData.versionFetched, // Retrieve stored fetched version
+						status: 'success_cache' as const,
+						error: null,
+						data: { readme: cachedData.readme, hasReadme: cachedData.hasReadme },
+						message: `README for ${name}@${cachedData.versionFetched} from cache.`,
+					};
+				}
+
 				try {
 					const response = await fetch(`https://registry.npmjs.org/${name}`);
 				if (!response.ok) {
@@ -2354,6 +2370,14 @@ export async function handleNpmPackageReadme(args: {
 					const readmeContent = versionData.readme || packageInfo.readme || null;
 					const hasReadme = !!readmeContent;
 
+					const readmeResultData = {
+						readme: readmeContent,
+						hasReadme: hasReadme,
+						versionFetched: versionToUse, // Store the actually fetched version
+					};
+
+					cacheSet(cacheKey, readmeResultData, CACHE_TTL_LONG);
+
 					return {
 						packageInput: pkgInput,
 						packageName: name,
@@ -2361,10 +2385,8 @@ export async function handleNpmPackageReadme(args: {
 						versionFetched: versionToUse,
 						status: 'success' as const,
 						error: null,
-						data: {
-							readme: readmeContent,
-							hasReadme: hasReadme,
-						},
+						data: { readme: readmeContent, hasReadme: hasReadme }, // Return only readme and hasReadme in data field for consistency
+						message: `Successfully fetched README for ${name}@${versionToUse}.`,
 					};
 				} catch (error) {
 					return {
