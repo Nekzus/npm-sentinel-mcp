@@ -3778,7 +3778,13 @@ server.tool(
 	{
 		packages: z.array(z.string()).describe('List of package names to get versions for'),
 	},
-	async (args) => {
+	{
+		title: 'Get All Package Versions',
+		readOnlyHint: true,
+		openWorldHint: true,
+		idempotentHint: true,
+	},
+	async (args: { packages: string[] }) => {
 		return await handleNpmVersions(args);
 	},
 );
@@ -3789,7 +3795,13 @@ server.tool(
 	{
 		packages: z.array(z.string()).describe('List of package names to get latest versions for'),
 	},
-	async (args) => {
+	{
+		title: 'Get Latest Package Information',
+		readOnlyHint: true,
+		openWorldHint: true,
+		idempotentHint: true, // Result for 'latest' tag can change, but call itself is idempotent
+	},
+	async (args: { packages: string[] }) => {
 		return await handleNpmLatest(args);
 	},
 );
@@ -3800,7 +3812,13 @@ server.tool(
 	{
 		packages: z.array(z.string()).describe('List of package names to analyze dependencies for'),
 	},
-	async (args) => {
+	{
+		title: 'Get Package Dependencies',
+		readOnlyHint: true,
+		openWorldHint: true,
+		idempotentHint: true,
+	},
+	async (args: { packages: string[] }) => {
 		return await handleNpmDeps(args);
 	},
 );
@@ -3811,7 +3829,13 @@ server.tool(
 	{
 		packages: z.array(z.string()).describe('List of package names to check types for'),
 	},
-	async (args) => {
+	{
+		title: 'Check TypeScript Type Availability',
+		readOnlyHint: true,
+		openWorldHint: true,
+		idempotentHint: true,
+	},
+	async (args: { packages: string[] }) => {
 		return await handleNpmTypes(args);
 	},
 );
@@ -3822,7 +3846,13 @@ server.tool(
 	{
 		packages: z.array(z.string()).describe('List of package names to get size information for'),
 	},
-	async (args) => {
+	{
+		title: 'Get Package Size (Bundlephobia)',
+		readOnlyHint: true,
+		openWorldHint: true,
+		idempotentHint: true,
+	},
+	async (args: { packages: string[] }) => {
 		return await handleNpmSize(args);
 	},
 );
@@ -3833,7 +3863,13 @@ server.tool(
 	{
 		packages: z.array(z.string()).describe('List of package names to check for vulnerabilities'),
 	},
-	async (args) => {
+	{
+		title: 'Check Package Vulnerabilities (OSV.dev)',
+		readOnlyHint: true,
+		openWorldHint: true,
+		idempotentHint: false, // Vulnerability data can change frequently
+	},
+	async (args: { packages: string[] }) => {
 		return await handleNpmVulnerabilities(args);
 	},
 );
@@ -3849,7 +3885,13 @@ server.tool(
 			.optional()
 			.default('last-month'),
 	},
-	async (args) => {
+	{
+		title: 'Get NPM Package Download Trends',
+		readOnlyHint: true,
+		openWorldHint: true,
+		idempotentHint: true, // Trends for a fixed past period are idempotent
+	},
+	async (args: { packages: string[]; period?: 'last-week' | 'last-month' | 'last-year' }) => {
 		return await handleNpmTrends(args);
 	},
 );
@@ -3860,7 +3902,13 @@ server.tool(
 	{
 		packages: z.array(z.string()).describe('List of package names to compare'),
 	},
-	async (args) => {
+	{
+		title: 'Compare NPM Packages',
+		readOnlyHint: true,
+		openWorldHint: true,
+		idempotentHint: true,
+	},
+	async (args: { packages: string[] }) => {
 		return await handleNpmCompare(args);
 	},
 );
@@ -3871,7 +3919,13 @@ server.tool(
 	{
 		packages: z.array(z.string()).describe('List of package names to get maintainers for'),
 	},
-	async (args) => {
+	{
+		title: 'Get NPM Package Maintainers',
+		readOnlyHint: true,
+		openWorldHint: true,
+		idempotentHint: true,
+	},
+	async (args: { packages: string[] }) => {
 		return await handleNpmMaintainers(args);
 	},
 );
@@ -3882,7 +3936,13 @@ server.tool(
 	{
 		packages: z.array(z.string()).describe('List of package names to get scores for'),
 	},
-	async (args) => {
+	{
+		title: 'Get NPM Package Score (NPMS.io)',
+		readOnlyHint: true,
+		openWorldHint: true,
+		idempotentHint: true, // Score for a version is stable, for 'latest' can change
+	},
+	async (args: { packages: string[] }) => {
 		return await handleNpmScore(args);
 	},
 );
@@ -3893,7 +3953,13 @@ server.tool(
 	{
 		packages: z.array(z.string()).describe('List of package names to get READMEs for'),
 	},
-	async (args) => {
+	{
+		title: 'Get NPM Package README',
+		readOnlyHint: true,
+		openWorldHint: true,
+		idempotentHint: true,
+	},
+	async (args: { packages: string[] }) => {
 		return await handleNpmPackageReadme(args);
 	},
 );
@@ -3910,7 +3976,13 @@ server.tool(
 			.optional()
 			.describe('Maximum number of results to return (default: 10)'),
 	},
-	async (args) => {
+	{
+		title: 'Search NPM Packages',
+		readOnlyHint: true,
+		openWorldHint: true,
+		idempotentHint: false, // Search results can change
+	},
+	async (args: { query: string; limit?: number }) => {
 		return await handleNpmSearch(args);
 	},
 );
@@ -3924,7 +3996,13 @@ server.tool(
 			.min(1)
 			.describe('List of package names to check for license compatibility'),
 	},
-	async (args) => {
+	{
+		title: 'Check NPM License Compatibility',
+		readOnlyHint: true,
+		openWorldHint: true,
+		idempotentHint: true,
+	},
+	async (args: { packages: string[] }) => {
 		return await handleNpmLicenseCompatibility(args);
 	},
 );
@@ -3935,7 +4013,13 @@ server.tool(
 	{
 		packages: z.array(z.string()).describe('List of package names to get repository stats for'),
 	},
-	async (args) => {
+	{
+		title: 'Get NPM Package Repository Stats (GitHub)',
+		readOnlyHint: true,
+		openWorldHint: true,
+		idempotentHint: true, // Stats for a repo at a point in time, though they change over time
+	},
+	async (args: { packages: string[] }) => {
 		return await handleNpmRepoStats(args);
 	},
 );
@@ -3946,7 +4030,13 @@ server.tool(
 	{
 		packages: z.array(z.string()).describe('List of package names to check for deprecation'),
 	},
-	async (args) => {
+	{
+		title: 'Check NPM Package Deprecation Status',
+		readOnlyHint: true,
+		openWorldHint: true,
+		idempotentHint: true, // Deprecation status is generally stable for a version
+	},
+	async (args: { packages: string[] }) => {
 		return await handleNpmDeprecated(args);
 	},
 );
@@ -3957,7 +4047,13 @@ server.tool(
 	{
 		packages: z.array(z.string()).describe('List of package names to analyze changelogs for'),
 	},
-	async (args) => {
+	{
+		title: 'Analyze NPM Package Changelog (GitHub)',
+		readOnlyHint: true,
+		openWorldHint: true,
+		idempotentHint: true,
+	},
+	async (args: { packages: string[] }) => {
 		return await handleNpmChangelogAnalysis(args);
 	},
 );
@@ -3968,7 +4064,13 @@ server.tool(
 	{
 		packages: z.array(z.string()).describe('List of package names to find alternatives for'),
 	},
-	async (args) => {
+	{
+		title: 'Find NPM Package Alternatives',
+		readOnlyHint: true,
+		openWorldHint: true,
+		idempotentHint: false, // Search-based, results can change
+	},
+	async (args: { packages: string[] }) => {
 		return await handleNpmAlternatives(args);
 	},
 );
@@ -3979,7 +4081,13 @@ server.tool(
 	{
 		packages: z.array(z.string()).describe('List of package names to analyze'),
 	},
-	async (args) => {
+	{
+		title: 'Analyze NPM Package Quality (NPMS.io)',
+		readOnlyHint: true,
+		openWorldHint: true,
+		idempotentHint: true, // Score for a version is stable, for 'latest' can change
+	},
+	async (args: { packages: string[] }) => {
 		return await handleNpmQuality(args);
 	},
 );
@@ -3990,8 +4098,56 @@ server.tool(
 	{
 		packages: z.array(z.string()).describe('List of package names to analyze'),
 	},
-	async (args) => {
+	{
+		title: 'Analyze NPM Package Maintenance (NPMS.io)',
+		readOnlyHint: true,
+		openWorldHint: true,
+		idempotentHint: true, // Score for a version is stable, for 'latest' can change
+	},
+	async (args: { packages: string[] }) => {
 		return await handleNpmMaintenance(args);
+	},
+);
+
+// Tool for server health check / ping
+server.tool(
+	'getServerStatus',
+	'Checks if the NPM Sentinel MCP server is running and returns its status and version. No input arguments are required for this tool.',
+	{}, // Corrected: Pass an empty object for ZodRawShape for tools with no arguments
+	{
+		title: 'Get Server Status (Ping)',
+		readOnlyHint: true,
+		openWorldHint: false,
+		idempotentHint: true,
+	},
+	async () => {
+		// No arguments for this tool
+		try {
+			// Direct construction of the success response
+			const serverStatus = {
+				status: 'ok',
+				version: '1.7.1', // Make sure this matches the server version
+				timestamp: new Date().toISOString(),
+				message: 'NPM Sentinel MCP Server is responsive.',
+			};
+			return {
+				content: [{ type: 'text', text: JSON.stringify(serverStatus, null, 2) }],
+				isError: false,
+			};
+		} catch (error) {
+			// General error handling, though unlikely for this simple tool
+			const errorResponse = {
+				status: 'error',
+				message:
+					error instanceof Error
+						? error.message
+						: 'Unknown error occurred while checking server status.',
+			};
+			return {
+				content: [{ type: 'text', text: JSON.stringify(errorResponse, null, 2) }],
+				isError: true,
+			};
+		}
 	},
 );
 
