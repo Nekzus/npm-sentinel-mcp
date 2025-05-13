@@ -172,6 +172,17 @@ The server exposes its tools via the Model Context Protocol. All tools adhere to
 - `npm://security`: Security analysis interface
 - `npm://metrics`: Package metrics interface
 
+### Server Resources
+
+The server also provides the following informational resources accessible via MCP `GetResource` requests:
+
+- `doc://server/readme`:
+  - **Description**: Retrieves the main `README.md` file content for this NPM Sentinel MCP server.
+  - **MIME Type**: `text/markdown`
+- `doc://mcp/specification`:
+  - **Description**: Retrieves the `llms-full.txt` content, providing the comprehensive Model Context Protocol specification.
+  - **MIME Type**: `text/plain`
+
 ### Tools
 
 #### npmVersions
