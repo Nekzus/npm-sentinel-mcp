@@ -6,6 +6,7 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import fetch from 'node-fetch';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 
 // Cache configuration
@@ -3685,17 +3686,25 @@ export async function handleNpmAlternatives(args: { packages: string[] }): Promi
 	}
 }
 
+// Get __dirname in an ES module environment
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// The package root will be one level above __dirname (which is 'dist/' after compilation)
+const packageRoot = path.join(__dirname, '..');
+
 // Create server instance
 const server = new McpServer({
 	name: 'npm-sentinel-mcp',
-	version: '1.7.0',
+	version: '1.7.1',
 	capabilities: {
 		resources: {},
 	},
 });
 
-const README_PATH = path.resolve(process.cwd(), 'README.md');
-const LLMS_FULL_TEXT_PATH = path.resolve(process.cwd(), 'llms-full.txt');
+// Update paths to be relative to the package
+const README_PATH = path.join(packageRoot, 'README.md');
+const LLMS_FULL_TEXT_PATH = path.join(packageRoot, 'llms-full.txt');
 
 // Register README.md resource
 server.resource(
