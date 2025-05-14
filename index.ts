@@ -3696,7 +3696,7 @@ const packageRoot = path.join(__dirname, '..');
 // Create server instance
 const server = new McpServer({
 	name: 'npm-sentinel-mcp',
-	version: '1.7.3',
+	version: '1.7.4',
 	capabilities: {
 		resources: {},
 	},
@@ -4106,48 +4106,6 @@ server.tool(
 	},
 	async (args: { packages: string[] }) => {
 		return await handleNpmMaintenance(args);
-	},
-);
-
-// Tool for server health check / ping
-server.tool(
-	'getServerStatus',
-	'Checks if the NPM Sentinel MCP server is running and returns its status and version. No input arguments are required for this tool.',
-	{}, // Corrected: Pass an empty object for ZodRawShape for tools with no arguments
-	{
-		title: 'Get Server Status (Ping)',
-		readOnlyHint: true,
-		openWorldHint: false,
-		idempotentHint: true,
-	},
-	async () => {
-		// No arguments for this tool
-		try {
-			// Direct construction of the success response
-			const serverStatus = {
-				status: 'ok',
-				version: '1.7.1', // Make sure this matches the server version
-				timestamp: new Date().toISOString(),
-				message: 'NPM Sentinel MCP Server is responsive.',
-			};
-			return {
-				content: [{ type: 'text', text: JSON.stringify(serverStatus, null, 2) }],
-				isError: false,
-			};
-		} catch (error) {
-			// General error handling, though unlikely for this simple tool
-			const errorResponse = {
-				status: 'error',
-				message:
-					error instanceof Error
-						? error.message
-						: 'Unknown error occurred while checking server status.',
-			};
-			return {
-				content: [{ type: 'text', text: JSON.stringify(errorResponse, null, 2) }],
-				isError: true,
-			};
-		}
 	},
 );
 
