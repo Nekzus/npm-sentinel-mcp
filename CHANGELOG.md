@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.7.4](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.7.3...v1.7.4) (2025-05-14)
+
+
+### Bug Fixes
+
+*  Removed the `getServerStatus` tool ([0399ed1](https://github.com/Nekzus/npm-sentinel-mcp/commit/0399ed1bfc64384212fc48cfedcc8124dc68c37a))
+
 ## [1.7.3](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.7.2...v1.7.3) (2025-05-13)
 
 
