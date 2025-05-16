@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.7.5](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.7.4...v1.7.5) (2025-05-16)
+
+
+### Bug Fixes
+
+* update README.md to remove unnecessary badge ([256b474](https://github.com/Nekzus/npm-sentinel-mcp/commit/256b474bbb3808f1fb24f2d8ef5d878d30f3f3ba))
+
 ## [1.7.4](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.7.3...v1.7.4) (2025-05-14)
 
 
