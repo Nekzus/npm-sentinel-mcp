@@ -116,19 +116,18 @@ Add this to your `claude_desktop_config.json`:
 ```json
 {
   "mcpServers": {
-    "npmAnalyzer": {
-      "transport": "stdio",
+    "npmsentinel": {
       "command": "npx",
-      "args": ["-y", "@nekzus/mcp-server"]
+      "args": ["-y", "@nekzus/mcp-server@latest"]
     }
   }
 }
 ```
 
 Configuration file locations:
-- Windows: `%APPDATA%/claude-desktop/claude_desktop_config.json`
-- macOS: `~/Library/Application Support/claude-desktop/claude_desktop_config.json`
-- Linux: `~/.config/claude-desktop/claude_desktop_config.json`
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Linux: (Claude for Desktop does not officially support Linux at this time)
 
 ### NPX
 
@@ -139,7 +138,7 @@ Configuration file locations:
       "command": "npx",
       "args": [
         "-y",
-        "@nekzus/mcp-server"
+        "@nekzus/mcp-server@latest"
       ]
     }
   }
