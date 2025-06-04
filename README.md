@@ -131,7 +131,7 @@ Configuration file locations:
 
 ### NPX
 
-[![Add to Cursor](https://img.shields.io/badge/Add%20to%20Cursor-black?style=for-the-badge&logo=Cursor)](cursor://anysphere.cursor-deeplink/mcp/install?name=npm-sentinel-mcp&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBuZWt6dXMvbWNwLXNlcnZlckBsYXRlc3QiXX0=)
+[<img alt="Add to Cursor" src="https://cursor.com/deeplink/mcp-install-dark.png" width="150">](cursor://anysphere.cursor-deeplink/mcp/install?name=npm-sentinel-mcp&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBuZWt6dXMvbWNwLXNlcnZlckBsLXRlc3QiXX0=)
 
 ```json
 {
@@ -278,21 +278,4 @@ The server also provides the following informational resources accessible via MC
 
 #### npmMaintenance
 - Check maintenance status
-- Input: `packages` (string[])
-- Returns: Maintenance activity metrics
-
-## Build
-
-```bash
-# Build with npm
-npm install
-npm run build
-```
-
-## License
-
-This MCP server is licensed under the MIT License. This means you are free to use, modify, and distribute the software, subject to the terms and conditions of the MIT License. For more details, please see the LICENSE file in the project repository.
-
----
-
-MIT © [nekzus](https://github.com/nekzus)
+- Input: `packages`
