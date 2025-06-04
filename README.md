@@ -131,7 +131,7 @@ Configuration file locations:
 
 ### NPX
 
-[![Add to Cursor](https://img.shields.io/badge/Add%20to%20Cursor-black?style=for-the-badge)](cursor://anysphere.cursor-deeplink/mcp/install?name=npm-sentinel-mcp&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBuZWt6dXMvbWNwLXNlcnZlckBsYXRlc3QiXX0=)
+[<img alt="Add to Cursor" src="https://img.shields.io/badge/Add%20to%20Cursor-black?style=for-the-badge">](cursor://anysphere.cursor-deeplink/mcp/install?name=npm-sentinel-mcp&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBuZWt6dXMvbWNwLXNlcnZlckBsYXRlc3QiXX0=)
 
 ```json
 {
