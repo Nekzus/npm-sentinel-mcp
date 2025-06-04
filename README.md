@@ -131,7 +131,7 @@ Configuration file locations:
 
 ### NPX
 
-<a href="cursor://anysphere.cursor-deeplink/mcp/install?name=npm-sentinel-mcp&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBuZWt6dXMvbWNwLXNlcnZlckBsYXRlc3QiXX0="><img src="https://cursor.com/deeplink/mcp-install-dark.png" alt="Add npm-sentinel-mcp MCP server to Cursor" style="max-height: 32px;" /></a>
+<a href="cursor://anysphere.cursor-deeplink/mcp/install?name=npm-sentinel-mcp&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBuZWt6dXMvbWNwLXNlcnZlckBsYXRlc3QiXX0="><img src="https://cursor.com/deeplink/mcp-install-dark.png" alt="Install MCP Server" width="150"></a>
 
 ```json
 {
