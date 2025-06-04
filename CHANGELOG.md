@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.7.8](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.7.7...v1.7.8) (2025-06-04)
+
+
+### Bug Fixes
+
+* bump version to 1.7.8 ([096ba89](https://github.com/Nekzus/npm-sentinel-mcp/commit/096ba89502d5df98ddb3d53a605416ec508621e0))
+
 ## [1.7.7](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.7.6...v1.7.7) (2025-06-04)
 
 
