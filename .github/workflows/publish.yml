@@ -56,3 +56,7 @@ jobs:
                   NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
                   NPM_TOKEN: ${{secrets.NPM_TOKEN}}
                   NPM_CONFIG_PROVENANCE: true
+            - name: Set Dockerfile version label from package.json
+              run: |
+                VERSION=$(node -p "require('./package.json').version")
+                sed -i "s/LABEL version=\"[^\"]*\"/LABEL version=\"$VERSION\"/" Dockerfile

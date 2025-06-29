@@ -3696,7 +3696,7 @@ const packageRoot = path.join(__dirname, '..');
 // Create server instance
 const server = new McpServer({
 	name: 'npm-sentinel-mcp',
-	version: '1.7.8',
+	version: '1.7.9',
 	capabilities: {
 		resources: {},
 	},
