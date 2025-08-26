@@ -33,6 +33,27 @@ Note: The server provides AI-assisted analysis through MCP integration.
 
 ## Installation
 
+### Migration to HTTP Streamable
+
+This MCP server now supports both STDIO and HTTP streamable transport. Your existing STDIO configuration will continue to work without changes.
+
+**New capabilities:**
+- HTTP streamable transport via Smithery.ai
+- Enhanced scalability and performance
+- Interactive testing playground
+
+**Development commands:**
+```bash
+# Development server with playground
+npm run dev
+
+# Build for HTTP
+npm run build:http
+
+# Start HTTP server
+npm run start:http
+```
+
 ### Install in VS Code
 
 [<img alt="Install in VS Code (npx)" src="https://img.shields.io/badge/VS_Code-VS_Code?style=flat-square&label=Install%20NPM%20Sentinel%20MCP&color=0098FF">](https://insiders.vscode.dev/redirect?url=vscode%3Amcp%2Finstall%3F%257B%2522name%2522%253A%2522npm-sentinel%2522%252C%2522config%2522%253A%257B%2522command%2522%253A%2522npx%2522%252C%2522args%2522%253A%255B%2522-y%2522%252C%2522%2540nekzus%252Fmcp-server%2540latest%2522%255D%257D%257D)
@@ -47,6 +68,28 @@ Add this to your VS Code MCP config file. See [VS Code MCP docs](https://code.vi
       "type": "stdio",
       "command": "npx",
       "args": ["-y", "@nekzus/mcp-server@latest"]
+    }
+  }
+}
+```
+
+### Smithery.ai Deployment (HTTP Streamable)
+
+This MCP server now supports HTTP streamable transport through Smithery.ai for enhanced scalability and performance. You can deploy it directly on Smithery.ai:
+**Benefits of HTTP deployment:**
+- **Scalable**: Handles multiple concurrent connections
+- **Streamable**: Real-time streaming responses
+- **Managed**: Automatic deployment and monitoring
+- **Backward Compatible**: Still supports STDIO for local development
+- **Interactive Testing**: Built-in playground for testing tools
+
+**Configuration for Smithery.ai:**
+```json
+{
+  "mcpServers": {
+    "npm-sentinel": {
+      "type": "http",
+      "url": "https://smithery.ai/server/@Nekzus/npm-sentinel-mcp"
     }
   }
 }
@@ -284,9 +327,17 @@ The server also provides the following informational resources accessible via MC
 ## Build
 
 ```bash
-# Build with npm
+# Install dependencies
 npm install
-npm run build
+
+# Build for STDIO (traditional)
+npm run build:stdio
+
+# Build for HTTP (Smithery)
+npm run build:http
+
+# Development server
+npm run dev
 ```
 
 ## License

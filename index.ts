@@ -3687,448 +3687,478 @@ export async function handleNpmAlternatives(args: { packages: string[] }): Promi
 }
 
 // Get __dirname in an ES module environment
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Define session configuration schema (empty for now, can be extended later)
+export const configSchema = z.object({});
 
-// The package root will be one level above __dirname (which is 'dist/' after compilation)
-const packageRoot = path.join(__dirname, '..');
+// Create server function for Smithery CLI
+export default function createServer({
+	config,
+}: {
+	config: z.infer<typeof configSchema>;
+}) {
+	// Handle both ESM and CJS environments
+	let __filename: string;
+	let __dirname: string;
 
-// Create server instance
-const server = new McpServer({
-	name: 'npm-sentinel-mcp',
-	version: '1.7.9',
-	capabilities: {
-		resources: {},
-	},
-});
+	try {
+		__filename = fileURLToPath(import.meta.url);
+		__dirname = path.dirname(__filename);
+	} catch (error) {
+		// Fallback for CJS environment (Smithery HTTP build)
+		__filename = process.argv[1] || '.';
+		__dirname = path.dirname(__filename);
+	}
 
-// Update paths to be relative to the package
-const README_PATH = path.join(packageRoot, 'README.md');
-const LLMS_FULL_TEXT_PATH = path.join(packageRoot, 'llms-full.txt');
+	// The package root will be one level above __dirname (which is 'dist/' after compilation)
+	const packageRoot = path.join(__dirname, '..');
 
-// Register README.md resource
-server.resource(
-	'serverReadme',
-	'doc://server/readme',
-	{
-		name: 'Server README',
-		description: 'Main documentation and usage guide for this NPM Info Server.',
-		mimeType: 'text/markdown',
-	},
-	async (uri: URL): Promise<{ contents: { uri: string; text: string; mimeType: string }[] }> => {
-		try {
-			const readmeContent = fs.readFileSync(README_PATH, 'utf-8');
-			return {
-				contents: [
-					{
-						uri: uri.href,
-						text: readmeContent,
-						mimeType: 'text/markdown',
-					},
-				],
-			};
-		} catch (error: any) {
-			console.error(`Error reading README.md for resource ${uri.href}:`, error.message);
-			throw {
-				code: -32002,
-				message: `Resource not found or unreadable: ${uri.href}`,
-				data: { uri: uri.href, cause: error.message },
-			};
-		}
-	},
-);
+	// Create server instance
+	const server = new McpServer({
+		name: 'npm-sentinel-mcp',
+		version: '1.8.0',
+		capabilities: {
+			resources: {},
+		},
+	});
 
-// Register llms-full.txt resource (MCP Specification)
-server.resource(
-	'mcpSpecification',
-	'doc://mcp/specification',
-	{
-		name: 'MCP Full Specification',
-		description:
-			'The llms-full.txt content providing a comprehensive overview of the Model Context Protocol.',
-		mimeType: 'text/plain',
-	},
-	async (uri: URL): Promise<{ contents: { uri: string; text: string; mimeType: string }[] }> => {
-		try {
-			const specContent = fs.readFileSync(LLMS_FULL_TEXT_PATH, 'utf-8');
-			return {
-				contents: [
-					{
-						uri: uri.href,
-						text: specContent,
-						mimeType: 'text/plain',
-					},
-				],
-			};
-		} catch (error: any) {
-			console.error(`Error reading llms-full.txt for resource ${uri.href}:`, error.message);
-			throw {
-				code: -32002,
-				message: `Resource not found or unreadable: ${uri.href}`,
-				data: { uri: uri.href, cause: error.message },
-			};
-		}
-	},
-);
+	// Update paths to be relative to the package
+	const README_PATH = path.join(packageRoot, 'README.md');
+	const LLMS_FULL_TEXT_PATH = path.join(packageRoot, 'llms-full.txt');
 
-// Add NPM tools - Ensuring each tool registration is complete and correct
-server.tool(
-	'npmVersions',
-	'Get all available versions of an NPM package',
-	{
-		packages: z.array(z.string()).describe('List of package names to get versions for'),
-	},
-	{
-		title: 'Get All Package Versions',
-		readOnlyHint: true,
-		openWorldHint: true,
-		idempotentHint: true,
-	},
-	async (args: { packages: string[] }) => {
-		return await handleNpmVersions(args);
-	},
-);
+	// Register README.md resource
+	server.resource(
+		'serverReadme',
+		'doc://server/readme',
+		{
+			name: 'Server README',
+			description: 'Main documentation and usage guide for this NPM Info Server.',
+			mimeType: 'text/markdown',
+		},
+		async (uri: URL): Promise<{ contents: { uri: string; text: string; mimeType: string }[] }> => {
+			try {
+				const readmeContent = fs.readFileSync(README_PATH, 'utf-8');
+				return {
+					contents: [
+						{
+							uri: uri.href,
+							text: readmeContent,
+							mimeType: 'text/markdown',
+						},
+					],
+				};
+			} catch (error: any) {
+				console.error(`Error reading README.md for resource ${uri.href}:`, error.message);
+				throw {
+					code: -32002,
+					message: `Resource not found or unreadable: ${uri.href}`,
+					data: { uri: uri.href, cause: error.message },
+				};
+			}
+		},
+	);
 
-server.tool(
-	'npmLatest',
-	'Get the latest version and changelog of an NPM package',
-	{
-		packages: z.array(z.string()).describe('List of package names to get latest versions for'),
-	},
-	{
-		title: 'Get Latest Package Information',
-		readOnlyHint: true,
-		openWorldHint: true,
-		idempotentHint: true, // Result for 'latest' tag can change, but call itself is idempotent
-	},
-	async (args: { packages: string[] }) => {
-		return await handleNpmLatest(args);
-	},
-);
+	// Register llms-full.txt resource (MCP Specification)
+	server.resource(
+		'mcpSpecification',
+		'doc://mcp/specification',
+		{
+			name: 'MCP Full Specification',
+			description:
+				'The llms-full.txt content providing a comprehensive overview of the Model Context Protocol.',
+			mimeType: 'text/plain',
+		},
+		async (uri: URL): Promise<{ contents: { uri: string; text: string; mimeType: string }[] }> => {
+			try {
+				const specContent = fs.readFileSync(LLMS_FULL_TEXT_PATH, 'utf-8');
+				return {
+					contents: [
+						{
+							uri: uri.href,
+							text: specContent,
+							mimeType: 'text/plain',
+						},
+					],
+				};
+			} catch (error: any) {
+				console.error(`Error reading llms-full.txt for resource ${uri.href}:`, error.message);
+				throw {
+					code: -32002,
+					message: `Resource not found or unreadable: ${uri.href}`,
+					data: { uri: uri.href, cause: error.message },
+				};
+			}
+		},
+	);
 
-server.tool(
-	'npmDeps',
-	'Analyze dependencies and devDependencies of an NPM package',
-	{
-		packages: z.array(z.string()).describe('List of package names to analyze dependencies for'),
-	},
-	{
-		title: 'Get Package Dependencies',
-		readOnlyHint: true,
-		openWorldHint: true,
-		idempotentHint: true,
-	},
-	async (args: { packages: string[] }) => {
-		return await handleNpmDeps(args);
-	},
-);
+	// Add NPM tools - Ensuring each tool registration is complete and correct
+	server.tool(
+		'npmVersions',
+		'Get all available versions of an NPM package',
+		{
+			packages: z.array(z.string()).describe('List of package names to get versions for'),
+		},
+		{
+			title: 'Get All Package Versions',
+			readOnlyHint: true,
+			openWorldHint: true,
+			idempotentHint: true,
+		},
+		async (args: { packages: string[] }) => {
+			return await handleNpmVersions(args);
+		},
+	);
 
-server.tool(
-	'npmTypes',
-	'Check TypeScript types availability and version for a package',
-	{
-		packages: z.array(z.string()).describe('List of package names to check types for'),
-	},
-	{
-		title: 'Check TypeScript Type Availability',
-		readOnlyHint: true,
-		openWorldHint: true,
-		idempotentHint: true,
-	},
-	async (args: { packages: string[] }) => {
-		return await handleNpmTypes(args);
-	},
-);
+	server.tool(
+		'npmLatest',
+		'Get the latest version and changelog of an NPM package',
+		{
+			packages: z.array(z.string()).describe('List of package names to get latest versions for'),
+		},
+		{
+			title: 'Get Latest Package Information',
+			readOnlyHint: true,
+			openWorldHint: true,
+			idempotentHint: true, // Result for 'latest' tag can change, but call itself is idempotent
+		},
+		async (args: { packages: string[] }) => {
+			return await handleNpmLatest(args);
+		},
+	);
 
-server.tool(
-	'npmSize',
-	'Get package size information including dependencies and bundle size',
-	{
-		packages: z.array(z.string()).describe('List of package names to get size information for'),
-	},
-	{
-		title: 'Get Package Size (Bundlephobia)',
-		readOnlyHint: true,
-		openWorldHint: true,
-		idempotentHint: true,
-	},
-	async (args: { packages: string[] }) => {
-		return await handleNpmSize(args);
-	},
-);
+	server.tool(
+		'npmDeps',
+		'Analyze dependencies and devDependencies of an NPM package',
+		{
+			packages: z.array(z.string()).describe('List of package names to analyze dependencies for'),
+		},
+		{
+			title: 'Get Package Dependencies',
+			readOnlyHint: true,
+			openWorldHint: true,
+			idempotentHint: true,
+		},
+		async (args: { packages: string[] }) => {
+			return await handleNpmDeps(args);
+		},
+	);
 
-server.tool(
-	'npmVulnerabilities',
-	'Check for known vulnerabilities in packages',
-	{
-		packages: z.array(z.string()).describe('List of package names to check for vulnerabilities'),
-	},
-	{
-		title: 'Check Package Vulnerabilities (OSV.dev)',
-		readOnlyHint: true,
-		openWorldHint: true,
-		idempotentHint: false, // Vulnerability data can change frequently
-	},
-	async (args: { packages: string[] }) => {
-		return await handleNpmVulnerabilities(args);
-	},
-);
+	server.tool(
+		'npmTypes',
+		'Check TypeScript types availability and version for a package',
+		{
+			packages: z.array(z.string()).describe('List of package names to check types for'),
+		},
+		{
+			title: 'Check TypeScript Type Availability',
+			readOnlyHint: true,
+			openWorldHint: true,
+			idempotentHint: true,
+		},
+		async (args: { packages: string[] }) => {
+			return await handleNpmTypes(args);
+		},
+	);
 
-server.tool(
-	'npmTrends',
-	'Get download trends and popularity metrics for packages',
-	{
-		packages: z.array(z.string()).describe('List of package names to get trends for'),
-		period: z
-			.enum(['last-week', 'last-month', 'last-year'])
-			.describe('Time period for trends. Options: "last-week", "last-month", "last-year"')
-			.optional()
-			.default('last-month'),
-	},
-	{
-		title: 'Get NPM Package Download Trends',
-		readOnlyHint: true,
-		openWorldHint: true,
-		idempotentHint: true, // Trends for a fixed past period are idempotent
-	},
-	async (args: { packages: string[]; period?: 'last-week' | 'last-month' | 'last-year' }) => {
-		return await handleNpmTrends(args);
-	},
-);
+	server.tool(
+		'npmSize',
+		'Get package size information including dependencies and bundle size',
+		{
+			packages: z.array(z.string()).describe('List of package names to get size information for'),
+		},
+		{
+			title: 'Get Package Size (Bundlephobia)',
+			readOnlyHint: true,
+			openWorldHint: true,
+			idempotentHint: true,
+		},
+		async (args: { packages: string[] }) => {
+			return await handleNpmSize(args);
+		},
+	);
 
-server.tool(
-	'npmCompare',
-	'Compare multiple NPM packages based on various metrics',
-	{
-		packages: z.array(z.string()).describe('List of package names to compare'),
-	},
-	{
-		title: 'Compare NPM Packages',
-		readOnlyHint: true,
-		openWorldHint: true,
-		idempotentHint: true,
-	},
-	async (args: { packages: string[] }) => {
-		return await handleNpmCompare(args);
-	},
-);
+	server.tool(
+		'npmVulnerabilities',
+		'Check for known vulnerabilities in packages',
+		{
+			packages: z.array(z.string()).describe('List of package names to check for vulnerabilities'),
+		},
+		{
+			title: 'Check Package Vulnerabilities (OSV.dev)',
+			readOnlyHint: true,
+			openWorldHint: true,
+			idempotentHint: false, // Vulnerability data can change frequently
+		},
+		async (args: { packages: string[] }) => {
+			return await handleNpmVulnerabilities(args);
+		},
+	);
 
-server.tool(
-	'npmMaintainers',
-	'Get maintainers information for NPM packages',
-	{
-		packages: z.array(z.string()).describe('List of package names to get maintainers for'),
-	},
-	{
-		title: 'Get NPM Package Maintainers',
-		readOnlyHint: true,
-		openWorldHint: true,
-		idempotentHint: true,
-	},
-	async (args: { packages: string[] }) => {
-		return await handleNpmMaintainers(args);
-	},
-);
+	server.tool(
+		'npmTrends',
+		'Get download trends and popularity metrics for packages',
+		{
+			packages: z.array(z.string()).describe('List of package names to get trends for'),
+			period: z
+				.enum(['last-week', 'last-month', 'last-year'])
+				.describe('Time period for trends. Options: "last-week", "last-month", "last-year"')
+				.optional()
+				.default('last-month'),
+		},
+		{
+			title: 'Get NPM Package Download Trends',
+			readOnlyHint: true,
+			openWorldHint: true,
+			idempotentHint: true, // Trends for a fixed past period are idempotent
+		},
+		async (args: { packages: string[]; period?: 'last-week' | 'last-month' | 'last-year' }) => {
+			return await handleNpmTrends(args);
+		},
+	);
 
-server.tool(
-	'npmScore',
-	'Get consolidated package score based on quality, maintenance, and popularity metrics',
-	{
-		packages: z.array(z.string()).describe('List of package names to get scores for'),
-	},
-	{
-		title: 'Get NPM Package Score (NPMS.io)',
-		readOnlyHint: true,
-		openWorldHint: true,
-		idempotentHint: true, // Score for a version is stable, for 'latest' can change
-	},
-	async (args: { packages: string[] }) => {
-		return await handleNpmScore(args);
-	},
-);
+	server.tool(
+		'npmCompare',
+		'Compare multiple NPM packages based on various metrics',
+		{
+			packages: z.array(z.string()).describe('List of package names to compare'),
+		},
+		{
+			title: 'Compare NPM Packages',
+			readOnlyHint: true,
+			openWorldHint: true,
+			idempotentHint: true,
+		},
+		async (args: { packages: string[] }) => {
+			return await handleNpmCompare(args);
+		},
+	);
 
-server.tool(
-	'npmPackageReadme',
-	'Get the README content for NPM packages',
-	{
-		packages: z.array(z.string()).describe('List of package names to get READMEs for'),
-	},
-	{
-		title: 'Get NPM Package README',
-		readOnlyHint: true,
-		openWorldHint: true,
-		idempotentHint: true,
-	},
-	async (args: { packages: string[] }) => {
-		return await handleNpmPackageReadme(args);
-	},
-);
+	server.tool(
+		'npmMaintainers',
+		'Get maintainers information for NPM packages',
+		{
+			packages: z.array(z.string()).describe('List of package names to get maintainers for'),
+		},
+		{
+			title: 'Get NPM Package Maintainers',
+			readOnlyHint: true,
+			openWorldHint: true,
+			idempotentHint: true,
+		},
+		async (args: { packages: string[] }) => {
+			return await handleNpmMaintainers(args);
+		},
+	);
 
-server.tool(
-	'npmSearch',
-	'Search for NPM packages with optional limit',
-	{
-		query: z.string().describe('Search query for packages'),
-		limit: z
-			.number()
-			.min(1)
-			.max(50)
-			.optional()
-			.describe('Maximum number of results to return (default: 10)'),
-	},
-	{
-		title: 'Search NPM Packages',
-		readOnlyHint: true,
-		openWorldHint: true,
-		idempotentHint: false, // Search results can change
-	},
-	async (args: { query: string; limit?: number }) => {
-		return await handleNpmSearch(args);
-	},
-);
+	server.tool(
+		'npmScore',
+		'Get consolidated package score based on quality, maintenance, and popularity metrics',
+		{
+			packages: z.array(z.string()).describe('List of package names to get scores for'),
+		},
+		{
+			title: 'Get NPM Package Score (NPMS.io)',
+			readOnlyHint: true,
+			openWorldHint: true,
+			idempotentHint: true, // Score for a version is stable, for 'latest' can change
+		},
+		async (args: { packages: string[] }) => {
+			return await handleNpmScore(args);
+		},
+	);
 
-server.tool(
-	'npmLicenseCompatibility',
-	'Check license compatibility between multiple packages',
-	{
-		packages: z
-			.array(z.string())
-			.min(1)
-			.describe('List of package names to check for license compatibility'),
-	},
-	{
-		title: 'Check NPM License Compatibility',
-		readOnlyHint: true,
-		openWorldHint: true,
-		idempotentHint: true,
-	},
-	async (args: { packages: string[] }) => {
-		return await handleNpmLicenseCompatibility(args);
-	},
-);
+	server.tool(
+		'npmPackageReadme',
+		'Get the README content for NPM packages',
+		{
+			packages: z.array(z.string()).describe('List of package names to get READMEs for'),
+		},
+		{
+			title: 'Get NPM Package README',
+			readOnlyHint: true,
+			openWorldHint: true,
+			idempotentHint: true,
+		},
+		async (args: { packages: string[] }) => {
+			return await handleNpmPackageReadme(args);
+		},
+	);
 
-server.tool(
-	'npmRepoStats',
-	'Get repository statistics for NPM packages',
-	{
-		packages: z.array(z.string()).describe('List of package names to get repository stats for'),
-	},
-	{
-		title: 'Get NPM Package Repository Stats (GitHub)',
-		readOnlyHint: true,
-		openWorldHint: true,
-		idempotentHint: true, // Stats for a repo at a point in time, though they change over time
-	},
-	async (args: { packages: string[] }) => {
-		return await handleNpmRepoStats(args);
-	},
-);
+	server.tool(
+		'npmSearch',
+		'Search for NPM packages with optional limit',
+		{
+			query: z.string().describe('Search query for packages'),
+			limit: z
+				.number()
+				.min(1)
+				.max(50)
+				.optional()
+				.describe('Maximum number of results to return (default: 10)'),
+		},
+		{
+			title: 'Search NPM Packages',
+			readOnlyHint: true,
+			openWorldHint: true,
+			idempotentHint: false, // Search results can change
+		},
+		async (args: { query: string; limit?: number }) => {
+			return await handleNpmSearch(args);
+		},
+	);
 
-server.tool(
-	'npmDeprecated',
-	'Check if packages are deprecated',
-	{
-		packages: z.array(z.string()).describe('List of package names to check for deprecation'),
-	},
-	{
-		title: 'Check NPM Package Deprecation Status',
-		readOnlyHint: true,
-		openWorldHint: true,
-		idempotentHint: true, // Deprecation status is generally stable for a version
-	},
-	async (args: { packages: string[] }) => {
-		return await handleNpmDeprecated(args);
-	},
-);
+	server.tool(
+		'npmLicenseCompatibility',
+		'Check license compatibility between multiple packages',
+		{
+			packages: z
+				.array(z.string())
+				.min(1)
+				.describe('List of package names to check for license compatibility'),
+		},
+		{
+			title: 'Check NPM License Compatibility',
+			readOnlyHint: true,
+			openWorldHint: true,
+			idempotentHint: true,
+		},
+		async (args: { packages: string[] }) => {
+			return await handleNpmLicenseCompatibility(args);
+		},
+	);
 
-server.tool(
-	'npmChangelogAnalysis',
-	'Analyze changelog and release history of packages',
-	{
-		packages: z.array(z.string()).describe('List of package names to analyze changelogs for'),
-	},
-	{
-		title: 'Analyze NPM Package Changelog (GitHub)',
-		readOnlyHint: true,
-		openWorldHint: true,
-		idempotentHint: true,
-	},
-	async (args: { packages: string[] }) => {
-		return await handleNpmChangelogAnalysis(args);
-	},
-);
+	server.tool(
+		'npmRepoStats',
+		'Get repository statistics for NPM packages',
+		{
+			packages: z.array(z.string()).describe('List of package names to get repository stats for'),
+		},
+		{
+			title: 'Get NPM Package Repository Stats (GitHub)',
+			readOnlyHint: true,
+			openWorldHint: true,
+			idempotentHint: true, // Stats for a repo at a point in time, though they change over time
+		},
+		async (args: { packages: string[] }) => {
+			return await handleNpmRepoStats(args);
+		},
+	);
 
-server.tool(
-	'npmAlternatives',
-	'Find alternative packages with similar functionality',
-	{
-		packages: z.array(z.string()).describe('List of package names to find alternatives for'),
-	},
-	{
-		title: 'Find NPM Package Alternatives',
-		readOnlyHint: true,
-		openWorldHint: true,
-		idempotentHint: false, // Search-based, results can change
-	},
-	async (args: { packages: string[] }) => {
-		return await handleNpmAlternatives(args);
-	},
-);
+	server.tool(
+		'npmDeprecated',
+		'Check if packages are deprecated',
+		{
+			packages: z.array(z.string()).describe('List of package names to check for deprecation'),
+		},
+		{
+			title: 'Check NPM Package Deprecation Status',
+			readOnlyHint: true,
+			openWorldHint: true,
+			idempotentHint: true, // Deprecation status is generally stable for a version
+		},
+		async (args: { packages: string[] }) => {
+			return await handleNpmDeprecated(args);
+		},
+	);
 
-server.tool(
-	'npmQuality',
-	'Analyze package quality metrics',
-	{
-		packages: z.array(z.string()).describe('List of package names to analyze'),
-	},
-	{
-		title: 'Analyze NPM Package Quality (NPMS.io)',
-		readOnlyHint: true,
-		openWorldHint: true,
-		idempotentHint: true, // Score for a version is stable, for 'latest' can change
-	},
-	async (args: { packages: string[] }) => {
-		return await handleNpmQuality(args);
-	},
-);
+	server.tool(
+		'npmChangelogAnalysis',
+		'Analyze changelog and release history of packages',
+		{
+			packages: z.array(z.string()).describe('List of package names to analyze changelogs for'),
+		},
+		{
+			title: 'Analyze NPM Package Changelog (GitHub)',
+			readOnlyHint: true,
+			openWorldHint: true,
+			idempotentHint: true,
+		},
+		async (args: { packages: string[] }) => {
+			return await handleNpmChangelogAnalysis(args);
+		},
+	);
 
-server.tool(
-	'npmMaintenance',
-	'Analyze package maintenance metrics',
-	{
-		packages: z.array(z.string()).describe('List of package names to analyze'),
-	},
-	{
-		title: 'Analyze NPM Package Maintenance (NPMS.io)',
-		readOnlyHint: true,
-		openWorldHint: true,
-		idempotentHint: true, // Score for a version is stable, for 'latest' can change
-	},
-	async (args: { packages: string[] }) => {
-		return await handleNpmMaintenance(args);
-	},
-);
+	server.tool(
+		'npmAlternatives',
+		'Find alternative packages with similar functionality',
+		{
+			packages: z.array(z.string()).describe('List of package names to find alternatives for'),
+		},
+		{
+			title: 'Find NPM Package Alternatives',
+			readOnlyHint: true,
+			openWorldHint: true,
+			idempotentHint: false, // Search-based, results can change
+		},
+		async (args: { packages: string[] }) => {
+			return await handleNpmAlternatives(args);
+		},
+	);
 
-// Start receiving messages on stdin and sending messages on stdout
-const transport = new StdioServerTransport();
-await server.connect(transport);
+	server.tool(
+		'npmQuality',
+		'Analyze package quality metrics',
+		{
+			packages: z.array(z.string()).describe('List of package names to analyze'),
+		},
+		{
+			title: 'Analyze NPM Package Quality (NPMS.io)',
+			readOnlyHint: true,
+			openWorldHint: true,
+			idempotentHint: true, // Score for a version is stable, for 'latest' can change
+		},
+		async (args: { packages: string[] }) => {
+			return await handleNpmQuality(args);
+		},
+	);
 
-process.stdin.on('close', () => {
-	server.close();
-});
+	server.tool(
+		'npmMaintenance',
+		'Analyze package maintenance metrics',
+		{
+			packages: z.array(z.string()).describe('List of package names to analyze'),
+		},
+		{
+			title: 'Analyze NPM Package Maintenance (NPMS.io)',
+			readOnlyHint: true,
+			openWorldHint: true,
+			idempotentHint: true, // Score for a version is stable, for 'latest' can change
+		},
+		async (args: { packages: string[] }) => {
+			return await handleNpmMaintenance(args);
+		},
+	);
 
-// Handle uncaught errors
-process.on('uncaughtException', (error) => {
-	console.error('Fatal error:', error);
-	server.close();
-	process.exit(1);
-});
+	return server.server;
+}
 
-process.on('unhandledRejection', (error) => {
-	console.error('Unhandled rejection:', error);
-	server.close();
-	process.exit(1);
-});
+// STDIO compatibility for backward compatibility
+async function main() {
+	// Create server with empty configuration
+	const server = createServer({
+		config: {},
+	});
+
+	// Start receiving messages on stdin and sending messages on stdout
+	const transport = new StdioServerTransport();
+	await server.connect(transport);
+
+	process.stdin.on('close', () => {
+		server.close();
+	});
+
+	// Handle uncaught errors
+	process.on('uncaughtException', (error) => {
+		console.error('Fatal error:', error);
+		server.close();
+		process.exit(1);
+	});
+
+	process.on('unhandledRejection', (error) => {
+		console.error('Unhandled rejection:', error);
+		server.close();
+		process.exit(1);
+	});
+}
 
 // Type guard for NpmPackageVersionSchema
 function isNpmPackageVersionData(data: unknown): data is z.infer<typeof NpmPackageVersionSchema> {
@@ -4141,3 +4171,9 @@ function isNpmPackageVersionData(data: unknown): data is z.infer<typeof NpmPacka
 		return false;
 	}
 }
+
+// Run STDIO server when executed directly (for backward compatibility)
+main().catch((error) => {
+	console.error('Server error:', error);
+	process.exit(1);
+});

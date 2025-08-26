@@ -1,57 +1,31 @@
-# Source
-*.ts
-!*.d.ts
-src/
+# Smithery artifacts (exclude from npm package)
+.smithery/
+.smithery.yaml
 
-# Tests
-__tests__/
-*.test.ts
-*.spec.ts
-coverage/
-jest.config.js
-
-# Config files
-.eslintrc
-.prettierrc
-.gitignore
-.npmignore
-tsconfig.json
-Dockerfile
-biome.json
-.cursorrules
-
-# Editor directories
-.idea/
-.vscode/
-
-# Logs
-logs/
+# Development and build artifacts
+node_modules/
 *.log
-npm-debug.log*
+*.tsbuildinfo
 
-# Environment variables
-.env*
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
 
-# Git files
-.git/
-.github/
-.gitattributes
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
 
-# Documentation files (except README and LICENSE)
-docs/
-CONTRIBUTING.md
-CHANGELOG.md
+# Test coverage
+coverage/
+.nyc_output/
 
-# Development tools
-nodemon.json
-.eslintignore
-.prettierignore
-
-# Memory bank
-memory-bank/
-
-# Build artifacts
-*.tsbuildinfo 
-
-# llms
-llms.txt
+# Temporary files
+*.tmp
+*.temp

@@ -27,7 +27,8 @@ jobs:
                   cache: 'npm'
             - run: npm ci
             - run: npm run test
-            - run: npm run build
+            - run: npm run build:stdio
+            - run: npm run build:http
 
     publish:
         permissions:
@@ -42,13 +43,30 @@ jobs:
             - uses: actions/checkout@v4
               with:
                 fetch-depth: 0
-            - name: Use Node.js ${{matrix.node-version}}
+            - name: Use Node.js 20.9.0
               uses: actions/setup-node@v4
               with:
-                  node-version: ${{matrix.node-version}}
+                  node-version: '20.9.0'
                   cache: 'npm'
                   registry-url: 'https://registry.npmjs.org'
             - run: npm ci
+            
+            # Build STDIO version for npm package (excludes Smithery artifacts)
+            - name: Build STDIO version for npm package
+              run: |
+                npm run build:stdio
+                # Remove Smithery artifacts to avoid publishing them to npm
+                rm -rf .smithery/
+                rm -rf node_modules/@smithery/
+                
+            # Verify npm package contents
+            - name: Verify npm package contents
+              run: |
+                echo "=== NPM Package Contents ==="
+                ls -la dist/
+                echo "=== Excluded Smithery artifacts ==="
+                ls -la .smithery/ 2>/dev/null || echo "Smithery artifacts removed successfully"
+                
             - name: Semantic Release
               run: npm run semantic-release
               env:
@@ -56,6 +74,30 @@ jobs:
                   NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
                   NPM_TOKEN: ${{secrets.NPM_TOKEN}}
                   NPM_CONFIG_PROVENANCE: true
+                  
+            # Build HTTP version for Smithery deployment (separate from npm)
+            - name: Build HTTP version for Smithery
+              run: |
+                npm run build:http
+                echo "=== Smithery build artifacts ==="
+                ls -la .smithery/
+                
+            # Verify Smithery deployment readiness
+            - name: Verify Smithery deployment readiness
+              run: |
+                echo "=== Required files for Smithery deploy ==="
+                echo "smithery.yaml:"
+                cat smithery.yaml
+                echo ""
+                echo "package.json module field:"
+                node -p "require('./package.json').module"
+                echo ""
+                echo "Smithery build artifacts:"
+                ls -la .smithery/
+                echo ""
+                echo "✅ Smithery deployment files verified!"
+                
+            # Set Dockerfile version label from package.json
             - name: Set Dockerfile version label from package.json
               run: |
                 VERSION=$(node -p "require('./package.json').version")

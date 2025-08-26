@@ -6,6 +6,7 @@ node_modules/
 # Production build
 dist/
 build/
+.smithery/
 
 # Environment variables
 .env
