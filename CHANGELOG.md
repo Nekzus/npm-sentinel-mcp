@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.8.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.7.9...v1.8.0) (2025-08-26)
+
+
+### Bug Fixes
+
+* resolve Rollup optional dependencies issue in GitHub Actions ([05aa882](https://github.com/Nekzus/npm-sentinel-mcp/commit/05aa8828f444bb6b1ffeec0fed7586a6e75719c9))
+
+
+### Features
+
+* migrate to HTTP streamable transport with Smithery CLI ([9840217](https://github.com/Nekzus/npm-sentinel-mcp/commit/9840217edb46cb0955d02063f2f8731d9107e43a))
+
 ## [1.7.9](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.7.8...v1.7.9) (2025-06-29)
 
 
