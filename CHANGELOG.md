@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.8.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.8.0...v1.8.1) (2025-08-26)
+
+
+### Bug Fixes
+
+* synchronize version numbers across all files ([0090aeb](https://github.com/Nekzus/npm-sentinel-mcp/commit/0090aeb4f108e4653b62b2fa0210ed05f027719b))
+
 # [1.8.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.7.9...v1.8.0) (2025-08-26)
 
 
