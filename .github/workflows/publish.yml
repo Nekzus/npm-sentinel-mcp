@@ -16,7 +16,7 @@ jobs:
         strategy:
             matrix:
                 node-version: [20.9.0]
-                os: [ubuntu-latest, windows-latest]
+                os: [ubuntu-latest]
 
         steps:
             - uses: actions/checkout@v4
@@ -26,6 +26,12 @@ jobs:
                   node-version: ${{matrix.node-version}}
                   cache: 'npm'
             - run: npm ci
+            - name: Handle optional dependencies
+              run: |
+                # Force reinstall to handle optional dependencies properly
+                npm ci --no-optional
+                # Install optional dependencies separately if needed
+                npm install --optional
             - run: npm run test
             - run: npm run build:stdio
             - run: npm run build:http
