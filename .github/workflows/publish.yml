@@ -78,11 +78,11 @@ jobs:
                 echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
                 echo "📦 New version: $NEW_VERSION"
                 
-            # Update versions in server.json and index.ts
-            - name: Update versions in server.json and index.ts
+            # Update versions in server.json only (index.ts is hardcoded)
+            - name: Update versions in server.json
               run: |
                 NEW_VERSION="${{ steps.get_version.outputs.new_version }}"
-                echo "📦 Updating versions with: $NEW_VERSION"
+                echo "📦 Updating server.json version with: $NEW_VERSION"
                 
                 # Verify we have the version
                 if [ -z "$NEW_VERSION" ]; then
@@ -93,8 +93,6 @@ jobs:
                 # Show current state before replacement
                 echo "📋 Before replacement - server.json version:"
                 grep -n "version" server.json
-                echo "📋 Before replacement - index.ts version:"
-                grep -n "version.*{{VERSION}}" index.ts
                 
                 # Replace {{VERSION}} with actual version in server.json using temp file
                 if sed "s/{{VERSION}}/$NEW_VERSION/g" server.json > server.json.tmp; then
@@ -105,28 +103,17 @@ jobs:
                   exit 1
                 fi
                 
-                # Replace {{VERSION}} with actual version in index.ts using temp file
-                if sed "s/{{VERSION}}/$NEW_VERSION/g" index.ts > index.ts.tmp; then
-                  mv index.ts.tmp index.ts
-                  echo "✅ index.ts updated successfully"
-                else
-                  echo "❌ Error updating index.ts"
-                  exit 1
-                fi
-                
-                echo "✅ Versions updated successfully"
+                echo "✅ Version updated successfully"
                 echo "📋 Final server.json version:"
                 cat server.json | jq '.version, .packages[0].version'
-                echo "📋 Final index.ts version:"
-                grep -n "version.*$NEW_VERSION" index.ts | head -1
                 
-                # Verify no {{VERSION}} placeholders remain
-                echo "🔍 Verifying no {{VERSION}} placeholders remain..."
-                if grep -r "{{VERSION}}" server.json index.ts; then
-                  echo "❌ Error: {{VERSION}} placeholders still found!"
+                # Verify no {{VERSION}} placeholders remain in server.json
+                echo "🔍 Verifying no {{VERSION}} placeholders remain in server.json..."
+                if grep "{{VERSION}}" server.json; then
+                  echo "❌ Error: {{VERSION}} placeholders still found in server.json!"
                   exit 1
                 else
-                  echo "✅ All {{VERSION}} placeholders successfully replaced"
+                  echo "✅ All {{VERSION}} placeholders successfully replaced in server.json"
                 fi
                 
             # Commit the version updates back to the repository
@@ -134,8 +121,8 @@ jobs:
               run: |
                 git config --local user.email "action@github.com"
                 git config --local user.name "GitHub Action"
-                git add server.json index.ts
-                git commit -m "chore: update version placeholders to ${{ steps.get_version.outputs.new_version }}" || echo "No changes to commit"
+                git add server.json
+                git commit -m "chore: update version in server.json to ${{ steps.get_version.outputs.new_version }}" || echo "No changes to commit"
                 git push origin main || echo "No changes to push"
             
             # Build STDIO version for npm package (excludes Smithery artifacts)
