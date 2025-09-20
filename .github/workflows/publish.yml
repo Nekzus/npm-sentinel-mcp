@@ -78,52 +78,19 @@ jobs:
                 echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
                 echo "📦 New version: $NEW_VERSION"
                 
-            # Update versions in server.json only (index.ts is hardcoded)
-            - name: Update versions in server.json
+            # Update server.json version and SHA256 (like the example workflow)
+            - name: Update server.json version and SHA256
               run: |
-                NEW_VERSION="${{ steps.get_version.outputs.new_version }}"
-                echo "📦 Updating server.json version with: $NEW_VERSION"
-                
-                # Verify we have the version
-                if [ -z "$NEW_VERSION" ]; then
-                  echo "❌ Error: NEW_VERSION is empty"
-                  exit 1
-                fi
-                
-                # Show current state before replacement
-                echo "📋 Before replacement - server.json version:"
-                grep -n "version" server.json
+                VERSION=$(node -p "require('./package.json').version")
+                echo "📦 Updating server.json with version: $VERSION"
                 
                 # Replace {{VERSION}} with actual version in server.json using temp file
-                if sed "s/{{VERSION}}/$NEW_VERSION/g" server.json > server.json.tmp; then
-                  mv server.json.tmp server.json
-                  echo "✅ server.json updated successfully"
-                else
-                  echo "❌ Error updating server.json"
-                  exit 1
-                fi
+                sed "s/{{VERSION}}/$VERSION/g" server.json > server.json.tmp
+                mv server.json.tmp server.json
                 
-                echo "✅ Version updated successfully"
+                echo "✅ server.json updated successfully"
                 echo "📋 Final server.json version:"
                 cat server.json | jq '.version, .packages[0].version'
-                
-                # Verify no {{VERSION}} placeholders remain in server.json
-                echo "🔍 Verifying no {{VERSION}} placeholders remain in server.json..."
-                if grep "{{VERSION}}" server.json; then
-                  echo "❌ Error: {{VERSION}} placeholders still found in server.json!"
-                  exit 1
-                else
-                  echo "✅ All {{VERSION}} placeholders successfully replaced in server.json"
-                fi
-                
-            # Commit the version updates back to the repository
-            - name: Commit version updates
-              run: |
-                git config --local user.email "action@github.com"
-                git config --local user.name "GitHub Action"
-                git add server.json
-                git commit -m "chore: update version in server.json to ${{ steps.get_version.outputs.new_version }}" || echo "No changes to commit"
-                git push origin main || echo "No changes to push"
             
             # Build STDIO version for npm package (excludes Smithery artifacts)
             - name: Build STDIO version for npm package
