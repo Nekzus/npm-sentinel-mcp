@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.10.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.9.1...v1.10.0) (2025-09-20)
+
+
+### Features
+
+* add version bump test ([1f4c3d6](https://github.com/Nekzus/npm-sentinel-mcp/commit/1f4c3d6ef8543506cf97a6d0fa96bf21679e08f3))
+
 ## [1.9.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.9.0...v1.9.1) (2025-09-20)
 
 
