@@ -94,18 +94,23 @@ jobs:
                 echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
                 echo "📦 New version: $NEW_VERSION"
                 
-            # Replace template variables in server.json
+            # Replace template variables in server.json and index.ts
             - name: Replace template variables
               run: |
                 NEW_VERSION="${{ steps.get_version.outputs.new_version }}"
                 echo "🔄 Replacing template variables with version: $NEW_VERSION"
                 
-                # Replace {{VERSION}} with actual version
+                # Replace {{VERSION}} with actual version in server.json
                 sed -i "s/{{VERSION}}/$NEW_VERSION/g" server.json
+                
+                # Replace {{VERSION}} with actual version in index.ts
+                sed -i "s/{{VERSION}}/$NEW_VERSION/g" index.ts
                 
                 echo "✅ Template variables replaced successfully"
                 echo "📋 Final server.json version:"
                 cat server.json | jq '.version, .packages[0].version'
+                echo "📋 Final index.ts version:"
+                grep -n "version:" index.ts | head -1
                   
             # Install MCP Publisher for registry publishing
             - name: Install MCP Publisher
