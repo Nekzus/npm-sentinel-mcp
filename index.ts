@@ -3715,7 +3715,7 @@ export default function createServer({
 	// Create server instance
 	const server = new McpServer({
 		name: 'npm-sentinel-mcp',
-		version: '{{VERSION}}',
+		version: '1.9.0',
 		capabilities: {
 			resources: {},
 		},

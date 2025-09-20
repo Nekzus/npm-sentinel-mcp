@@ -62,22 +62,6 @@ jobs:
                   registry-url: 'https://registry.npmjs.org'
             - run: npm ci
             
-            # Build STDIO version for npm package (excludes Smithery artifacts)
-            - name: Build STDIO version for npm package
-              run: |
-                npm run build:stdio
-                # Remove Smithery artifacts to avoid publishing them to npm
-                rm -rf .smithery/
-                rm -rf node_modules/@smithery/
-                
-            # Verify npm package contents
-            - name: Verify npm package contents
-              run: |
-                echo "=== NPM Package Contents ==="
-                ls -la dist/
-                echo "=== Excluded Smithery artifacts ==="
-                ls -la .smithery/ 2>/dev/null || echo "Smithery artifacts removed successfully"
-                
             - name: Semantic Release
               run: npm run semantic-release
               env:
@@ -94,7 +78,7 @@ jobs:
                 echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
                 echo "📦 New version: $NEW_VERSION"
                 
-            # Replace template variables in server.json and index.ts
+            # Replace template variables BEFORE building
             - name: Replace template variables
               run: |
                 NEW_VERSION="${{ steps.get_version.outputs.new_version }}"
@@ -111,6 +95,24 @@ jobs:
                 cat server.json | jq '.version, .packages[0].version'
                 echo "📋 Final index.ts version:"
                 grep -n "version:" index.ts | head -1
+            
+            # Build STDIO version for npm package (excludes Smithery artifacts)
+            - name: Build STDIO version for npm package
+              run: |
+                npm run build:stdio
+                # Remove Smithery artifacts to avoid publishing them to npm
+                rm -rf .smithery/
+                rm -rf node_modules/@smithery/
+                
+            # Verify npm package contents
+            - name: Verify npm package contents
+              run: |
+                echo "=== NPM Package Contents ==="
+                ls -la dist/
+                echo "=== Excluded Smithery artifacts ==="
+                ls -la .smithery/ 2>/dev/null || echo "Smithery artifacts removed successfully"
+                echo "=== Version in compiled code ==="
+                grep -n "version:" dist/index.js | head -1
                   
             # Install MCP Publisher for registry publishing
             - name: Install MCP Publisher
