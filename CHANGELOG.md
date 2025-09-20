@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.11.8](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.11.7...v1.11.8) (2025-09-20)
+
+
+### Bug Fixes
+
+* update hardcoded version in index.ts to 1.11.8 ([c5f185e](https://github.com/Nekzus/npm-sentinel-mcp/commit/c5f185e17ecfa50ce5139a2f4bebda8f39570a41))
+
 ## [1.11.7](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.11.6...v1.11.7) (2025-09-20)
 
 
