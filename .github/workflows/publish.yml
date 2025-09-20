@@ -12,10 +12,11 @@ on:
 jobs:
     quality:
         runs-on: ${{matrix.os}}
+        timeout-minutes: 10
 
         strategy:
             matrix:
-                node-version: [20.9.0]
+                node-version: [20.9.0, lts/*]
                 os: [ubuntu-latest]
 
         steps:
@@ -32,17 +33,21 @@ jobs:
                 npm ci --no-optional
                 # Install optional dependencies separately if needed
                 npm install --optional
-            - run: npm run test
-            - run: npm run build:stdio
-            - run: npm run build:http
+            - name: Lint
+              run: npm run lint --if-present
+            - name: Test
+              run: npm run test
+            - name: Build STDIO
+              run: npm run build:stdio
+            - name: Build HTTP
+              run: npm run build:http
 
     publish:
         permissions:
             contents: write
             id-token: write
-            issues: write
-            pull-requests: write
         runs-on: ubuntu-latest
+        timeout-minutes: 15
         if: ${{github.ref == 'refs/heads/main'}}
         needs: [quality]
         steps:
@@ -80,6 +85,40 @@ jobs:
                   NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
                   NPM_TOKEN: ${{secrets.NPM_TOKEN}}
                   NPM_CONFIG_PROVENANCE: true
+                  
+            # Get the new version from package.json after semantic-release
+            - name: Get new version
+              id: get_version
+              run: |
+                NEW_VERSION=$(node -p "require('./package.json').version")
+                echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+                echo "📦 New version: $NEW_VERSION"
+                
+            # Replace template variables in server.json
+            - name: Replace template variables
+              run: |
+                NEW_VERSION="${{ steps.get_version.outputs.new_version }}"
+                echo "🔄 Replacing template variables with version: $NEW_VERSION"
+                
+                # Replace {{VERSION}} with actual version
+                sed -i "s/{{VERSION}}/$NEW_VERSION/g" server.json
+                
+                echo "✅ Template variables replaced successfully"
+                echo "📋 Final server.json version:"
+                cat server.json | jq '.version, .packages[0].version'
+                  
+            # Install MCP Publisher for registry publishing
+            - name: Install MCP Publisher
+              run: |
+                curl -L "https://github.com/modelcontextprotocol/registry/releases/download/v1.0.0/mcp-publisher_1.0.0_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+                
+            # Login to MCP Registry using GitHub OIDC
+            - name: Login to MCP Registry
+              run: ./mcp-publisher login github-oidc
+              
+            # Publish to MCP Registry
+            - name: Publish to MCP Registry
+              run: ./mcp-publisher publish
                   
             # Build HTTP version for Smithery deployment (separate from npm)
             - name: Build HTTP version for Smithery
