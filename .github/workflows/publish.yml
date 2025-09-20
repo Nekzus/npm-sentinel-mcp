@@ -78,19 +78,24 @@ jobs:
                 echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
                 echo "📦 New version: $NEW_VERSION"
                 
-            # Update server.json version (like Airtable example)
-            - name: Update server.json version
+            # Update versions in server.json and index.ts
+            - name: Update versions in server.json and index.ts
               run: |
                 NEW_VERSION="${{ steps.get_version.outputs.new_version }}"
-                echo "📦 Updating server.json with version: $NEW_VERSION"
+                echo "📦 Updating versions with: $NEW_VERSION"
                 
                 # Replace {{VERSION}} with actual version in server.json using temp file
                 sed "s/{{VERSION}}/$NEW_VERSION/g" server.json > server.json.tmp
                 mv server.json.tmp server.json
                 
-                echo "✅ server.json updated successfully"
+                # Replace {{VERSION}} with actual version in index.ts
+                sed -i "s/{{VERSION}}/$NEW_VERSION/g" index.ts
+                
+                echo "✅ Versions updated successfully"
                 echo "📋 Final server.json version:"
                 cat server.json | jq '.version, .packages[0].version'
+                echo "📋 Final index.ts version:"
+                grep -n "version.*$NEW_VERSION" index.ts | head -1
             
             # Build STDIO version for npm package (excludes Smithery artifacts)
             - name: Build STDIO version for npm package
