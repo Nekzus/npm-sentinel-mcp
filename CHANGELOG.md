@@ -3,6 +3,15 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.10.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.10.0...v1.10.1) (2025-09-20)
+
+
+### Bug Fixes
+
+* disable MCP Registry publishing temporarily ([69a0abf](https://github.com/Nekzus/npm-sentinel-mcp/commit/69a0abf172ed490a95b7f0e3bfe400d8c9a38e95))
+* restore {{VERSION}} templates in server.json and index.ts ([173b33f](https://github.com/Nekzus/npm-sentinel-mcp/commit/173b33f366a995cfd175e663e630473c632d7f27))
+* test deployment with corrected workflow ([904ae66](https://github.com/Nekzus/npm-sentinel-mcp/commit/904ae66fd51cffc6e1747e78e018a18b4cf1639b))
+
 # [1.10.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.9.1...v1.10.0) (2025-09-20)
 
 
