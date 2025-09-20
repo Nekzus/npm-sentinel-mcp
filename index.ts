@@ -3712,10 +3712,13 @@ export default function createServer({
 	// The package root will be one level above __dirname (which is 'dist/' after compilation)
 	const packageRoot = path.join(__dirname, '..');
 
+	// Read version from package.json (like Airtable)
+	const packageJson = require('../package.json');
+	
 	// Create server instance
 	const server = new McpServer({
 		name: 'npm-sentinel-mcp',
-		version: '1.11.0',
+		version: packageJson.version,
 		capabilities: {
 			resources: {},
 		},
