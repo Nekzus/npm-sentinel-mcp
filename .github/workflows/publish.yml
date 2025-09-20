@@ -88,8 +88,9 @@ jobs:
                 sed "s/{{VERSION}}/$NEW_VERSION/g" server.json > server.json.tmp
                 mv server.json.tmp server.json
                 
-                # Replace {{VERSION}} with actual version in index.ts
-                sed -i "s/{{VERSION}}/$NEW_VERSION/g" index.ts
+                # Replace {{VERSION}} with actual version in index.ts using temp file
+                sed "s/{{VERSION}}/$NEW_VERSION/g" index.ts > index.ts.tmp
+                mv index.ts.tmp index.ts
                 
                 echo "✅ Versions updated successfully"
                 echo "📋 Final server.json version:"
