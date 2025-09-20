@@ -7,13 +7,13 @@
         "url": "https://github.com/Nekzus/npm-sentinel-mcp",
         "source": "github"
     },
-    "version": "1.10.0",
+    "version": "{{VERSION}}",
     "packages": [
         {
             "registry_type": "npm",
             "registry_base_url": "https://registry.npmjs.org",
             "identifier": "@nekzus/mcp-server",
-            "version": "1.10.0",
+            "version": "{{VERSION}}",
             "runtime_hint": "npx",
             "transport": {
                 "type": "stdio"
