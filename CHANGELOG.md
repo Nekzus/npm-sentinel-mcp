@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.11.7](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.11.6...v1.11.7) (2025-09-20)
+
+
+### Bug Fixes
+
+* restore {{VERSION}} placeholders in server.json and simplify workflow like example ([22fbd89](https://github.com/Nekzus/npm-sentinel-mcp/commit/22fbd89f183ffd991033a4a176ee22e3ef51e6d3))
+
 ## [1.11.6](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.11.5...v1.11.6) (2025-09-20)
 
 
