@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.11.3](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.11.2...v1.11.3) (2025-09-20)
+
+
+### Bug Fixes
+
+* use temp file method for index.ts template processing ([04d802a](https://github.com/Nekzus/npm-sentinel-mcp/commit/04d802a70316de8f1ae4d7a343e6f008b4bdbf44))
+
 ## [1.11.2](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.11.1...v1.11.2) (2025-09-20)
 
 
