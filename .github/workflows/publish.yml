@@ -84,19 +84,50 @@ jobs:
                 NEW_VERSION="${{ steps.get_version.outputs.new_version }}"
                 echo "📦 Updating versions with: $NEW_VERSION"
                 
+                # Verify we have the version
+                if [ -z "$NEW_VERSION" ]; then
+                  echo "❌ Error: NEW_VERSION is empty"
+                  exit 1
+                fi
+                
+                # Show current state before replacement
+                echo "📋 Before replacement - server.json version:"
+                grep -n "version" server.json
+                echo "📋 Before replacement - index.ts version:"
+                grep -n "version.*{{VERSION}}" index.ts
+                
                 # Replace {{VERSION}} with actual version in server.json using temp file
-                sed "s/{{VERSION}}/$NEW_VERSION/g" server.json > server.json.tmp
-                mv server.json.tmp server.json
+                if sed "s/{{VERSION}}/$NEW_VERSION/g" server.json > server.json.tmp; then
+                  mv server.json.tmp server.json
+                  echo "✅ server.json updated successfully"
+                else
+                  echo "❌ Error updating server.json"
+                  exit 1
+                fi
                 
                 # Replace {{VERSION}} with actual version in index.ts using temp file
-                sed "s/{{VERSION}}/$NEW_VERSION/g" index.ts > index.ts.tmp
-                mv index.ts.tmp index.ts
+                if sed "s/{{VERSION}}/$NEW_VERSION/g" index.ts > index.ts.tmp; then
+                  mv index.ts.tmp index.ts
+                  echo "✅ index.ts updated successfully"
+                else
+                  echo "❌ Error updating index.ts"
+                  exit 1
+                fi
                 
                 echo "✅ Versions updated successfully"
                 echo "📋 Final server.json version:"
                 cat server.json | jq '.version, .packages[0].version'
                 echo "📋 Final index.ts version:"
                 grep -n "version.*$NEW_VERSION" index.ts | head -1
+                
+                # Verify no {{VERSION}} placeholders remain
+                echo "🔍 Verifying no {{VERSION}} placeholders remain..."
+                if grep -r "{{VERSION}}" server.json index.ts; then
+                  echo "❌ Error: {{VERSION}} placeholders still found!"
+                  exit 1
+                else
+                  echo "✅ All {{VERSION}} placeholders successfully replaced"
+                fi
             
             # Build STDIO version for npm package (excludes Smithery artifacts)
             - name: Build STDIO version for npm package
