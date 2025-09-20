@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.9.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.9.0...v1.9.1) (2025-09-20)
+
+
+### Bug Fixes
+
+* reorder workflow to process templates before building ([7402840](https://github.com/Nekzus/npm-sentinel-mcp/commit/7402840640f2e53505375d2fd1dd744d02da34e5))
+* use node: protocol for Node.js imports in process-templates.js ([f78aaf5](https://github.com/Nekzus/npm-sentinel-mcp/commit/f78aaf5ccb5f9970debc6cdc23387ebea6cb283d))
+
 # [1.9.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.8.1...v1.9.0) (2025-09-20)
 
 
