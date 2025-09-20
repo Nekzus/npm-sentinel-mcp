@@ -32,7 +32,6 @@
     "check": "biome check --apply .",
     "commit": "git-cz",
     "semantic-release": "semantic-release --branches main",
-    "process-templates": "node scripts/process-templates.js",
     "watch": "tsc --watch",
     "prepublishOnly": "npm run build:stdio",
     "changelog:init": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0"
