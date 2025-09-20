@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.9.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.8.1...v1.9.0) (2025-09-20)
+
+
+### Features
+
+* implement automatic version synchronization with templates ([f81b436](https://github.com/Nekzus/npm-sentinel-mcp/commit/f81b436a412aa3a3fd34c05b3da6fb1d939fe170))
+
 ## [1.8.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.8.0...v1.8.1) (2025-08-26)
 
 
