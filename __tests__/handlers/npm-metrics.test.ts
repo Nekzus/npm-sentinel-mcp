@@ -161,28 +161,28 @@ vi.mock('node-fetch', () => {
 						    },
 					    }),
 			    });
-            } else {
-                // Package Info Request (root)
-                return Promise.resolve({
-                    ok: true,
-                    json: () => Promise.resolve({
-                        name: pkgName,
-                        'dist-tags': { latest: '4.18.2' },
-                        versions: {
-                            '4.18.2': {
-                                name: pkgName,
-                                version: '4.18.2',
-                                dist: { tarball: '...' },
-                            }
-                        },
-                        time: { modified: '2023-01-01T00:00:00.000Z' },
-                        repository: pkgName === 'no-repo-pkg' ? undefined : {
-                            type: 'git',
-                            url: `https://github.com/${pkgName}/${pkgName}.git`,
-                        },
-                    })
-                });
             }
+                
+			// Package Info Request (root)
+			return Promise.resolve({
+				ok: true,
+				json: () => Promise.resolve({
+					name: pkgName,
+					'dist-tags': { latest: '4.18.2' },
+					versions: {
+						'4.18.2': {
+							name: pkgName,
+							version: '4.18.2',
+							dist: { tarball: '...' },
+						}
+					},
+					time: { modified: '2023-01-01T00:00:00.000Z' },
+					repository: pkgName === 'no-repo-pkg' ? undefined : {
+						type: 'git',
+						url: `https://github.com/${pkgName}/${pkgName}.git`,
+					},
+				})
+			});
 		}),
 	};
 });
