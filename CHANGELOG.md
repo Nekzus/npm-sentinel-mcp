@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.32](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.31...v1.12.32) (2025-12-24)
+
+
+### Bug Fixes
+
+* **ci:** restore NPM_TOKEN auth for publishing, requiring Automation token to bypass 2FA ([142bb4c](https://github.com/Nekzus/npm-sentinel-mcp/commit/142bb4c13b8d0fba56e8a1449da7da9d8c3ead2e))
+
 ## [1.12.31](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.30...v1.12.31) (2025-12-24)
 
 
