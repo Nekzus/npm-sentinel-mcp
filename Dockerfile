@@ -14,12 +14,14 @@ RUN apk add --no-cache python3 make g++ libsecret-dev
 RUN npm install --ignore-scripts && npm rebuild
 
 # Copy source code and other necessary files
-COPY index.ts ./
+# Copy source code and other necessary files
+COPY index.ts smithery.yaml ./
 COPY llms.txt llms-full.txt ./
 
 # Build the project
-# Build the project (compile TS to JS in dist/)
-RUN npm run build:stdio
+# 1. Compile TS to JS (dist/)
+# 2. Build Smithery HTTP adapter (.smithery/)
+RUN npm run build:stdio && npm run build:http
 
 # ----- Production Stage -----
 FROM node:lts-alpine AS production
@@ -32,6 +34,7 @@ WORKDIR /app
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/package-lock.json ./
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/.smithery ./.smithery
 COPY --from=builder /app/llms.txt /app/llms-full.txt ./
 
 # Install only production dependencies
@@ -47,5 +50,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
-# Startup command
-CMD ["node", "dist/index.js"] 
+# Startup command (Run the Smithery HTTP adapter)
+CMD ["node", ".smithery/index.cjs"] 
