@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.31](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.30...v1.12.31) (2025-12-24)
+
+
+### Bug Fixes
+
+* **ci:** configure tokenless OIDC publishing by removing setup-node registry setup ([1017ce6](https://github.com/Nekzus/npm-sentinel-mcp/commit/1017ce6325c8f8be183d7157c87cb98a9e329c2a))
+
 ## [1.12.30](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.29...v1.12.30) (2025-12-24)
 
 
