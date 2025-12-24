@@ -3,6 +3,27 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.12.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.11.8...v1.12.0) (2025-12-24)
+
+
+### Bug Fixes
+
+* **ci:** disable semantic-release npm publish and use manual OIDC publish ([531bda6](https://github.com/Nekzus/npm-sentinel-mcp/commit/531bda60fcd7f0a1e9ce2b746ea559b81ebca683))
+* **ci:** regenerate package-lock.json with legacy-peer-deps validation ([46754c0](https://github.com/Nekzus/npm-sentinel-mcp/commit/46754c0804c76c7dbaf177e5f4bfc6650025df8f))
+* **ci:** remove NPM_TOKEN env var to enable OIDC auth for semantic-release ([8c6d365](https://github.com/Nekzus/npm-sentinel-mcp/commit/8c6d3656b777f3168c82106d211a8a89aaf42241))
+* **ci:** remove registry-url from setup-node to prevent auth conflicts ([294777e](https://github.com/Nekzus/npm-sentinel-mcp/commit/294777e8e001b0526c262e8ff3e54c7b8e0c13ea))
+* **ci:** sync package-lock.json with version bump ([95ec6a3](https://github.com/Nekzus/npm-sentinel-mcp/commit/95ec6a30e10b0a3427f077149acd730eca5e4be5))
+* **deps:** add overrides for zod to resolve peer dependency conflicts in CI ([23f1e3c](https://github.com/Nekzus/npm-sentinel-mcp/commit/23f1e3cff1c15b2203b41d6fd5bc304d533b60a3))
+* resolve deprecation warnings, standardise registerTool, fix TS errors in tests, bump to 1.12.0 ([c910120](https://github.com/Nekzus/npm-sentinel-mcp/commit/c9101206c46f8c6f70ec70be0f121c353115ec5a))
+* **test:** remove useless else block in npm-metrics.test.ts ([77cb102](https://github.com/Nekzus/npm-sentinel-mcp/commit/77cb102398594767767f2b52ee303594e0a725a2))
+* **tests:** downgrade zod-to-json-schema and update security mocks/assertions ([6f73522](https://github.com/Nekzus/npm-sentinel-mcp/commit/6f7352219d66cff48fe22958e234aa9b9617d3b4))
+* update .gitignore to include memory.json and MCP Registry files; remove obsolete test files ([102fc69](https://github.com/Nekzus/npm-sentinel-mcp/commit/102fc69697164e90c3d492f461896d52c3732890))
+
+
+### Features
+
+* **npm-sentinel:** modernize vulnerability scanner with batch queries and dependency support ([2be32ce](https://github.com/Nekzus/npm-sentinel-mcp/commit/2be32cedfc05bcfce034e009dc27ce6697d34966))
+
 ## [1.11.8](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.11.7...v1.11.8) (2025-09-20)
 
 
