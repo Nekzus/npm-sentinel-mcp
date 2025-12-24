@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.13.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.36...v1.13.0) (2025-12-24)
+
+
+### Features
+
+* improve smithery quality score by adding config schema and prompts ([e9e285d](https://github.com/Nekzus/npm-sentinel-mcp/commit/e9e285dcf79c657f3c24b3b440570b85cf1545c9))
+
 ## [1.12.36](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.35...v1.12.36) (2025-12-24)
 
 
