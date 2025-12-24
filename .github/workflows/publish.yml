@@ -59,7 +59,6 @@ jobs:
               with:
                   node-version: '20.9.0'
                   cache: 'npm'
-                  registry-url: 'https://registry.npmjs.org'
             - run: npm ci
             
             - name: Semantic Release
