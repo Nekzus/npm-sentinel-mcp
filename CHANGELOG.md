@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.26](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.25...v1.12.26) (2025-12-24)
+
+
+### Bug Fixes
+
+* **deploy:** update Dockerfile with smithery-generated multi-stage alpine build ([78a2569](https://github.com/Nekzus/npm-sentinel-mcp/commit/78a256920b98cb83062c91256e3e7d71bd3aab3b))
+
 ## [1.12.25](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.24...v1.12.25) (2025-12-24)
 
 
