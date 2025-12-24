@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.3](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.2...v1.12.3) (2025-12-24)
+
+
+### Bug Fixes
+
+* **ci:** add scope to setup-node to ensure correct .npmrc for [@nekzus](https://github.com/nekzus) ([08785fc](https://github.com/Nekzus/npm-sentinel-mcp/commit/08785fc59bc0d2107b89286befa0cbb91314bf30))
+
 ## [1.12.2](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.1...v1.12.2) (2025-12-24)
 
 
