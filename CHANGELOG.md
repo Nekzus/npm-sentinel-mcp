@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.25](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.24...v1.12.25) (2025-12-24)
+
+
+### Bug Fixes
+
+* **deploy:** enable native module compilation in Dockerfile (install build-essential, remove ignore-scripts) ([2d3cb0b](https://github.com/Nekzus/npm-sentinel-mcp/commit/2d3cb0b8aae6e9e3b7efe4a1d418c376cd179457))
+
 ## [1.12.24](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.23...v1.12.24) (2025-12-24)
 
 
