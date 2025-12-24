@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.36](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.35...v1.12.36) (2025-12-24)
+
+
+### Bug Fixes
+
+* revert docker improvements (libsecret, tini) as requested ([0c7fe80](https://github.com/Nekzus/npm-sentinel-mcp/commit/0c7fe807f3c3ed571ea93b75edd761c4e5fcf16e))
+
 ## [1.12.35](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.34...v1.12.35) (2025-12-24)
 
 
