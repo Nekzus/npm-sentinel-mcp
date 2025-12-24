@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.20](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.19...v1.12.20) (2025-12-24)
+
+
+### Bug Fixes
+
+* **ci:** correct mcp-publisher v1.4.0 download url format (remove version from filename) ([8360dee](https://github.com/Nekzus/npm-sentinel-mcp/commit/8360deeab069406c0cb6866aa5abb39865dab436))
+
 ## [1.12.19](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.18...v1.12.19) (2025-12-24)
 
 
