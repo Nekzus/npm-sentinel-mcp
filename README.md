@@ -96,6 +96,31 @@ This MCP server now supports HTTP streamable transport through Smithery.ai for e
 }
 ```
 
+### Configuration
+
+The server supports the following configuration options:
+
+| Environment Variable | CLI Argument | Default | Description |
+| -------------------- | ------------ | ------- | ----------- |
+| `NPM_REGISTRY_URL` | `config.NPM_REGISTRY_URL` | `https://registry.npmjs.org` | URL of the NPM registry to use for all requests |
+
+#### HTTP Deployment (Smithery/Docker)
+
+When deploying via Smithery or Docker, you can configure these options in your configuration file:
+
+```json
+{
+  "mcpServers": {
+    "npm-sentinel": {
+      "type": "http",
+      "url": "https://smithery.ai/server/@Nekzus/npm-sentinel-mcp",
+      "config": {
+        "NPM_REGISTRY_URL": "https://registry.npmjs.org"
+      }
+    }
+  }
+}
+```
 ### Docker
 
 #### Build
