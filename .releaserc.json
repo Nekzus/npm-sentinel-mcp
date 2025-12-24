@@ -15,6 +15,7 @@
         [
             "@semantic-release/npm",
             {
+                "npmPublish": false,
                 "verifyConditions": false
             }
         ],
