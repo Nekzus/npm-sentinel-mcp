@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.13](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.12...v1.12.13) (2025-12-24)
+
+
+### Bug Fixes
+
+* **build:** invoke smithery cli via node with direct path to bypass symlink issues ([10af258](https://github.com/Nekzus/npm-sentinel-mcp/commit/10af25810088151841a8a0c123a2cedf0c300c4b))
+
 ## [1.12.12](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.11...v1.12.12) (2025-12-24)
 
 
