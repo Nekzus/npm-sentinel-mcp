@@ -68,7 +68,9 @@ jobs:
                   NPM_CONFIG_PROVENANCE: true
                   
             - name: Publish to NPM (OIDC)
-              run: npm publish --provenance --access public
+              run: |
+                rm -f .npmrc
+                npm publish --provenance --access public
                   
             # Get the new version from package.json after semantic-release
             - name: Get new version
