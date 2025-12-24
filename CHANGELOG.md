@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.13.3](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.13.2...v1.13.3) (2025-12-24)
+
+
+### Bug Fixes
+
+* **smithery:** explicate configSchema at root level for better detection ([cf32f59](https://github.com/Nekzus/npm-sentinel-mcp/commit/cf32f59feed82d999071fb7ae44caf3e6c8e14f9))
+
 ## [1.13.2](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.13.1...v1.13.2) (2025-12-24)
 
 
