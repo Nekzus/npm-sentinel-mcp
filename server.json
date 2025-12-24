@@ -2,7 +2,6 @@
     "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
     "name": "io.github.Nekzus/npm-sentinel-mcp",
     "description": "NPM Sentinel MCP - AI-powered NPM package analysis for security, dependencies, and performance.",
-    "status": "active",
     "repository": {
         "url": "https://github.com/Nekzus/npm-sentinel-mcp",
         "source": "github"
@@ -10,11 +9,9 @@
     "version": "{{VERSION}}",
     "packages": [
         {
-            "registry_type": "npm",
-            "registry_base_url": "https://registry.npmjs.org",
-            "identifier": "@nekzus/mcp-server",
+            "registryType": "npm",
+            "identifier": "@nekzus/npm-sentinel-mcp",
             "version": "{{VERSION}}",
-            "runtime_hint": "npx",
             "transport": {
                 "type": "stdio"
             }
