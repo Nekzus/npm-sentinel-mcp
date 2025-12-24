@@ -1282,6 +1282,7 @@ export async function handleNpmVulnerabilities(args: {
 				vulnerabilities: processedVulns,
 				count: processedVulns.length,
 				status: processedVulns.length > 0 ? 'vulnerable' : 'secure',
+				message: processedVulns.length > 0 ? `${processedVulns.length} vulnerability(ies) found` : 'No known vulnerabilities found',
 			};
 
 			processedResults.push(resultEntry);

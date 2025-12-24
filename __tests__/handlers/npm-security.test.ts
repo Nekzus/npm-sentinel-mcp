@@ -18,156 +18,126 @@ vi.mock('node-fetch', () => {
 			}
 
 			if (url.includes('registry.npmjs.org')) {
-				if (url.includes('express/latest')) {
-					return Promise.resolve({
-						ok: true,
-						json: () =>
-							Promise.resolve({
-								name: 'express',
-								version: '4.18.2',
-								description: 'Fast, unopinionated, minimalist web framework',
-								license: 'MIT',
-								types: '@types/express',
-							}),
-					});
-				}
+				const mockPackages: Record<string, any> = {
+					'express': {
+						name: 'express',
+						version: '4.18.2',
+						description: 'Fast, unopinionated, minimalist web framework',
+						license: 'MIT',
+						types: '@types/express',
+						dependencies: {}
+					},
+					'no-types-pkg': {
+						name: 'no-types-pkg',
+						version: '1.0.0',
+						description: 'Package without types',
+						license: 'ISC',
+					},
+					'different-license-pkg': {
+						name: 'different-license-pkg',
+						version: '1.0.0',
+						description: 'Package with different license',
+						license: 'GPL-3.0',
+					},
+					'no-license-pkg': {
+						name: 'no-license-pkg',
+						version: '1.0.0',
+						description: 'Package without license',
+					},
+					'vulnerable-pkg': {
+						name: 'vulnerable-pkg',
+						version: '1.0.0',
+						dependencies: {}
+					},
+					'safe-pkg': {
+						name: 'safe-pkg',
+						version: '1.0.0',
+						dependencies: {}
+					},
+					'@types/express': {
+						name: '@types/express',
+						version: '4.18.2',
+					}
+				};
 
-				if (url.includes('no-types-pkg/latest')) {
-					return Promise.resolve({
-						ok: true,
-						json: () =>
-							Promise.resolve({
-								name: 'no-types-pkg',
-								version: '1.0.0',
-								description: 'Package without types',
-								license: 'ISC',
-							}),
-					});
+				// Simple regex to extract package name from url like .../registry.npmjs.org/pkgName/latest
+				// URL is usually https://registry.npmjs.org/${name}/${version}
+				const match = url.match(/registry\.npmjs\.org\/(.+)\/(.+)$/);
+				if (match) {
+					const pkgName = match[1];
+					const ver = match[2]; // usually 'latest' or '4.18.2'
+					
+					if (mockPackages[pkgName]) {
+						return Promise.resolve({
+							ok: true,
+							json: () => Promise.resolve(mockPackages[pkgName]),
+						});
+					}
+					
+					// Handle @types/pkgName which might be encoded or structured differently??
+					// The original code handled specific includes. let's keep it robust.
 				}
-
-				if (url.includes('different-license-pkg/latest')) {
-					return Promise.resolve({
-						ok: true,
-						json: () =>
-							Promise.resolve({
-								name: 'different-license-pkg',
-								version: '1.0.0',
-								description: 'Package with different license',
-								license: 'GPL-3.0',
-							}),
-					});
-				}
-
-				if (url.includes('no-license-pkg/latest')) {
-					return Promise.resolve({
-						ok: true,
-						json: () =>
-							Promise.resolve({
-								name: 'no-license-pkg',
-								version: '1.0.0',
-								description: 'Package without license',
-							}),
-					});
-				}
-
-				if (url.includes('@types/express/latest')) {
-					return Promise.resolve({
-						ok: true,
-						json: () =>
-							Promise.resolve({
-								name: '@types/express',
-								version: '4.18.2',
-							}),
-					});
-				}
-
-				if (url.includes('@types/no-types-pkg/latest')) {
-					return Promise.resolve({
-						ok: false,
-						status: 404,
-						statusText: 'Not Found',
-					});
-				}
+				
+				// Fallback for strict matches from original code if needed or for failures
+				if (url.includes('no-types-pkg/latest')) return Promise.resolve({ ok: true, json: () => Promise.resolve(mockPackages['no-types-pkg']) });
+				if (url.includes('@types/no-types-pkg/latest')) return Promise.resolve({ ok: false, status: 404, statusText: 'Not Found' });
+				
+				return Promise.resolve({ ok: false, status: 404, statusText: 'Not Found' });
 			}
 
-			if (url.includes('api.osv.dev/v1/query')) {
+			if (url.includes('api.osv.dev/v1/querybatch')) {
 				const body = JSON.parse(config?.body as string);
-				const pkg = body.package.name;
-
-				if (pkg === 'express') {
-					return Promise.resolve({
-						ok: true,
-						json: () =>
-							Promise.resolve({
-								vulns: [
-									{
-										id: '1234',
-										summary: 'Critical vulnerability in express',
-										details: 'This is a critical vulnerability',
-										modified: '2023-01-01',
-										published: '2023-01-01',
-										database_specific: {
-											severity: 'CRITICAL',
-										},
-										references: [
-											{
-												type: 'WEB',
-												url: 'https://example.com/vuln/1234',
-											},
-										],
-									},
-								],
-							}),
-					});
-				}
-
-				if (pkg === 'vulnerable-pkg') {
-					return Promise.resolve({
-						ok: true,
-						json: () =>
-							Promise.resolve({
-								vulns: [
-									{
-										id: '5678',
-										summary: 'High severity vulnerability',
-										details: 'This is a high severity vulnerability',
-										modified: '2023-01-01',
-										published: '2023-01-01',
-										database_specific: {
-											severity: 'HIGH',
-										},
-										references: [
-											{
-												type: 'WEB',
-												url: 'https://example.com/vuln/5678',
-											},
-										],
-									},
-									{
-										id: '9012',
-										summary: 'Moderate severity vulnerability',
-										details: 'This is a moderate severity vulnerability',
-										modified: '2023-01-01',
-										published: '2023-01-01',
-										database_specific: {
-											severity: 'MODERATE',
-										},
-										references: [
-											{
-												type: 'WEB',
-												url: 'https://example.com/vuln/9012',
-											},
-										],
-									},
-								],
-							}),
-					});
-				}
+				const queries = body.queries || [];
+				
+				const results = queries.map((q: any) => {
+					const pkg = q.package.name;
+					
+					if (pkg === 'express') {
+						return {
+							vulns: [
+								{
+									id: '1234',
+									summary: 'Critical vulnerability in express',
+									details: 'This is a critical vulnerability',
+									modified: '2023-01-01',
+									published: '2023-01-01',
+									severity: { type: 'CRITICAL' },
+									references: [{ url: 'https://example.com/vuln/1234' }],
+								},
+							]
+						};
+					}
+					if (pkg === 'vulnerable-pkg') {
+						return {
+							vulns: [
+								{
+									id: '5678',
+									summary: 'High severity vulnerability',
+									severity: { type: 'HIGH' },
+									references: [{ url: 'https://example.com/vuln/5678' }],
+								},
+								{
+									id: '9012',
+									summary: 'Moderate severity vulnerability',
+									severity: { type: 'MODERATE' },
+									references: [{ url: 'https://example.com/vuln/9012' }],
+								},
+							]
+						};
+					}
+					// Default safe
+					return { vulns: [] };
+				});
 
 				return Promise.resolve({
 					ok: true,
-					json: () => Promise.resolve({ vulns: [] }),
+					json: () => Promise.resolve({ results }),
 				});
+			}
+
+			// Capture old query API just in case, but return empty
+			if (url.includes('api.osv.dev/v1/query')) {
+				return Promise.resolve({ ok: true, json: () => Promise.resolve({ vulns: [] }) });
 			}
 
 			return Promise.resolve({
@@ -216,7 +186,7 @@ describe('npm security handlers', () => {
 			validateToolResponse(result);
 			const parsed = JSON.parse(result.content[0].text as string);
 			expect(parsed.results[0].package).toBe('express');
-			expect(parsed.results[0].status).toBe('success');
+			expect(parsed.results[0].status).toBe('vulnerable');
 			expect(parsed.results[0].vulnerabilities.length).toBe(1);
 			expect(parsed.results[0].vulnerabilities[0].summary).toBe(
 				'Critical vulnerability in express',
@@ -230,7 +200,7 @@ describe('npm security handlers', () => {
 			validateToolResponse(result);
 			const parsed = JSON.parse(result.content[0].text as string);
 			expect(parsed.results[0].package).toBe('vulnerable-pkg');
-			expect(parsed.results[0].status).toBe('success');
+			expect(parsed.results[0].status).toBe('vulnerable');
 			expect(parsed.results[0].vulnerabilities.length).toBe(2);
 			expect(parsed.results[0].vulnerabilities[0].summary).toBe('High severity vulnerability');
 			expect(parsed.results[0].vulnerabilities[1].summary).toBe('Moderate severity vulnerability');
@@ -242,7 +212,7 @@ describe('npm security handlers', () => {
 			validateToolResponse(result);
 			const parsed = JSON.parse(result.content[0].text as string);
 			expect(parsed.results[0].package).toBe('safe-pkg');
-			expect(parsed.results[0].status).toBe('success');
+			expect(parsed.results[0].status).toBe('secure');
 			expect(parsed.results[0].vulnerabilities.length).toBe(0);
 			expect(parsed.results[0].message).toContain('No known vulnerabilities found');
 		});
@@ -252,7 +222,7 @@ describe('npm security handlers', () => {
 			validateToolResponse(result);
 			const parsed = JSON.parse(result.content[0].text as string);
 			expect(parsed.results[0].package).toBe('invalid-package-name');
-			expect(parsed.results[0].status).toBe('success');
+			expect(parsed.results[0].status).toBe('secure');
 			expect(parsed.results[0].vulnerabilities.length).toBe(0);
 			expect(parsed.results[0].message).toContain('No known vulnerabilities found');
 		});
