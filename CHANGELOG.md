@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.24](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.23...v1.12.24) (2025-12-24)
+
+
+### Bug Fixes
+
+* **deploy:** update smithery.yaml startCommand type to "http" for cloud deployment ([de77c70](https://github.com/Nekzus/npm-sentinel-mcp/commit/de77c7008677b8309cec78b363a9bcf91d9a07c0))
+
 ## [1.12.23](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.22...v1.12.23) (2025-12-24)
 
 
