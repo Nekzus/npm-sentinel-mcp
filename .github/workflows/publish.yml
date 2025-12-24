@@ -110,7 +110,7 @@ jobs:
                 npm run build:stdio
                 # Remove Smithery artifacts to avoid publishing them to npm
                 rm -rf .smithery/
-                rm -rf node_modules/@smithery/
+                # Smithery artifacts removed from npm package via .npmignore/files list inherently
                 
             # Verify npm package contents
             - name: Verify npm package contents
