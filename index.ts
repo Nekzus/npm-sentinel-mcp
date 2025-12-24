@@ -1169,6 +1169,26 @@ const ECOSYSTEM_MAP: Record<string, string[]> = {
 	'react': ['react-dom', 'react-server-dom-webpack', 'react-server-dom-parcel'],
 };
 
+// Helper to fetch full vulnerability details (enrichment)
+async function enrichVulnerabilityData(vulnId: string): Promise<any> {
+    const cacheKey = generateCacheKey('enrichVuln', vulnId);
+    const cached = cacheGet<any>(cacheKey);
+    if (cached) return cached;
+
+    try {
+        const response = await fetch(`https://api.osv.dev/v1/vulns/${vulnId}`, {
+            headers: { 'User-Agent': 'NPM-Sentinel-MCP' }
+        });
+        if (!response.ok) return null;
+        const data = await response.json();
+        cacheSet(cacheKey, data, CACHE_TTL_LONG);
+        return data;
+    } catch (error) {
+        console.error(`Failed to enrich vulnerability ${vulnId}:`, error);
+        return null;
+    }
+}
+
 export async function handleNpmVulnerabilities(args: {
 	packages: string[];
 }): Promise<CallToolResult> {
@@ -1294,6 +1314,7 @@ export async function handleNpmVulnerabilities(args: {
 				}
 			}),
 		);
+
 		let apiResults: any[] = [];
 		
 		if (finalBatchQueries.length > 0) {
@@ -1337,22 +1358,27 @@ export async function handleNpmVulnerabilities(args: {
 			// Process API result
 			const vulns = apiResultsMap.get(key) || [];
 			
-			const processedVulns = vulns.map((vuln: any) => {
-				const sev = typeof vuln.severity === 'object' ? vuln.severity.type || 'Unknown' : vuln.severity || 'Unknown';
-				const refs = vuln.references ? vuln.references.map((r: any) => r.url) : [];
+            // Enrich vulnerabilities with full details (Summary, Aliases/CVEs)
+            const processedVulns = await Promise.all(vulns.map(async (vuln: any) => {
+                // Fetch full details
+                const richData = await enrichVulnerabilityData(vuln.id);
+                const finalVuln = richData || vuln; // Fallback to basic if fetch fails
+
+				const sev = typeof finalVuln.severity === 'object' ? finalVuln.severity.type || 'Unknown' : finalVuln.severity || 'Unknown';
+				const refs = finalVuln.references ? finalVuln.references.map((r: any) => r.url) : [];
 				
 				const vulnerabilityDetails: any = {
-					id: vuln.id,
-					summary: vuln.summary || 'No summary available',
+					id: finalVuln.id,
+					summary: finalVuln.summary || 'No summary available',
 					severity: sev,
 					references: refs,
-					aliases: vuln.aliases || [],
-					modified: vuln.modified,
-					published: vuln.published,
+					aliases: finalVuln.aliases || [],
+					modified: finalVuln.modified,
+					published: finalVuln.published,
 				};
-				if (vuln.affected) vulnerabilityDetails.affected = vuln.affected;
+				if (finalVuln.affected) vulnerabilityDetails.affected = finalVuln.affected;
 				return vulnerabilityDetails;
-			});
+			}));
 
 			const resultEntry = {
 				package: `${info.name}${info.version && info.version !== 'latest' && info.version !== undefined ? `@${info.version}` : ''}`,
