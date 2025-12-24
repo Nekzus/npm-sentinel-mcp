@@ -18,7 +18,8 @@ COPY index.ts ./
 COPY llms.txt llms-full.txt ./
 
 # Build the project
-RUN npm run build
+# Build the project (compile TS to JS in dist/)
+RUN npm run build:stdio
 
 # ----- Production Stage -----
 FROM node:lts-alpine AS production
