@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.5](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.4...v1.12.5) (2025-12-24)
+
+
+### Bug Fixes
+
+* **ci:** use NPM_TOKEN for initial package bootstrap ([a4dcc69](https://github.com/Nekzus/npm-sentinel-mcp/commit/a4dcc6911bccb657546938aa50f5ef6832d57c38))
+
 ## [1.12.4](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.3...v1.12.4) (2025-12-24)
 
 
