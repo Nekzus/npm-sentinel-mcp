@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.22](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.21...v1.12.22) (2025-12-24)
+
+
+### Bug Fixes
+
+* **deploy:** use custom Dockerfile to install libsecret-1-0 and bypass smithery auto-build limitations ([93acecd](https://github.com/Nekzus/npm-sentinel-mcp/commit/93acecd3be7ca96d18962eb6f1ececec1a77f040))
+* manual trigger for final deployment verification ([19c9b71](https://github.com/Nekzus/npm-sentinel-mcp/commit/19c9b7157fb4fdc1d8c79a3214548c0c34da62cd))
+
 ## [1.12.21](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.20...v1.12.21) (2025-12-24)
 
 
