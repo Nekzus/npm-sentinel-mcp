@@ -1,5 +1,3 @@
 runtime: typescript
 
-# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
-buildCommand: "npm run build:http"
-startCommand: "npm run start:http" 
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml 
