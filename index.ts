@@ -1150,6 +1150,20 @@ async function getPackageDependencies(
 	}
 }
 
+// Helper to resolve 'latest' tag to actual version number
+async function resolveLatestVersion(packageName: string): Promise<string | null> {
+	try {
+		const response = await fetch(`${NPM_REGISTRY_URL}/${packageName}/latest`, {
+			headers: { 'User-Agent': 'NPM-Sentinel-MCP' }
+		});
+		if (!response.ok) return null;
+		const data = await response.json() as any;
+		return data.version || null;
+	} catch {
+		return null;
+	}
+}
+
 export async function handleNpmVulnerabilities(args: {
 	packages: string[];
 }): Promise<CallToolResult> {
@@ -1196,6 +1210,37 @@ export async function handleNpmVulnerabilities(args: {
 			}
 		};
 
+		// Recursive dependency fetcher
+		const seenPackages = new Set<string>();
+		const depthLimit = 2; // Default depth limit for transitive scanning
+
+		const processPackage = async (name: string, version: string | undefined, currentDepth: number) => {
+			const pkgKey = `${name}@${version || 'latest'}`;
+			if (seenPackages.has(pkgKey)) return;
+			seenPackages.add(pkgKey);
+
+			// Add to vulnerability query
+			// For the main package (depth 0), isDependency is false. For others, true.
+			addToQuery(name, version || 'latest', currentDepth > 0);
+
+			if (currentDepth >= depthLimit) return;
+			
+			// If version is 'latest' or undefined, we settled it in addToQuery, but for fetching deps we need a concrete version
+			// If we don't have one, we might need to resolve it again or let getPackageDependencies handle 'latest'
+			// getPackageDependencies handles 'latest' by default.
+			
+			const { dependencies } = await getPackageDependencies(name, version || 'latest');
+			
+			// Process children
+			const children = Object.entries(dependencies);
+			await Promise.all(children.map(async ([depName, depVersion]) => {
+				const cleanVersion = depVersion.replace(/[\^~]/g, '');
+				if (/^\d+\.\d+\.\d+/.test(cleanVersion)) {
+					await processPackage(depName, cleanVersion, currentDepth + 1);
+				}
+			}));
+		};
+
 		await Promise.all(
 			packagesToProcess.map(async (pkgInput) => {
 				let name = '';
@@ -1203,32 +1248,38 @@ export async function handleNpmVulnerabilities(args: {
 
 				if (typeof pkgInput === 'string') {
 					const atIdx = pkgInput.lastIndexOf('@');
-					if (atIdx > 0) {
-						name = pkgInput.slice(0, atIdx);
-						version = pkgInput.slice(atIdx + 1);
+					if (pkgInput.startsWith('@')) {
+						const secondAt = pkgInput.indexOf('@', 1);
+						if (secondAt > 0) {
+							name = pkgInput.slice(0, secondAt);
+							version = pkgInput.slice(secondAt + 1);
+						} else {
+							name = pkgInput;
+						}
 					} else {
-						name = pkgInput;
+						if (atIdx > 0) {
+							name = pkgInput.slice(0, atIdx);
+							version = pkgInput.slice(atIdx + 1);
+						} else {
+							name = pkgInput;
+						}
 					}
 				} else {
 					return; // Skip invalid
 				}
 
-				// Add main package
-				addToQuery(name, version, false);
-
-				// Add dependencies (only if version specified)
-				if (version !== 'latest') {
-					const { dependencies } = await getPackageDependencies(name, version);
-					for (const [depName, depVersion] of Object.entries(dependencies)) {
-						const cleanVersion = depVersion.replace(/[\^~]/g, '');
-						if (/^\d+\.\d+\.\d+/.test(cleanVersion)) {
-							addToQuery(depName, cleanVersion, true);
-						}
+				// Resolve 'latest' to actual version number for the root package
+				if (version === 'latest') {
+					const resolved = await resolveLatestVersion(name);
+					if (resolved) {
+						version = resolved;
 					}
 				}
+
+				// Start recursive processing
+				await processPackage(name, version, 0);
 			}),
 		);
-
 		let apiResults: any[] = [];
 		
 		if (finalBatchQueries.length > 0) {
