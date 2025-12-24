@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.4](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.3...v1.12.4) (2025-12-24)
+
+
+### Bug Fixes
+
+* rename package to @nekzus/npm-sentinel-mcp to match repo and OIDC config ([54a2122](https://github.com/Nekzus/npm-sentinel-mcp/commit/54a2122e7450e3f1118624ac161b4265ee9166df))
+
 ## [1.12.3](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.2...v1.12.3) (2025-12-24)
 
 
