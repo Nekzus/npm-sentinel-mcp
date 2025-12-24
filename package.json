@@ -14,7 +14,9 @@
     "dist",
     "README.md",
     "llms-full.txt",
-    "LICENSE"
+    "LICENSE",
+    "smithery.yaml",
+    "server.json"
   ],
   "scripts": {
     "build": "npm run build:http",
