@@ -67,9 +67,8 @@ jobs:
               with:
                   node-version: '20.9.0'
                   cache: 'npm'
-
-            - name: Configure npm scope
-              run: npm config set @nekzus:registry https://registry.npmjs.org
+                  registry-url: 'https://registry.npmjs.org'
+                  scope: '@nekzus'
 
             - run: npm ci
             
@@ -79,8 +78,10 @@ jobs:
                   GH_TOKEN: ${{secrets.GH_TOKEN}}
                   NPM_CONFIG_PROVENANCE: true
                   
-            - name: Publish to NPM (OIDC)
+            - name: Publish to NPM (Token)
               run: npm publish --provenance --access public
+              env:
+                NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
                   
             # Get the new version from package.json after semantic-release
             - name: Get new version
