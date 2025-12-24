@@ -3,10 +3,14 @@ FROM node:22-bookworm-slim
 
 WORKDIR /app
 
-# Install libsecret for @smithery/cli (keytar dependency)
+# Install libsecret for @smithery/cli (keytar dependency) and build tools
 # Smithery's default image lacks this, causing ERR_DLOPEN_FAILED
+# We need libsecret-1-dev and build-essential to compile keytar
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libsecret-1-0 \
+    libsecret-1-dev \
+    build-essential \
+    python3 \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
@@ -14,7 +18,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY package*.json ./
 
 # Install all dependencies (including devDependencies for build)
-RUN npm install --ignore-scripts
+# REMOVED --ignore-scripts so keytar can be built
+RUN npm install
 
 COPY . .
 
