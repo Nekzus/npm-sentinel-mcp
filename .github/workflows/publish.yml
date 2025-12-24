@@ -76,8 +76,12 @@ jobs:
               run: npm run semantic-release
               env:
                   GH_TOKEN: ${{secrets.GH_TOKEN}}
-                  NPM_TOKEN: ${{secrets.NPM_TOKEN}}
                   NPM_CONFIG_PROVENANCE: true
+                  
+            - name: Publish to NPM (Token)
+              run: npm publish --provenance --access public
+              env:
+                NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
                   
 
                   
