@@ -47,8 +47,7 @@ USER node
 EXPOSE 3000
 
 # Optional HEALTHCHECK (uncomment and adjust the endpoint if you have one)
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
+
 
 # Startup command (Run the Smithery HTTP adapter)
 CMD ["node", ".smithery/index.cjs"] 
