@@ -111,6 +111,9 @@
   "publishConfig": {
     "access": "public"
   },
+  "overrides": {
+    "zod": "3.24.4"
+  },
   "engines": {
     "node": ">=18"
   }
