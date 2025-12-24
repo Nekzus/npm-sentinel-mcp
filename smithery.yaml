@@ -6,4 +6,8 @@ startCommand:
   configSchema:
     type: "object"
     required: []
-    properties: {} 
+    properties:
+      NPM_REGISTRY_URL:
+        type: "string"
+        description: "URL of the NPM registry to use (default: https://registry.npmjs.org)"
+        default: "https://registry.npmjs.org" 

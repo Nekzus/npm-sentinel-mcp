@@ -10,6 +10,9 @@ import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 
 // Cache configuration
+let NPM_REGISTRY_URL = (process.env.NPM_REGISTRY_URL || 'https://registry.npmjs.org').replace(/\/$/, '');
+
+// Cache configuration
 const CACHE_TTL_SHORT = 15 * 60 * 1000; // 15 minutes
 const CACHE_TTL_MEDIUM = 60 * 60 * 1000; // 1 hour
 const CACHE_TTL_LONG = 6 * 60 * 60 * 1000; // 6 hours
@@ -442,7 +445,7 @@ export async function handleNpmVersions(args: {
 				}
 
 				try {
-					const response = await fetch(`https://registry.npmjs.org/${name}`, {
+					const response = await fetch(`${NPM_REGISTRY_URL}/${name}`, {
 						headers: {
 							Accept: 'application/json',
 							'User-Agent': 'NPM-Sentinel-MCP',
@@ -595,7 +598,7 @@ export async function handleNpmLatest(args: {
 				}
 
 				try {
-					const response = await fetch(`https://registry.npmjs.org/${name}/${versionTag}`, {
+					const response = await fetch(`${NPM_REGISTRY_URL}/${name}/${versionTag}`, {
 						headers: {
 							Accept: 'application/json',
 							'User-Agent': 'NPM-Sentinel-MCP',
@@ -744,7 +747,7 @@ export async function handleNpmDeps(args: {
 				}
 
 				try {
-					const response = await fetch(`https://registry.npmjs.org/${name}/${version}`, {
+					const response = await fetch(`${NPM_REGISTRY_URL}/${name}/${version}`, {
 						headers: {
 							Accept: 'application/json',
 							'User-Agent': 'NPM-Sentinel-MCP',
@@ -876,7 +879,7 @@ export async function handleNpmTypes(args: { packages: string[] }): Promise<Call
 				}
 
 				try {
-					const response = await fetch(`https://registry.npmjs.org/${name}/${version}`, {
+					const response = await fetch(`${NPM_REGISTRY_URL}/${name}/${version}`, {
 						headers: {
 							Accept: 'application/json',
 							'User-Agent': 'NPM-Sentinel-MCP',
@@ -909,7 +912,7 @@ export async function handleNpmTypes(args: { packages: string[] }): Promise<Call
 
 					try {
 						const typesResponse = await fetch(
-							`https://registry.npmjs.org/${typesPackageName}/latest`,
+							`${NPM_REGISTRY_URL}/${typesPackageName}/latest`,
 							{
 								headers: {
 									Accept: 'application/json',
@@ -1130,7 +1133,7 @@ async function getPackageDependencies(
 	version: string,
 ): Promise<{ dependencies: Record<string, string>; devDependencies: Record<string, string> }> {
 	try {
-		const response = await fetch(`https://registry.npmjs.org/${pkgName}/${version}`, {
+		const response = await fetch(`${NPM_REGISTRY_URL}/${pkgName}/${version}`, {
 			headers: { Accept: 'application/json', 'User-Agent': 'NPM-Sentinel-MCP' },
 		});
 
@@ -1565,7 +1568,7 @@ export async function handleNpmCompare(args: { packages: string[] }): Promise<Ca
 
 				try {
 					// Fetch package version details from registry
-					const pkgResponse = await fetch(`https://registry.npmjs.org/${name}/${versionTag}`);
+					const pkgResponse = await fetch(`${NPM_REGISTRY_URL}/${name}/${versionTag}`);
 					if (!pkgResponse.ok) {
 						throw new Error(
 							`Failed to fetch package info for ${name}@${versionTag}: ${pkgResponse.status} ${pkgResponse.statusText}`,
@@ -1596,7 +1599,7 @@ export async function handleNpmCompare(args: { packages: string[] }): Promise<Ca
 					// Need to fetch the full package info to get to the 'time' field for specific version
 					let publishDate: string | null = null;
 					try {
-						const fullPkgInfoResponse = await fetch(`https://registry.npmjs.org/${name}`);
+						const fullPkgInfoResponse = await fetch(`${NPM_REGISTRY_URL}/${name}`);
 						if (fullPkgInfoResponse.ok) {
 							const fullPkgInfo = await fullPkgInfoResponse.json();
 							if (isNpmPackageInfo(fullPkgInfo) && fullPkgInfo.time) {
@@ -2018,7 +2021,7 @@ export async function handleNpmMaintainers(args: {
 				}
 
 				try {
-					const response = await fetch(`https://registry.npmjs.org/${encodeURIComponent(name)}`);
+					const response = await fetch(`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}`);
 
 					if (!response.ok) {
 						let errorMsg = `Failed to fetch package info: ${response.status} ${response.statusText}`;
@@ -2345,7 +2348,7 @@ export async function handleNpmPackageReadme(args: {
 				}
 
 				try {
-					const response = await fetch(`https://registry.npmjs.org/${name}`);
+					const response = await fetch(`${NPM_REGISTRY_URL}/${name}`);
 					if (!response.ok) {
 						let errorMsg = `Failed to fetch package info: ${response.status} ${response.statusText}`;
 						if (response.status === 404) {
@@ -2477,7 +2480,7 @@ export async function handleNpmSearch(args: {
 		}
 
 		const response = await fetch(
-			`https://registry.npmjs.org/-/v1/search?text=${encodeURIComponent(query)}&size=${limit}`,
+			`${NPM_REGISTRY_URL}/-/v1/search?text=${encodeURIComponent(query)}&size=${limit}`,
 		);
 		if (!response.ok) {
 			throw new Error(`Failed to search packages: ${response.status} ${response.statusText}`);
@@ -2619,7 +2622,7 @@ export async function handleNpmLicenseCompatibility(args: {
 				}
 
 				try {
-					const response = await fetch(`https://registry.npmjs.org/${name}/${versionTag}`);
+					const response = await fetch(`${NPM_REGISTRY_URL}/${name}/${versionTag}`);
 					if (!response.ok) {
 						let errorMsg = `Failed to fetch package info: ${response.status} ${response.statusText}`;
 						if (response.status === 404) {
@@ -2819,7 +2822,7 @@ export async function handleNpmRepoStats(args: { packages: string[] }): Promise<
 				}
 
 				try {
-					const npmResponse = await fetch(`https://registry.npmjs.org/${name}/latest`);
+					const npmResponse = await fetch(`${NPM_REGISTRY_URL}/${name}/latest`);
 					if (!npmResponse.ok) {
 						const errorData = {
 							packageInput: pkgInput,
@@ -3058,7 +3061,7 @@ export async function handleNpmDeprecated(args: { packages: string[] }): Promise
 				// console.debug(`[handleNpmDeprecated] Cache miss for ${cacheKey}`);
 
 				try {
-					const mainPkgResponse = await fetch(`https://registry.npmjs.org/${name}`);
+					const mainPkgResponse = await fetch(`${NPM_REGISTRY_URL}/${name}`);
 					if (!mainPkgResponse.ok) {
 						return {
 							package: initialPackageNameForOutput,
@@ -3118,7 +3121,7 @@ export async function handleNpmDeprecated(args: { packages: string[] }): Promise
 							try {
 								// console.debug(`[handleNpmDeprecated] Checking dependency: ${depName}@${depSemVer}`);
 								const depInfoResponse = await fetch(
-									`https://registry.npmjs.org/${encodeURIComponent(depName)}`,
+									`${NPM_REGISTRY_URL}/${encodeURIComponent(depName)}`,
 								);
 
 								if (!depInfoResponse.ok) {
@@ -3307,7 +3310,7 @@ export async function handleNpmChangelogAnalysis(args: {
 				}
 
 				try {
-					const npmResponse = await fetch(`https://registry.npmjs.org/${name}`);
+					const npmResponse = await fetch(`${NPM_REGISTRY_URL}/${name}`);
 					if (!npmResponse.ok) {
 						const errorResult = {
 							packageInput: pkgInput,
@@ -3555,7 +3558,7 @@ export async function handleNpmAlternatives(args: { packages: string[] }): Promi
 
 				try {
 					const searchResponse = await fetch(
-						`https://registry.npmjs.org/-/v1/search?text=keywords:${encodeURIComponent(
+						`${NPM_REGISTRY_URL}/-/v1/search?text=keywords:${encodeURIComponent(
 							originalPackageName,
 						)}&size=10`,
 					);
@@ -3699,8 +3702,10 @@ export async function handleNpmAlternatives(args: { packages: string[] }): Promi
 }
 
 // Get __dirname in an ES module environment
-// Define session configuration schema (empty for now, can be extended later)
-export const configSchema = z.object({});
+// Define session configuration schema
+export const configSchema = z.object({
+	NPM_REGISTRY_URL: z.string().optional().describe("URL of the NPM registry to use"),
+});
 
 // Create server function for Smithery CLI
 export default function createServer({
@@ -3708,6 +3713,11 @@ export default function createServer({
 }: {
 	config: z.infer<typeof configSchema>;
 }) {
+	// Apply config overrides
+	if (config.NPM_REGISTRY_URL) {
+		NPM_REGISTRY_URL = config.NPM_REGISTRY_URL.replace(/\/$/, '');
+	}
+
 	// Handle both ESM and CJS environments
 	let __filename: string;
 	let __dirname: string;
@@ -3795,6 +3805,28 @@ export default function createServer({
 				};
 			}
 		},
+	);
+
+	// Register prompts
+	server.registerPrompt(
+		'analyze-package',
+		{
+			description: 'Analyze an NPM package for security and quality',
+			argsSchema: {
+				package: z.string().describe('Name of the npm package to analyze'),
+			},
+		},
+		({ package: pkgName }) => ({
+			messages: [
+				{
+					role: 'user',
+					content: {
+						type: 'text',
+						text: `Please analyze the npm package "${pkgName}". Check for vulnerabilities, maintenance status, and recent issues. Use the available tools to gather information.`,
+					},
+				},
+			],
+		}),
 	);
 
 	// Add NPM tools - Ensuring each tool registration is complete and correct
