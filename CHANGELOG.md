@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.27](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.26...v1.12.27) (2025-12-24)
+
+
+### Bug Fixes
+
+* **deploy:** fix Alpine Dockerfile - install build tools and allow scripts for keytar compilation ([590b3df](https://github.com/Nekzus/npm-sentinel-mcp/commit/590b3dfede9cc58764c16ab6a82de4ca63f4fe16))
+
 ## [1.12.26](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.25...v1.12.26) (2025-12-24)
 
 
