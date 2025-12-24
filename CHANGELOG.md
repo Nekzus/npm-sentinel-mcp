@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.14](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.13...v1.12.14) (2025-12-24)
+
+
+### Bug Fixes
+
+* **ci:** prevent deletion of smithery dependencies before build step ([30542f2](https://github.com/Nekzus/npm-sentinel-mcp/commit/30542f2c88976e8e8ef1786353ae168b6976d338))
+
 ## [1.12.13](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.12...v1.12.13) (2025-12-24)
 
 
