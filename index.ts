@@ -1164,6 +1164,11 @@ async function resolveLatestVersion(packageName: string): Promise<string | null>
 	}
 }
 
+// Known ecosystem groups that share versioning
+const ECOSYSTEM_MAP: Record<string, string[]> = {
+	'react': ['react-dom', 'react-server-dom-webpack', 'react-server-dom-parcel'],
+};
+
 export async function handleNpmVulnerabilities(args: {
 	packages: string[];
 }): Promise<CallToolResult> {
@@ -1278,6 +1283,15 @@ export async function handleNpmVulnerabilities(args: {
 
 				// Start recursive processing
 				await processPackage(name, version, 0);
+
+				// Ecosystem Check: Scan associated packages that share the same version
+				if (ECOSYSTEM_MAP[name]) {
+					for (const associatedPkg of ECOSYSTEM_MAP[name]) {
+						// We scan these as "depth 0" (explicitly requested by ecosystem logic)
+						// so they are checked fully.
+						await processPackage(associatedPkg, version, 0);
+					}
+				}
 			}),
 		);
 		let apiResults: any[] = [];
