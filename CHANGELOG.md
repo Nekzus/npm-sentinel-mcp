@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.12](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.11...v1.12.12) (2025-12-24)
+
+
+### Bug Fixes
+
+* **build:** use explicit path for smithery binary to resolve CI PATH issues ([ab940ea](https://github.com/Nekzus/npm-sentinel-mcp/commit/ab940eaa48bb8ffab70cd9882218d01aaa3564fa))
+
 ## [1.12.11](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.10...v1.12.11) (2025-12-24)
 
 
