@@ -19,7 +19,7 @@ A powerful Model Context Protocol (MCP) server that revolutionizes NPM package a
 
 - **Version analysis and tracking**
 - **Dependency analysis and mapping**
-- **Security vulnerability scanning**
+- **Advanced Security Scanning**: Recursive dependency checks, ecosystem awareness (e.g., React), and accurate version resolution.
 - **Package quality metrics**
 - **Download trends and statistics**
 - **TypeScript support verification**
@@ -278,8 +278,12 @@ The server also provides the following informational resources accessible via MC
 
 #### npmVulnerabilities
 - Scan for security vulnerabilities
+- Features: 
+  - **Transitive Scanning**: Checks dependencies up to depth 2.
+  - **Ecosystem Awareness**: Automatically scans related packages (e.g., React Server Components).
+  - **Rich Reports**: Includes CVE IDs and full summaries.
 - Input: `packages` (string[])
-- Returns: Security advisories and severity ratings
+- Returns: Detailed security advisories, CVEs, and severity ratings
 
 #### npmTrends
 - Get download trends

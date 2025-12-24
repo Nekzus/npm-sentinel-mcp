@@ -1314,7 +1314,6 @@ export async function handleNpmVulnerabilities(args: {
 				}
 			}),
 		);
-
 		let apiResults: any[] = [];
 		
 		if (finalBatchQueries.length > 0) {
@@ -3828,7 +3827,7 @@ export default function createServer({
 	// Create server instance
 	const server = new McpServer({
 		name: 'npm-sentinel-mcp',
-		version: '1.12.0',
+		version: '1.13.4',
 	});
 
 	// Update paths to be relative to the package
