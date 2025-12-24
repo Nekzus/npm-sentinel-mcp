@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.8](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.7...v1.12.8) (2025-12-24)
+
+
+### Bug Fixes
+
+* **ci:** install libsecret-1-0 for smithery/cli build ([1f49553](https://github.com/Nekzus/npm-sentinel-mcp/commit/1f49553e7dd7044111ce47e527580ca1ecc5f257))
+
 ## [1.12.7](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.6...v1.12.7) (2025-12-24)
 
 
