@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.33](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.32...v1.12.33) (2025-12-24)
+
+
+### Bug Fixes
+
+* **registry:** update server.json identifier to match renamed npm package @nekzus/mcp-server ([5de23e9](https://github.com/Nekzus/npm-sentinel-mcp/commit/5de23e943290a84d955d10dfbbedd0ba32432931))
+
 ## [1.12.32](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.31...v1.12.32) (2025-12-24)
 
 
