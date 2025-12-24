@@ -1,6 +1,15 @@
 runtime: "container"
 
 # Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+configSchema:
+  type: "object"
+  required: []
+  properties:
+    NPM_REGISTRY_URL:
+      type: "string"
+      description: "URL of the NPM registry to use (default: https://registry.npmjs.org)"
+      default: "https://registry.npmjs.org"
+
 startCommand:
   type: "http"
   configSchema:
