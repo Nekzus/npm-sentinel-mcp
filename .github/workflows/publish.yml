@@ -59,6 +59,7 @@ jobs:
               with:
                   node-version: '20.9.0'
                   cache: 'npm'
+                  registry-url: 'https://registry.npmjs.org'
             - run: npm ci
             
             - name: Semantic Release
@@ -68,9 +69,9 @@ jobs:
                   NPM_CONFIG_PROVENANCE: true
                   
             - name: Publish to NPM (OIDC)
-              run: |
-                rm -f .npmrc
-                npm publish --provenance --access public
+              run: npm publish --provenance --access public
+              env:
+                NODE_AUTH_TOKEN: 'oidc_placeholder'
                   
             # Get the new version from package.json after semantic-release
             - name: Get new version
