@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.13.2](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.13.1...v1.13.2) (2025-12-24)
+
+
+### Bug Fixes
+
+* include smithery.yaml and server.json in npm package files ([2efbde2](https://github.com/Nekzus/npm-sentinel-mcp/commit/2efbde298d6f1d53673213c2714bc65a32b1bf95))
+
 ## [1.13.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.13.0...v1.13.1) (2025-12-24)
 
 
