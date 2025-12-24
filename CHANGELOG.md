@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.28](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.27...v1.12.28) (2025-12-24)
+
+
+### Bug Fixes
+
+* **deploy:** skip prepare script during npm install to avoid missing source error, but rebuild native modules ([e1aacb8](https://github.com/Nekzus/npm-sentinel-mcp/commit/e1aacb8561c62b29d8c8f91679dfe49277c3b333))
+
 ## [1.12.27](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.26...v1.12.27) (2025-12-24)
 
 
