@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.19](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.18...v1.12.19) (2025-12-24)
+
+
+### Bug Fixes
+
+* **ci:** restore missing step name in publish.yml to fix YAML syntax error ([7155ab1](https://github.com/Nekzus/npm-sentinel-mcp/commit/7155ab1bff8524e387e82ff456a4ef732792d26c))
+* **ci:** upgrade mcp-publisher to v1.4.0 to resolve registryType serialization bug ([5b01fc0](https://github.com/Nekzus/npm-sentinel-mcp/commit/5b01fc07226e35dcd8b4f27e697ac31de0f003a6))
+
 ## [1.12.18](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.17...v1.12.18) (2025-12-24)
 
 
