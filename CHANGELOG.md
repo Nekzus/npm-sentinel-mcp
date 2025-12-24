@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.23](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.22...v1.12.23) (2025-12-24)
+
+
+### Bug Fixes
+
+* **deploy:** switch smithery.yaml to container runtime to force usage of custom Dockerfile ([3e2c689](https://github.com/Nekzus/npm-sentinel-mcp/commit/3e2c6895f1c50ed5ea4a9beeee7f2a8d784a9fe2))
+
 ## [1.12.22](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.21...v1.12.22) (2025-12-24)
 
 
