@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.6](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.5...v1.12.6) (2025-12-24)
+
+
+### Bug Fixes
+
+* **registry:** correct server.json schema to match API requirements ([d5ac3c2](https://github.com/Nekzus/npm-sentinel-mcp/commit/d5ac3c2a9e0b250d408c7e52ac4f521e61f33da1))
+
 ## [1.12.5](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.4...v1.12.5) (2025-12-24)
 
 
