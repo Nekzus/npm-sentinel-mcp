@@ -1,3 +1,9 @@
-runtime: typescript
+runtime: "container"
 
-# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml 
+# Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
+startCommand:
+  type: "stdio"
+  configSchema:
+    type: "object"
+    required: []
+    properties: {} 
