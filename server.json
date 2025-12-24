@@ -9,7 +9,7 @@
     "version": "{{VERSION}}",
     "packages": [
         {
-            "registryType": "npm",
+            "registry_type": "npm",
             "identifier": "@nekzus/npm-sentinel-mcp",
             "version": "{{VERSION}}",
             "transport": {
