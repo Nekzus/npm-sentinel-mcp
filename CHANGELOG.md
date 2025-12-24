@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.30](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.29...v1.12.30) (2025-12-24)
+
+
+### Bug Fixes
+
+* **ci:** switch to OIDC for npm publishing to bypass 2FA restrictions on automation tokens ([17bbe48](https://github.com/Nekzus/npm-sentinel-mcp/commit/17bbe48eac1ae45a8d58047448fb5b31a6b18f75))
+* **config:** revert version to 1.11.8 and mcpName to io.github.Nekzus/npm-sentinel-mcp as requested ([a63038b](https://github.com/Nekzus/npm-sentinel-mcp/commit/a63038b134adcf3a695d7739efa872edd8fd3089))
+
 ## [1.12.29](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.28...v1.12.29) (2025-12-24)
 
 
