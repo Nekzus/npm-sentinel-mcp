@@ -37,6 +37,9 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/.smithery ./.smithery
 COPY --from=builder /app/llms.txt /app/llms-full.txt ./
 
+# Install system dependencies for native modules
+RUN apk add --no-cache libsecret
+
 # Install only production dependencies
 RUN npm install --omit=dev --ignore-scripts && npm cache clean --force
 
