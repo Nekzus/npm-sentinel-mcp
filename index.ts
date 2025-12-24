@@ -1114,6 +1114,29 @@ export async function handleNpmSize(args: {
 	}
 }
 
+// Helper to detect dependencies
+async function getPackageDependencies(
+	pkgName: string,
+	version: string,
+): Promise<{ dependencies: Record<string, string>; devDependencies: Record<string, string> }> {
+	try {
+		const response = await fetch(`https://registry.npmjs.org/${pkgName}/${version}`, {
+			headers: { Accept: 'application/json', 'User-Agent': 'NPM-Sentinel-MCP' },
+		});
+
+		if (!response.ok) return { dependencies: {}, devDependencies: {} };
+
+		const data = (await response.json()) as NpmPackageData;
+		return {
+			dependencies: data.dependencies || {},
+			devDependencies: data.devDependencies || {},
+		};
+	} catch (error) {
+		console.error(`Error fetching dependencies for ${pkgName}:`, error);
+		return { dependencies: {}, devDependencies: {} };
+	}
+}
+
 export async function handleNpmVulnerabilities(args: {
 	packages: string[];
 }): Promise<CallToolResult> {
@@ -1123,10 +1146,48 @@ export async function handleNpmVulnerabilities(args: {
 			throw new Error('No package names provided');
 		}
 
-		const processedResults = await Promise.all(
+
+		// Prepare batch query, checking cache first
+		const finalBatchQueries: any[] = [];
+		const packageMap = new Map<string, { name: string; version?: string; isDependency?: boolean }>();
+		const cachedResultsMap = new Map<string, any>();
+
+		const addToQuery = (name: string, releaseVersion: string, isDep: boolean) => {
+			const version = releaseVersion === 'latest' ? undefined : releaseVersion;
+			const key = `${name}@${version || 'latest'}`;
+			
+			if (packageMap.has(key)) return; // Already requested/processed
+
+			// Check Cache
+			const cacheKey = generateCacheKey('handleNpmVulnerabilities', name, version || 'all');
+			const cachedData = cacheGet<any>(cacheKey);
+
+			if (cachedData) {
+				// Store cached result directly using the same structure as we will build later
+				cachedResultsMap.set(key, {
+					package: `${name}${version ? '@' + version : ''}`,
+					isDependency: isDep,
+					vulnerabilities: cachedData.vulnerabilities,
+					count: cachedData.vulnerabilities.length,
+					status: cachedData.vulnerabilities.length > 0 ? 'vulnerable' : 'secure',
+					source: 'cache'
+				});
+				packageMap.set(key, { name, version, isDependency: isDep }); 
+			} else {
+				// Not in cache, add to API query
+				packageMap.set(key, { name, version, isDependency: isDep });
+				finalBatchQueries.push({
+					package: { name, ecosystem: 'npm' },
+					version: version === 'latest' ? undefined : version,
+				});
+			}
+		};
+
+		await Promise.all(
 			packagesToProcess.map(async (pkgInput) => {
 				let name = '';
-				let version: string | undefined = undefined;
+				let version = 'latest';
+
 				if (typeof pkgInput === 'string') {
 					const atIdx = pkgInput.lastIndexOf('@');
 					if (atIdx > 0) {
@@ -1135,175 +1196,115 @@ export async function handleNpmVulnerabilities(args: {
 					} else {
 						name = pkgInput;
 					}
-				} else if (typeof pkgInput === 'object' && pkgInput !== null) {
-					name = (pkgInput as any).name;
-					version = (pkgInput as any).version;
-				}
-
-				const packageNameForOutput = version ? `${name}@${version}` : name;
-				const cacheKey = generateCacheKey('handleNpmVulnerabilities', name, version || 'all');
-				const cachedData = cacheGet<any>(cacheKey);
-
-				if (cachedData) {
-					return {
-						package: packageNameForOutput,
-						versionQueried: version || null,
-						status: 'success_cache',
-						vulnerabilities: cachedData.vulnerabilities,
-						message: `${cachedData.message} (from cache)`,
-					};
-				}
-
-				const osvBody: any = {
-					package: {
-						name,
-						ecosystem: 'npm',
-					},
-				};
-				if (version) {
-					osvBody.version = version;
-				}
-
-				const response = await fetch('https://api.osv.dev/v1/query', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json',
-					},
-					body: JSON.stringify(osvBody),
-				});
-
-				const queryVersionSpecified = !!version;
-
-				if (!response.ok) {
-					const errorResult = {
-						package: packageNameForOutput,
-						versionQueried: version || null,
-						status: 'error' as const,
-						error: `OSV API Error: ${response.statusText}`,
-						vulnerabilities: [],
-					};
-					// Do not cache error responses from OSV API as they might be temporary
-					return errorResult;
-				}
-
-				const data = (await response.json()) as {
-					vulns?: Array<{
-						id?: string;
-						summary: string;
-						severity?: string | { type?: string; score?: number };
-						references?: Array<{ url: string }>;
-						affected?: Array<{
-							package?: { ecosystem: string; name: string };
-							ranges?: Array<{
-								type: string;
-								events: Array<{ introduced?: string; fixed?: string; limit?: string }>;
-							}>;
-							versions?: string[];
-						}>;
-					}>;
-				};
-
-				const vulns = data.vulns || [];
-				let message: string;
-				if (vulns.length === 0) {
-					message = `No known vulnerabilities found${queryVersionSpecified ? ' for the specified version' : ''}.`;
 				} else {
-					message = `${vulns.length} vulnerability(ies) found${queryVersionSpecified ? ' for the specified version' : ''}.`;
+					return; // Skip invalid
 				}
 
-				const processedVulns = vulns.map((vuln) => {
-					const sev =
-						typeof vuln.severity === 'object'
-							? vuln.severity.type || 'Unknown'
-							: vuln.severity || 'Unknown';
-					const refs = vuln.references ? vuln.references.map((r) => r.url) : [];
-					const affectedRanges: any[] = [];
-					const affectedVersionsListed: string[] = [];
+				// Add main package
+				addToQuery(name, version, false);
 
-					const vulnerabilityDetails: any = {
-						summary: vuln.summary,
-						severity: sev,
-						references: refs,
-					};
-
-					if (vuln.affected && vuln.affected.length > 0) {
-						const lifecycle: { introduced?: string; fixed?: string } = {};
-						const firstAffectedEvents = vuln.affected[0]?.ranges?.[0]?.events;
-						if (firstAffectedEvents) {
-							const introducedEvent = firstAffectedEvents.find((e) => e.introduced);
-							const fixedEvent = firstAffectedEvents.find((e) => e.fixed);
-							if (introducedEvent?.introduced) lifecycle.introduced = introducedEvent.introduced;
-							if (fixedEvent?.fixed) lifecycle.fixed = fixedEvent.fixed;
-						}
-						if (Object.keys(lifecycle).length > 0) {
-							vulnerabilityDetails.lifecycle = lifecycle;
-							if (queryVersionSpecified && version && lifecycle.fixed) {
-								const queriedParts = version.split('.').map(Number);
-								const fixedParts = lifecycle.fixed.split('.').map(Number);
-								let isFixedDecision = false;
-								const maxLength = Math.max(queriedParts.length, fixedParts.length);
-
-								for (let i = 0; i < maxLength; i++) {
-									const qp = queriedParts[i] || 0;
-									const fp = fixedParts[i] || 0;
-
-									if (fp < qp) {
-										isFixedDecision = true;
-										break;
-									}
-									if (fp > qp) {
-										isFixedDecision = false;
-										break;
-									}
-									if (i === maxLength - 1) {
-										isFixedDecision = fixedParts.length <= queriedParts.length;
-									}
-								}
-								vulnerabilityDetails.isFixedInQueriedVersion = isFixedDecision;
-							}
+				// Add dependencies (only if version specified)
+				if (version !== 'latest') {
+					const { dependencies } = await getPackageDependencies(name, version);
+					for (const [depName, depVersion] of Object.entries(dependencies)) {
+						const cleanVersion = depVersion.replace(/[\^~]/g, '');
+						if (/^\d+\.\d+\.\d+/.test(cleanVersion)) {
+							addToQuery(depName, cleanVersion, true);
 						}
 					}
-
-					if (!queryVersionSpecified && vuln.affected) {
-						for (const aff of vuln.affected) {
-							if (aff.ranges) {
-								for (const range of aff.ranges) {
-									affectedRanges.push({ type: range.type, events: range.events });
-								}
-							}
-							if (aff.versions && aff.versions.length > 0) {
-								affectedVersionsListed.push(...aff.versions);
-							}
-						}
-						if (affectedRanges.length > 0) {
-							vulnerabilityDetails.affectedRanges = affectedRanges;
-						}
-						if (affectedVersionsListed.length > 0) {
-							vulnerabilityDetails.affectedVersionsListed = affectedVersionsListed;
-						}
-					}
-					return vulnerabilityDetails;
-				});
-
-				const resultToCache = {
-					vulnerabilities: processedVulns,
-					message: message,
-				};
-				cacheSet(cacheKey, resultToCache, CACHE_TTL_MEDIUM);
-
-				return {
-					package: packageNameForOutput,
-					versionQueried: version || null,
-					status: 'success' as const,
-					vulnerabilities: processedVulns,
-					message: message,
-				};
+				}
 			}),
 		);
 
-		const responseJson = JSON.stringify({ results: processedResults }, null, 2);
+		let apiResults: any[] = [];
+		
+		if (finalBatchQueries.length > 0) {
+			// Perform Batch API call to OSV for non-cached items
+			const response = await fetch('https://api.osv.dev/v1/querybatch', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ queries: finalBatchQueries }),
+			});
+
+			if (!response.ok) {
+				throw new Error(`OSV Batch API Error: ${response.status} ${response.statusText}`);
+			}
+
+			const batchData = (await response.json()) as { results: { vulns?: any[] }[] };
+			apiResults = batchData.results || [];
+		}
+
+		// Reconstruct all results (Cache + API)
+		// We iterate over the packageMap to maintain order essentially, or we reconstruct based on what we see
+		// Since map iteration order is insertion order, we can use that to return results generally in order of discovery
+		
+		// Map API results back to their query keys to merge easily
+		const apiResultsMap = new Map<string, any>();
+		finalBatchQueries.forEach((query, index) => {
+			const vulns = apiResults[index]?.vulns || [];
+			const pkgName = query.package.name;
+			const pkgVersion = query.version;
+			const key = `${pkgName}@${pkgVersion || 'latest'}`;
+			apiResultsMap.set(key, vulns);
+		});
+
+		const processedResults: any[] = [];
+		
+		for (const [key, info] of packageMap.entries()) {
+			if (cachedResultsMap.has(key)) {
+				processedResults.push(cachedResultsMap.get(key));
+				continue;
+			}
+
+			// Process API result
+			const vulns = apiResultsMap.get(key) || [];
+			
+			const processedVulns = vulns.map((vuln: any) => {
+				const sev = typeof vuln.severity === 'object' ? vuln.severity.type || 'Unknown' : vuln.severity || 'Unknown';
+				const refs = vuln.references ? vuln.references.map((r: any) => r.url) : [];
+				
+				const vulnerabilityDetails: any = {
+					id: vuln.id,
+					summary: vuln.summary || 'No summary available',
+					severity: sev,
+					references: refs,
+					aliases: vuln.aliases || [],
+					modified: vuln.modified,
+					published: vuln.published,
+				};
+				if (vuln.affected) vulnerabilityDetails.affected = vuln.affected;
+				return vulnerabilityDetails;
+			});
+
+			const resultEntry = {
+				package: `${info.name}${info.version && info.version !== 'latest' && info.version !== undefined ? '@' + info.version : ''}`,
+				isDependency: info.isDependency,
+				vulnerabilities: processedVulns,
+				count: processedVulns.length,
+				status: processedVulns.length > 0 ? 'vulnerable' : 'secure',
+			};
+
+			processedResults.push(resultEntry);
+
+			// Cache this result for future
+			const cacheKey = generateCacheKey('handleNpmVulnerabilities', info.name, info.version || 'all');
+			cacheSet(cacheKey, { 
+				vulnerabilities: processedVulns, 
+				message: `${processedVulns.length} vulnerabilities found` 
+			}, CACHE_TTL_MEDIUM);
+		}
+
+		// Filter final output
+		const finalOutput = processedResults.filter(r => r.count > 0 || !r.isDependency); 
+
+		const responseJson = JSON.stringify({ 
+			summary: `Scanned ${packageMap.size} packages (including dependencies). Found vulnerabilities in ${finalOutput.filter(r => r.count > 0).length} packages. (${cachedResultsMap.size} from cache, ${finalBatchQueries.length} from API)`,
+			results: finalOutput 
+		}, null, 2);
 
 		return { content: [{ type: 'text', text: responseJson }], isError: false };
+
+
 	} catch (error) {
 		const errorResponse = JSON.stringify(
 			{
