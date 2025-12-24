@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.7](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.6...v1.12.7) (2025-12-24)
+
+
+### Bug Fixes
+
+* **ci:** disable MCP Registry publish due to CLI v1.0.0 schema bug ([fb29da6](https://github.com/Nekzus/npm-sentinel-mcp/commit/fb29da6c6e7fe4144372a300a8df8b407b6b7877))
+
 ## [1.12.6](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.5...v1.12.6) (2025-12-24)
 
 
