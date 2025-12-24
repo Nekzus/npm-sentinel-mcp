@@ -82,9 +82,9 @@
   },
   "homepage": "https://github.com/Nekzus/npm-sentinel-mcp#readme",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.11.2",
+    "@modelcontextprotocol/sdk": "1.25.1",
     "node-fetch": "3.3.2",
-    "zod": "3.24.4"
+    "zod": "^4.2.0"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
@@ -101,7 +101,8 @@
     "shx": "0.4.0",
     "tsx": "4.19.4",
     "typescript": "5.8.3",
-    "vitest": "3.1.3"
+    "vitest": "3.1.3",
+    "zod-to-json-schema": "^3.25.0"
   },
   "config": {
     "commitizen": {
@@ -110,10 +111,6 @@
   },
   "publishConfig": {
     "access": "public"
-  },
-  "overrides": {
-    "zod": "3.24.4",
-    "zod-to-json-schema": "3.24.3"
   },
   "engines": {
     "node": ">=18"

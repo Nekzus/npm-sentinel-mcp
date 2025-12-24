@@ -119,20 +119,70 @@ vi.mock('node-fetch', () => {
 			}
 
 			// Default response for valid packages
-			return Promise.resolve({
-				ok: true,
-				json: () =>
-					Promise.resolve({
-						name: 'express',
-						version: '4.18.2',
-						description: 'Fast, unopinionated, minimalist web framework',
-						dependencies: {
-							accepts: '~1.3.8',
-							'array-flatten': '1.1.1',
-							'body-parser': '1.20.1',
-						},
-					}),
-			});
+			// Extract package name from URL
+			const match = url.match(/registry\.npmjs\.org\/(.+?)(\/|$)/);
+			const pkgName = match ? match[1] : 'express'; // Default to express if not found
+
+            // Check if requesting version-specific data (latest or specific)
+            // handleNpmDeps calls /latest, handleNpmRepoStats calls /latest via handleNpmLatest (actually it calls /latest directly inside handleNpmRepoStats)
+            // BUT handleNpmDeps logic calls /latest.
+            
+            // Wait, previous failure for handleNpmRepoStats was due to invalid format.
+            // registry.npmjs.org/${name}/latest returns VERSION object.
+            // registry.npmjs.org/${name} returns PACKAGE INFO object (with versions map).
+            
+            const isVersionRequest = url.includes('/latest') || url.match(/\/(\d+\.\d+\.\d+)$/);
+
+            if (isVersionRequest) {
+			    return Promise.resolve({
+				    ok: true,
+				    json: () =>
+					    Promise.resolve({
+						    name: pkgName,
+						    version: '4.18.2',
+						    description: 'Fast, unopinionated, minimalist web framework',
+						    license: 'MIT',
+						    'dist-tags': { latest: '4.18.2' }, 
+                            // Note: Real registry /latest might NOT have dist-tags, but NpmPackageVersionSchema is passthrough.
+                            // Crucial: It does NOT have 'versions' map usually.
+						    time: {
+							    modified: '2023-01-01T00:00:00.000Z',
+						    },
+						    dependencies: {
+							    accepts: '~1.3.8',
+							    'array-flatten': '1.1.1',
+							    'body-parser': '1.20.1',
+						    },
+						    maintainers: [{ name: 'dougwilson', email: 'doug@something.com' }],
+						    // For "no-repo-pkg", we should omit repository field if pkgName matches
+						    repository: pkgName === 'no-repo-pkg' ? undefined : {
+							    type: 'git',
+							    url: `https://github.com/${pkgName}/${pkgName}.git`,
+						    },
+					    }),
+			    });
+            } else {
+                // Package Info Request (root)
+                return Promise.resolve({
+                    ok: true,
+                    json: () => Promise.resolve({
+                        name: pkgName,
+                        'dist-tags': { latest: '4.18.2' },
+                        versions: {
+                            '4.18.2': {
+                                name: pkgName,
+                                version: '4.18.2',
+                                dist: { tarball: '...' },
+                            }
+                        },
+                        time: { modified: '2023-01-01T00:00:00.000Z' },
+                        repository: pkgName === 'no-repo-pkg' ? undefined : {
+                            type: 'git',
+                            url: `https://github.com/${pkgName}/${pkgName}.git`,
+                        },
+                    })
+                });
+            }
 		}),
 	};
 });
@@ -146,7 +196,7 @@ describe('npm metrics handlers', () => {
 		test('should return score info for a valid package', async () => {
 			const result = await handleNpmScore({ packages: ['express'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
 			expect(parsed.queryPackages).toEqual(['express']);
 			expect(parsed.results[0].packageInput).toBe('express');
 			expect(parsed.results[0].status).toBe('success');
@@ -158,7 +208,7 @@ describe('npm metrics handlers', () => {
 		test('should handle invalid package name', async () => {
 			const result = await handleNpmScore({ packages: ['invalid-package-name'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
 			expect(parsed.queryPackages).toEqual(['invalid-package-name']);
 			expect(parsed.results[0].packageInput).toBe('invalid-package-name');
 			expect(parsed.results[0].status).toBe('error');
@@ -170,7 +220,7 @@ describe('npm metrics handlers', () => {
 		test('should return quality metrics for a valid package', async () => {
 			const result = await handleNpmQuality({ packages: ['express'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
 			expect(parsed.queryPackages).toEqual(['express']);
 			expect(parsed.results[0].status).toBe('success');
 			expect(parsed.results[0].data.qualityScore).toBe(0.95);
@@ -180,7 +230,7 @@ describe('npm metrics handlers', () => {
 		test('should handle invalid package name', async () => {
 			const result = await handleNpmQuality({ packages: ['invalid-package-name'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
 			expect(parsed.queryPackages).toEqual(['invalid-package-name']);
 			expect(parsed.results[0].status).toBe('error');
 			expect(parsed.results[0].error).toBe('Package invalid-package-name not found on npms.io.');
@@ -194,7 +244,7 @@ describe('npm metrics handlers', () => {
 		test('should return maintenance metrics for a valid package', async () => {
 			const result = await handleNpmMaintenance({ packages: ['express'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
 			expect(parsed.queryPackages).toEqual(['express']);
 			expect(parsed.results[0].status).toBe('success');
 			expect(parsed.results[0].data.maintenanceScore).toBe(0.9);
@@ -206,7 +256,7 @@ describe('npm metrics handlers', () => {
 		test('should handle invalid package name', async () => {
 			const result = await handleNpmMaintenance({ packages: ['invalid-package-name'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
 			expect(parsed.queryPackages).toEqual(['invalid-package-name']);
 			expect(parsed.results[0].status).toBe('error');
 			expect(parsed.results[0].error).toBe('Package invalid-package-name not found on npms.io.');
@@ -220,7 +270,7 @@ describe('npm metrics handlers', () => {
 		test('should return size info for a valid package', async () => {
 			const result = await handleNpmSize({ packages: ['express'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
 			expect(parsed.results[0].package).toBe('express');
 			expect(parsed.results[0].status).toBe('success');
 			expect(parsed.results[0].data.sizeInKb).toBe(48.83); // From Vitest output 50000 / 1024 roughly
@@ -231,7 +281,7 @@ describe('npm metrics handlers', () => {
 		test('should handle invalid package name', async () => {
 			const result = await handleNpmSize({ packages: ['invalid-package-name'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
 			expect(parsed.results[0].package).toBe('invalid-package-name');
 			expect(parsed.results[0].status).toBe('error');
 			expect(parsed.results[0].error).toBe(
@@ -247,7 +297,7 @@ describe('npm metrics handlers', () => {
 		test('should return dependencies info for a valid package', async () => {
 			const result = await handleNpmDeps({ packages: ['express'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
 			expect(parsed.results[0].package).toBe('express@4.18.2');
 			expect(parsed.results[0].status).toBe('success');
 			expect(parsed.results[0].data.dependencies.length).toBeGreaterThan(0);
@@ -260,7 +310,7 @@ describe('npm metrics handlers', () => {
 		test('should handle package without dependencies', async () => {
 			const result = await handleNpmDeps({ packages: ['is-odd'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
 			expect(parsed.results[0].package).toBe('is-odd@4.18.2');
 			expect(parsed.results[0].status).toBe('success');
 			expect(parsed.results[0].data.dependencies.length).toBeGreaterThan(0);
@@ -270,7 +320,7 @@ describe('npm metrics handlers', () => {
 		test('should handle invalid package name', async () => {
 			const result = await handleNpmDeps({ packages: ['invalid-package-name'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
 			expect(parsed.results[0].package).toBe('invalid-package-name');
 			expect(parsed.results[0].status).toBe('error');
 			expect(parsed.results[0].error).toBe('Failed to fetch package info: 404 Not Found');
@@ -284,19 +334,22 @@ describe('npm metrics handlers', () => {
 		test('should return repository stats for a valid package', async () => {
 			const result = await handleNpmRepoStats({ packages: ['express'] });
 			validateToolResponse(result);
-			expect(result.content[0].text).toContain('No repository URL found');
+			expect((result.content[0] as any).text).not.toContain('No repository URL found');
+            const parsed = JSON.parse((result.content[0] as any).text as string);
+            expect(parsed.results[0].status).toBe('success');
+            expect(parsed.results[0].data).toHaveProperty('githubRepoUrl');
 		});
 
 		test('should handle package without repository', async () => {
 			const result = await handleNpmRepoStats({ packages: ['no-repo-pkg'] });
 			validateToolResponse(result);
-			expect(result.content[0].text).toContain('No repository URL found');
+			expect((result.content[0] as any).text).toContain('No repository URL found');
 		});
 
 		test('should handle invalid package name', async () => {
 			const result = await handleNpmRepoStats({ packages: ['invalid-package-name'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
 			expect(parsed.queryPackages).toEqual(['invalid-package-name']);
 			expect(parsed.results[0].packageInput).toBe('invalid-package-name');
 			expect(parsed.results[0].status).toBe('error');

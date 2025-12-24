@@ -157,7 +157,7 @@ describe('npm security handlers', () => {
 		test('should return type information for a valid package', async () => {
 			const result = await handleNpmTypes({ packages: ['express'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
 			expect(parsed.results[0].package).toBe('express@4.18.2');
 			expect(parsed.results[0].status).toBe('success');
 			expect(parsed.results[0].data.mainPackage.hasBuiltInTypes).toBe(true);
@@ -170,7 +170,7 @@ describe('npm security handlers', () => {
 		test('should handle invalid package name', async () => {
 			const result = await handleNpmTypes({ packages: ['invalid-package-name'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
 			expect(parsed.results[0].package).toBe('invalid-package-name');
 			expect(parsed.results[0].status).toBe('error');
 			expect(parsed.results[0].error).toContain('Failed to fetch package info');
@@ -184,7 +184,7 @@ describe('npm security handlers', () => {
 		test('should return vulnerability information for a valid package', async () => {
 			const result = await handleNpmVulnerabilities({ packages: ['express'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
 			expect(parsed.results[0].package).toBe('express');
 			expect(parsed.results[0].status).toBe('vulnerable');
 			expect(parsed.results[0].vulnerabilities.length).toBe(1);
@@ -198,7 +198,7 @@ describe('npm security handlers', () => {
 		test('should handle package with multiple vulnerabilities', async () => {
 			const result = await handleNpmVulnerabilities({ packages: ['vulnerable-pkg'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
 			expect(parsed.results[0].package).toBe('vulnerable-pkg');
 			expect(parsed.results[0].status).toBe('vulnerable');
 			expect(parsed.results[0].vulnerabilities.length).toBe(2);
@@ -210,7 +210,7 @@ describe('npm security handlers', () => {
 		test('should handle package with no vulnerabilities', async () => {
 			const result = await handleNpmVulnerabilities({ packages: ['safe-pkg'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
 			expect(parsed.results[0].package).toBe('safe-pkg');
 			expect(parsed.results[0].status).toBe('secure');
 			expect(parsed.results[0].vulnerabilities.length).toBe(0);
@@ -220,7 +220,7 @@ describe('npm security handlers', () => {
 		test('should handle invalid package name', async () => {
 			const result = await handleNpmVulnerabilities({ packages: ['invalid-package-name'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
 			expect(parsed.results[0].package).toBe('invalid-package-name');
 			expect(parsed.results[0].status).toBe('secure');
 			expect(parsed.results[0].vulnerabilities.length).toBe(0);
@@ -230,7 +230,7 @@ describe('npm security handlers', () => {
 		test('should handle empty package list', async () => {
 			const result = await handleNpmVulnerabilities({ packages: [] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
 			expect(parsed.results).toEqual([]);
 			expect(parsed.error).toContain(
 				'General error checking vulnerabilities: No package names provided',
@@ -242,7 +242,7 @@ describe('npm security handlers', () => {
 		test('should return license compatibility information for valid packages', async () => {
 			const result = await handleNpmLicenseCompatibility({ packages: ['express'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
 			expect(parsed.queryPackages).toEqual(['express']);
 			expect(parsed.results[0].packageInput).toBe('express');
 			expect(parsed.results[0].status).toBe('success');
@@ -256,7 +256,7 @@ describe('npm security handlers', () => {
 				packages: ['express', 'different-license-pkg'],
 			});
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
 			expect(parsed.queryPackages).toEqual(['express', 'different-license-pkg']);
 			const expressResult = parsed.results.find((r: any) => r.packageInput === 'express');
 			const differentResult = parsed.results.find(
@@ -283,7 +283,7 @@ describe('npm security handlers', () => {
 				packages: ['express', 'no-license-pkg'],
 			});
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
 			const noLicenseResult = parsed.results.find((r: any) => r.packageInput === 'no-license-pkg');
 
 			expect(noLicenseResult.status).toBe('success');
@@ -297,7 +297,7 @@ describe('npm security handlers', () => {
 		test('should handle invalid package name', async () => {
 			const result = await handleNpmLicenseCompatibility({ packages: ['invalid-package-name'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
 			expect(parsed.results[0].packageInput).toBe('invalid-package-name');
 			expect(parsed.results[0].status).toBe('error');
 			expect(parsed.results[0].error).toContain('Package invalid-package-name@latest not found');
@@ -311,7 +311,7 @@ describe('npm security handlers', () => {
 		test('should handle empty package list', async () => {
 			const result = await handleNpmLicenseCompatibility({ packages: [] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
 			expect(parsed.queryPackages).toEqual([]);
 			expect(parsed.results).toEqual([]);
 			expect(parsed.error).toContain(

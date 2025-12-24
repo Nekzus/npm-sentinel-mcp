@@ -65,7 +65,7 @@ export const NpmMaintainerSchema = z
 		email: z.string().optional(),
 		url: z.string().optional(),
 	})
-	.passthrough();
+	.loose();
 
 export const NpmPackageVersionSchema = z
 	.object({
@@ -81,7 +81,7 @@ export const NpmPackageVersionSchema = z
 						email: z.string().optional(),
 						url: z.string().optional(),
 					})
-					.passthrough(),
+					.loose(),
 			])
 			.optional(),
 		license: z.string().optional(),
@@ -90,62 +90,62 @@ export const NpmPackageVersionSchema = z
 				type: z.string().optional(),
 				url: z.string().optional(),
 			})
-			.passthrough()
+			.loose()
 			.optional(),
 		bugs: z
 			.object({
 				url: z.string().optional(),
 			})
-			.passthrough()
+			.loose()
 			.optional(),
 		homepage: z.string().optional(),
-		dependencies: z.record(z.string()).optional(),
-		devDependencies: z.record(z.string()).optional(),
-		peerDependencies: z.record(z.string()).optional(),
+		dependencies: z.record(z.string(), z.string()).optional(),
+		devDependencies: z.record(z.string(), z.string()).optional(),
+		peerDependencies: z.record(z.string(), z.string()).optional(),
 		types: z.string().optional(),
 		typings: z.string().optional(),
 		dist: z
 			.object({ shasum: z.string().optional(), tarball: z.string().optional() })
-			.passthrough()
+			.loose()
 			.optional(),
 	})
-	.passthrough();
+	.loose();
 
 export const NpmPackageInfoSchema = z
 	.object({
 		name: z.string(),
-		'dist-tags': z.record(z.string()),
-		versions: z.record(NpmPackageVersionSchema),
-		time: z.record(z.string()).optional(),
+		'dist-tags': z.record(z.string(), z.string()),
+		versions: z.record(z.string(), NpmPackageVersionSchema),
+		time: z.record(z.string(), z.string()).optional(),
 		repository: z
 			.object({
 				type: z.string().optional(),
 				url: z.string().optional(),
 			})
-			.passthrough()
+			.loose()
 			.optional(),
 		bugs: z
 			.object({
 				url: z.string().optional(),
 			})
-			.passthrough()
+			.loose()
 			.optional(),
 		homepage: z.string().optional(),
 		maintainers: z.array(NpmMaintainerSchema).optional(),
 	})
-	.passthrough();
+	.loose();
 
 export const NpmPackageDataSchema = z.object({
 	name: z.string(),
 	version: z.string(),
 	description: z.string().optional(),
 	license: z.string().optional(),
-	dependencies: z.record(z.string()).optional(),
-	devDependencies: z.record(z.string()).optional(),
-	peerDependencies: z.record(z.string()).optional(),
+	dependencies: z.record(z.string(), z.string()).optional(),
+	devDependencies: z.record(z.string(), z.string()).optional(),
+	peerDependencies: z.record(z.string(), z.string()).optional(),
 	types: z.string().optional(),
 	typings: z.string().optional(),
-});
+}).loose();
 
 export const BundlephobiaDataSchema = z.object({
 	size: z.number(),
@@ -311,7 +311,7 @@ export const NpmSearchResultSchema = z
 		),
 		total: z.number(), // total is a sibling of objects
 	})
-	.passthrough();
+	.loose();
 
 // Type inference
 export type NpmPackageInfo = z.infer<typeof NpmPackageInfoSchema>;
@@ -353,8 +353,14 @@ function isNpmPackageInfo(data: unknown): data is NpmPackageInfo {
 
 function isNpmPackageData(data: unknown): data is z.infer<typeof NpmPackageDataSchema> {
 	try {
-		return NpmPackageDataSchema.parse(data) !== null;
-	} catch {
+        // Use safeParse to get error details
+		const result = NpmPackageDataSchema.safeParse(data);
+        if (!result.success) {
+            console.error('isNpmPackageData validation failed:', JSON.stringify(result.error.issues, null, 2));
+        }
+		return result.success;
+	} catch (e) {
+        console.error('isNpmPackageData threw exception:', e);
 		return false;
 	}
 }
@@ -369,7 +375,11 @@ function isBundlephobiaData(data: unknown): data is z.infer<typeof BundlephobiaD
 
 function isNpmDownloadsData(data: unknown): data is z.infer<typeof NpmDownloadsDataSchema> {
 	try {
-		return NpmDownloadsDataSchema.parse(data) !== null;
+        const result = NpmDownloadsDataSchema.safeParse(data);
+		if (!result.success) {
+            console.error('isNpmDownloadsData validation failed:', JSON.stringify(result.error.issues, null, 2));
+        }
+		return result.success;
 	} catch {
 		return false;
 	}
@@ -3718,9 +3728,6 @@ export default function createServer({
 	const server = new McpServer({
 		name: 'npm-sentinel-mcp',
 		version: '1.12.0',
-		capabilities: {
-			resources: {},
-		},
 	});
 
 	// Update paths to be relative to the package
@@ -3728,11 +3735,10 @@ export default function createServer({
 	const LLMS_FULL_TEXT_PATH = path.join(packageRoot, 'llms-full.txt');
 
 	// Register README.md resource
-	server.resource(
+	server.registerResource(
 		'serverReadme',
 		'doc://server/readme',
 		{
-			name: 'Server README',
 			description: 'Main documentation and usage guide for this NPM Info Server.',
 			mimeType: 'text/markdown',
 		},
@@ -3760,11 +3766,10 @@ export default function createServer({
 	);
 
 	// Register llms-full.txt resource (MCP Specification)
-	server.resource(
+	server.registerResource(
 		'mcpSpecification',
 		'doc://mcp/specification',
 		{
-			name: 'MCP Full Specification',
 			description:
 				'The llms-full.txt content providing a comprehensive overview of the Model Context Protocol.',
 			mimeType: 'text/plain',
@@ -3793,337 +3798,375 @@ export default function createServer({
 	);
 
 	// Add NPM tools - Ensuring each tool registration is complete and correct
-	server.tool(
+	server.registerTool(
 		'npmVersions',
-		'Get all available versions of an NPM package',
 		{
-			packages: z.array(z.string()).describe('List of package names to get versions for'),
-		},
-		{
-			title: 'Get All Package Versions',
-			readOnlyHint: true,
-			openWorldHint: true,
-			idempotentHint: true,
+			description: 'Get all available versions of an NPM package',
+			inputSchema: {
+				packages: z.array(z.string()).describe('List of package names to get versions for'),
+			},
+			annotations: {
+				title: 'Get All Package Versions',
+				readOnlyHint: true,
+				openWorldHint: true,
+				idempotentHint: true,
+			},
 		},
 		async (args: { packages: string[] }) => {
 			return await handleNpmVersions(args);
 		},
 	);
 
-	server.tool(
+	server.registerTool(
 		'npmLatest',
-		'Get the latest version and changelog of an NPM package',
 		{
-			packages: z.array(z.string()).describe('List of package names to get latest versions for'),
-		},
-		{
-			title: 'Get Latest Package Information',
-			readOnlyHint: true,
-			openWorldHint: true,
-			idempotentHint: true, // Result for 'latest' tag can change, but call itself is idempotent
+			description: 'Get the latest version and changelog of an NPM package',
+			inputSchema: {
+				packages: z.array(z.string()).describe('List of package names to get latest versions for'),
+			},
+			annotations: {
+				title: 'Get Latest Package Information',
+				readOnlyHint: true,
+				openWorldHint: true,
+				idempotentHint: true, // Result for 'latest' tag can change, but call itself is idempotent
+			},
 		},
 		async (args: { packages: string[] }) => {
 			return await handleNpmLatest(args);
 		},
 	);
 
-	server.tool(
+	server.registerTool(
 		'npmDeps',
-		'Analyze dependencies and devDependencies of an NPM package',
 		{
-			packages: z.array(z.string()).describe('List of package names to analyze dependencies for'),
-		},
-		{
-			title: 'Get Package Dependencies',
-			readOnlyHint: true,
-			openWorldHint: true,
-			idempotentHint: true,
+			description: 'Analyze dependencies and devDependencies of an NPM package',
+			inputSchema: {
+				packages: z.array(z.string()).describe('List of package names to analyze dependencies for'),
+			},
+			annotations: {
+				title: 'Get Package Dependencies',
+				readOnlyHint: true,
+				openWorldHint: true,
+				idempotentHint: true,
+			},
 		},
 		async (args: { packages: string[] }) => {
 			return await handleNpmDeps(args);
 		},
 	);
 
-	server.tool(
+	server.registerTool(
 		'npmTypes',
-		'Check TypeScript types availability and version for a package',
 		{
-			packages: z.array(z.string()).describe('List of package names to check types for'),
-		},
-		{
-			title: 'Check TypeScript Type Availability',
-			readOnlyHint: true,
-			openWorldHint: true,
-			idempotentHint: true,
+			description: 'Check TypeScript types availability and version for a package',
+			inputSchema: {
+				packages: z.array(z.string()).describe('List of package names to check types for'),
+			},
+			annotations: {
+				title: 'Check TypeScript Type Availability',
+				readOnlyHint: true,
+				openWorldHint: true,
+				idempotentHint: true,
+			},
 		},
 		async (args: { packages: string[] }) => {
 			return await handleNpmTypes(args);
 		},
 	);
 
-	server.tool(
+	server.registerTool(
 		'npmSize',
-		'Get package size information including dependencies and bundle size',
 		{
-			packages: z.array(z.string()).describe('List of package names to get size information for'),
-		},
-		{
-			title: 'Get Package Size (Bundlephobia)',
-			readOnlyHint: true,
-			openWorldHint: true,
-			idempotentHint: true,
+			description: 'Get package size information including dependencies and bundle size',
+			inputSchema: {
+				packages: z.array(z.string()).describe('List of package names to get size information for'),
+			},
+			annotations: {
+				title: 'Get Package Size (Bundlephobia)',
+				readOnlyHint: true,
+				openWorldHint: true,
+				idempotentHint: true,
+			},
 		},
 		async (args: { packages: string[] }) => {
 			return await handleNpmSize(args);
 		},
 	);
 
-	server.tool(
+	server.registerTool(
 		'npmVulnerabilities',
-		'Check for known vulnerabilities in packages',
 		{
-			packages: z.array(z.string()).describe('List of package names to check for vulnerabilities'),
-		},
-		{
-			title: 'Check Package Vulnerabilities (OSV.dev)',
-			readOnlyHint: true,
-			openWorldHint: true,
-			idempotentHint: false, // Vulnerability data can change frequently
+			description: 'Check for known vulnerabilities in packages',
+			inputSchema: {
+				packages: z.array(z.string()).describe('List of package names to check for vulnerabilities'),
+			},
+			annotations: {
+				title: 'Check Package Vulnerabilities (OSV.dev)',
+				readOnlyHint: true,
+				openWorldHint: true,
+				idempotentHint: false, // Vulnerability data can change frequently
+			},
 		},
 		async (args: { packages: string[] }) => {
 			return await handleNpmVulnerabilities(args);
 		},
 	);
 
-	server.tool(
+	server.registerTool(
 		'npmTrends',
-		'Get download trends and popularity metrics for packages',
 		{
-			packages: z.array(z.string()).describe('List of package names to get trends for'),
-			period: z
-				.enum(['last-week', 'last-month', 'last-year'])
-				.describe('Time period for trends. Options: "last-week", "last-month", "last-year"')
-				.optional()
-				.default('last-month'),
-		},
-		{
-			title: 'Get NPM Package Download Trends',
-			readOnlyHint: true,
-			openWorldHint: true,
-			idempotentHint: true, // Trends for a fixed past period are idempotent
+			description: 'Get download trends and popularity metrics for packages',
+			inputSchema: {
+				packages: z.array(z.string()).describe('List of package names to get trends for'),
+				period: z
+					.enum(['last-week', 'last-month', 'last-year'])
+					.describe('Time period for trends. Options: "last-week", "last-month", "last-year"')
+					.optional()
+					.default('last-month'),
+			},
+			annotations: {
+				title: 'Get NPM Package Download Trends',
+				readOnlyHint: true,
+				openWorldHint: true,
+				idempotentHint: true, // Trends for a fixed past period are idempotent
+			},
 		},
 		async (args: { packages: string[]; period?: 'last-week' | 'last-month' | 'last-year' }) => {
 			return await handleNpmTrends(args);
 		},
 	);
 
-	server.tool(
+	server.registerTool(
 		'npmCompare',
-		'Compare multiple NPM packages based on various metrics',
 		{
-			packages: z.array(z.string()).describe('List of package names to compare'),
-		},
-		{
-			title: 'Compare NPM Packages',
-			readOnlyHint: true,
-			openWorldHint: true,
-			idempotentHint: true,
+			description: 'Compare multiple NPM packages based on various metrics',
+			inputSchema: {
+				packages: z.array(z.string()).describe('List of package names to compare'),
+			},
+			annotations: {
+				title: 'Compare NPM Packages',
+				readOnlyHint: true,
+				openWorldHint: true,
+				idempotentHint: true,
+			},
 		},
 		async (args: { packages: string[] }) => {
 			return await handleNpmCompare(args);
 		},
 	);
 
-	server.tool(
+	server.registerTool(
 		'npmMaintainers',
-		'Get maintainers information for NPM packages',
 		{
-			packages: z.array(z.string()).describe('List of package names to get maintainers for'),
-		},
-		{
-			title: 'Get NPM Package Maintainers',
-			readOnlyHint: true,
-			openWorldHint: true,
-			idempotentHint: true,
+			description: 'Get maintainers information for NPM packages',
+			inputSchema: {
+				packages: z.array(z.string()).describe('List of package names to get maintainers for'),
+			},
+			annotations: {
+				title: 'Get NPM Package Maintainers',
+				readOnlyHint: true,
+				openWorldHint: true,
+				idempotentHint: true,
+			},
 		},
 		async (args: { packages: string[] }) => {
 			return await handleNpmMaintainers(args);
 		},
 	);
 
-	server.tool(
+	server.registerTool(
 		'npmScore',
-		'Get consolidated package score based on quality, maintenance, and popularity metrics',
 		{
-			packages: z.array(z.string()).describe('List of package names to get scores for'),
-		},
-		{
-			title: 'Get NPM Package Score (NPMS.io)',
-			readOnlyHint: true,
-			openWorldHint: true,
-			idempotentHint: true, // Score for a version is stable, for 'latest' can change
+			description: 'Get consolidated package score based on quality, maintenance, and popularity metrics',
+			inputSchema: {
+				packages: z.array(z.string()).describe('List of package names to get scores for'),
+			},
+			annotations: {
+				title: 'Get NPM Package Score (NPMS.io)',
+				readOnlyHint: true,
+				openWorldHint: true,
+				idempotentHint: true, // Score for a version is stable, for 'latest' can change
+			},
 		},
 		async (args: { packages: string[] }) => {
 			return await handleNpmScore(args);
 		},
 	);
 
-	server.tool(
+	server.registerTool(
 		'npmPackageReadme',
-		'Get the README content for NPM packages',
 		{
-			packages: z.array(z.string()).describe('List of package names to get READMEs for'),
-		},
-		{
-			title: 'Get NPM Package README',
-			readOnlyHint: true,
-			openWorldHint: true,
-			idempotentHint: true,
+			description: 'Get the README content for NPM packages',
+			inputSchema: {
+				packages: z.array(z.string()).describe('List of package names to get READMEs for'),
+			},
+			annotations: {
+				title: 'Get NPM Package README',
+				readOnlyHint: true,
+				openWorldHint: true,
+				idempotentHint: true,
+			},
 		},
 		async (args: { packages: string[] }) => {
 			return await handleNpmPackageReadme(args);
 		},
 	);
 
-	server.tool(
+	server.registerTool(
 		'npmSearch',
-		'Search for NPM packages with optional limit',
 		{
-			query: z.string().describe('Search query for packages'),
-			limit: z
-				.number()
-				.min(1)
-				.max(50)
-				.optional()
-				.describe('Maximum number of results to return (default: 10)'),
-		},
-		{
-			title: 'Search NPM Packages',
-			readOnlyHint: true,
-			openWorldHint: true,
-			idempotentHint: false, // Search results can change
+			description: 'Search for NPM packages with optional limit',
+			inputSchema: {
+				query: z.string().describe('Search query for packages'),
+				limit: z
+					.number()
+					.min(1)
+					.max(50)
+					.optional()
+					.describe('Maximum number of results to return (default: 10)'),
+			},
+			annotations: {
+				title: 'Search NPM Packages',
+				readOnlyHint: true,
+				openWorldHint: true,
+				idempotentHint: false, // Search results can change
+			},
 		},
 		async (args: { query: string; limit?: number }) => {
 			return await handleNpmSearch(args);
 		},
 	);
 
-	server.tool(
+	server.registerTool(
 		'npmLicenseCompatibility',
-		'Check license compatibility between multiple packages',
 		{
-			packages: z
-				.array(z.string())
-				.min(1)
-				.describe('List of package names to check for license compatibility'),
-		},
-		{
-			title: 'Check NPM License Compatibility',
-			readOnlyHint: true,
-			openWorldHint: true,
-			idempotentHint: true,
+			description: 'Check license compatibility between multiple packages',
+			inputSchema: {
+				packages: z
+					.array(z.string())
+					.min(1)
+					.describe('List of package names to check for license compatibility'),
+			},
+			annotations: {
+				title: 'Check NPM License Compatibility',
+				readOnlyHint: true,
+				openWorldHint: true,
+				idempotentHint: true,
+			},
 		},
 		async (args: { packages: string[] }) => {
 			return await handleNpmLicenseCompatibility(args);
 		},
 	);
 
-	server.tool(
+	server.registerTool(
 		'npmRepoStats',
-		'Get repository statistics for NPM packages',
 		{
-			packages: z.array(z.string()).describe('List of package names to get repository stats for'),
-		},
-		{
-			title: 'Get NPM Package Repository Stats (GitHub)',
-			readOnlyHint: true,
-			openWorldHint: true,
-			idempotentHint: true, // Stats for a repo at a point in time, though they change over time
+			description: 'Get repository statistics for NPM packages',
+			inputSchema: {
+				packages: z.array(z.string()).describe('List of package names to get repository stats for'),
+			},
+			annotations: {
+				title: 'Get NPM Package Repository Stats (GitHub)',
+				readOnlyHint: true,
+				openWorldHint: true,
+				idempotentHint: true, // Stats for a repo at a point in time, though they change over time
+			},
 		},
 		async (args: { packages: string[] }) => {
 			return await handleNpmRepoStats(args);
 		},
 	);
 
-	server.tool(
+	server.registerTool(
 		'npmDeprecated',
-		'Check if packages are deprecated',
 		{
-			packages: z.array(z.string()).describe('List of package names to check for deprecation'),
-		},
-		{
-			title: 'Check NPM Package Deprecation Status',
-			readOnlyHint: true,
-			openWorldHint: true,
-			idempotentHint: true, // Deprecation status is generally stable for a version
+			description: 'Check if packages are deprecated',
+			inputSchema: {
+				packages: z.array(z.string()).describe('List of package names to check for deprecation'),
+			},
+			annotations: {
+				title: 'Check NPM Package Deprecation Status',
+				readOnlyHint: true,
+				openWorldHint: true,
+				idempotentHint: true, // Deprecation status is generally stable for a version
+			},
 		},
 		async (args: { packages: string[] }) => {
 			return await handleNpmDeprecated(args);
 		},
 	);
 
-	server.tool(
+	server.registerTool(
 		'npmChangelogAnalysis',
-		'Analyze changelog and release history of packages',
 		{
-			packages: z.array(z.string()).describe('List of package names to analyze changelogs for'),
-		},
-		{
-			title: 'Analyze NPM Package Changelog (GitHub)',
-			readOnlyHint: true,
-			openWorldHint: true,
-			idempotentHint: true,
+			description: 'Analyze changelog and release history of packages',
+			inputSchema: {
+				packages: z.array(z.string()).describe('List of package names to analyze changelogs for'),
+			},
+			annotations: {
+				title: 'Analyze NPM Package Changelog (GitHub)',
+				readOnlyHint: true,
+				openWorldHint: true,
+				idempotentHint: true,
+			},
 		},
 		async (args: { packages: string[] }) => {
 			return await handleNpmChangelogAnalysis(args);
 		},
 	);
 
-	server.tool(
+	server.registerTool(
 		'npmAlternatives',
-		'Find alternative packages with similar functionality',
 		{
-			packages: z.array(z.string()).describe('List of package names to find alternatives for'),
-		},
-		{
-			title: 'Find NPM Package Alternatives',
-			readOnlyHint: true,
-			openWorldHint: true,
-			idempotentHint: false, // Search-based, results can change
+			description: 'Find alternative packages with similar functionality',
+			inputSchema: {
+				packages: z.array(z.string()).describe('List of package names to find alternatives for'),
+			},
+			annotations: {
+				title: 'Find NPM Package Alternatives',
+				readOnlyHint: true,
+				openWorldHint: true,
+				idempotentHint: false, // Search-based, results can change
+			},
 		},
 		async (args: { packages: string[] }) => {
 			return await handleNpmAlternatives(args);
 		},
 	);
 
-	server.tool(
+	server.registerTool(
 		'npmQuality',
-		'Analyze package quality metrics',
 		{
-			packages: z.array(z.string()).describe('List of package names to analyze'),
-		},
-		{
-			title: 'Analyze NPM Package Quality (NPMS.io)',
-			readOnlyHint: true,
-			openWorldHint: true,
-			idempotentHint: true, // Score for a version is stable, for 'latest' can change
+			description: 'Analyze package quality metrics',
+			inputSchema: {
+				packages: z.array(z.string()).describe('List of package names to analyze'),
+			},
+			annotations: {
+				title: 'Analyze NPM Package Quality (NPMS.io)',
+				readOnlyHint: true,
+				openWorldHint: true,
+				idempotentHint: true, // Score for a version is stable, for 'latest' can change
+			},
 		},
 		async (args: { packages: string[] }) => {
 			return await handleNpmQuality(args);
 		},
 	);
 
-	server.tool(
+	server.registerTool(
 		'npmMaintenance',
-		'Analyze package maintenance metrics',
 		{
-			packages: z.array(z.string()).describe('List of package names to analyze'),
-		},
-		{
-			title: 'Analyze NPM Package Maintenance (NPMS.io)',
-			readOnlyHint: true,
-			openWorldHint: true,
-			idempotentHint: true, // Score for a version is stable, for 'latest' can change
+			description: 'Analyze package maintenance metrics',
+			inputSchema: {
+				packages: z.array(z.string()).describe('List of package names to analyze'),
+			},
+			annotations: {
+				title: 'Analyze NPM Package Maintenance (NPMS.io)',
+				readOnlyHint: true,
+				openWorldHint: true,
+				idempotentHint: true, // Score for a version is stable, for 'latest' can change
+			},
 		},
 		async (args: { packages: string[] }) => {
 			return await handleNpmMaintenance(args);
@@ -4165,8 +4208,11 @@ async function main() {
 // Type guard for NpmPackageVersionSchema
 function isNpmPackageVersionData(data: unknown): data is z.infer<typeof NpmPackageVersionSchema> {
 	try {
-		// Use safeParse for type guards to avoid throwing errors on invalid data
-		return NpmPackageVersionSchema.safeParse(data).success;
+        const result = NpmPackageVersionSchema.safeParse(data);
+		if (!result.success) {
+            console.error('isNpmPackageVersionData validation failed:', JSON.stringify(result.error.issues, null, 2));
+        }
+        return result.success;
 	} catch (e) {
 		// This catch block might not be strictly necessary with safeParse but kept for safety
 		// console.error("isNpmPackageVersionData validation failed unexpectedly:", e);
