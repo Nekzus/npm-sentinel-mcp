@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.15](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.14...v1.12.15) (2025-12-24)
+
+
+### Bug Fixes
+
+* **registry:** use registry_type in server.json and enable mcp publishing ([a818310](https://github.com/Nekzus/npm-sentinel-mcp/commit/a81831055a60a32a680ee52d04765f7edb807e7c))
+
 ## [1.12.14](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.13...v1.12.14) (2025-12-24)
 
 
