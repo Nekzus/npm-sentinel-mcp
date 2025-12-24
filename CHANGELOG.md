@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.17](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.16...v1.12.17) (2025-12-24)
+
+
+### Bug Fixes
+
+* manual trigger for deployment verification ([becad23](https://github.com/Nekzus/npm-sentinel-mcp/commit/becad2335188a0e4cb499be1b09346514833ac82))
+
 ## [1.12.16](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.15...v1.12.16) (2025-12-24)
 
 
