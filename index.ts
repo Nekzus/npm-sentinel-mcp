@@ -1165,7 +1165,7 @@ export async function handleNpmVulnerabilities(args: {
 			if (cachedData) {
 				// Store cached result directly using the same structure as we will build later
 				cachedResultsMap.set(key, {
-					package: `${name}${version ? '@' + version : ''}`,
+					package: `${name}${version ? `@${version}` : ''}`,
 					isDependency: isDep,
 					vulnerabilities: cachedData.vulnerabilities,
 					count: cachedData.vulnerabilities.length,
@@ -1277,7 +1277,7 @@ export async function handleNpmVulnerabilities(args: {
 			});
 
 			const resultEntry = {
-				package: `${info.name}${info.version && info.version !== 'latest' && info.version !== undefined ? '@' + info.version : ''}`,
+				package: `${info.name}${info.version && info.version !== 'latest' && info.version !== undefined ? `@${info.version}` : ''}`,
 				isDependency: info.isDependency,
 				vulnerabilities: processedVulns,
 				count: processedVulns.length,
