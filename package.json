@@ -19,7 +19,7 @@
   "scripts": {
     "build": "npm run build:http",
     "build:stdio": "tsc && shx chmod +x dist/*.js",
-    "build:http": "smithery build",
+    "build:http": "./node_modules/.bin/smithery build",
     "prepare": "npm run build:stdio",
     "dev": "npx @smithery/cli dev",
     "start": "npm run start:http",
