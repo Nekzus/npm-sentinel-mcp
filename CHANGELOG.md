@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.14.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.13.3...v1.14.0) (2025-12-24)
+
+
+### Features
+
+* enhance vulnerability detection with transitive scanning, react ecosystem awareness, and cve enrichment ([fa2b24b](https://github.com/Nekzus/npm-sentinel-mcp/commit/fa2b24b1c882acffad91d097c266c4cc778448cb))
+* enhance vulnerability scanning with transitive dependency check and latest version resolution ([01c2ac7](https://github.com/Nekzus/npm-sentinel-mcp/commit/01c2ac7eeb374587a80c981733c40d2d01e4808f))
+* enrich vulnerability data with CVE IDs and summaries from OSV API ([670ce68](https://github.com/Nekzus/npm-sentinel-mcp/commit/670ce6847cc0e57b9c3a4390bdf042d36fbfdce9))
+* implement ecosystem awareness to scan associated packages (e.g. react-server-dom-webpack) ([16e61e2](https://github.com/Nekzus/npm-sentinel-mcp/commit/16e61e2418df8ca574bc70ac6a878c1b27c7ef18))
+
 ## [1.13.3](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.13.2...v1.13.3) (2025-12-24)
 
 
