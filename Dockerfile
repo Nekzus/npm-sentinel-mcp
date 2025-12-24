@@ -10,8 +10,7 @@ COPY package.json package-lock.json tsconfig.json ./
 RUN apk add --no-cache python3 make g++ libsecret-dev
 
 # Install all dependencies (including dev) for build
-# Use --ignore-scripts to skip 'prepare' (which fails without source files)
-# Then use npm rebuild to compile native modules (keytar)
+# Use --ignore-scripts then rebuild to compile native modules without running prepare
 RUN npm install --ignore-scripts && npm rebuild
 
 # Copy source code and other necessary files
@@ -25,7 +24,7 @@ RUN npm run build
 FROM node:lts-alpine AS production
 LABEL maintainer="Nekzus <nekzus.dev@gmail.com>"
 LABEL description="NPM Sentinel MCP Server for package analysis"
-LABEL version="1.12.28"
+LABEL version="1.7.8"
 WORKDIR /app
 
 # Copy only the necessary artifacts from the build
