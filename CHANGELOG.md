@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.21](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.20...v1.12.21) (2025-12-24)
+
+
+### Bug Fixes
+
+* **config:** update server.json schema to 2025-12-11 to support registryType property ([6b7e1d6](https://github.com/Nekzus/npm-sentinel-mcp/commit/6b7e1d6f8e07136aa3c6f5fb1cf8a13ea56a548c))
+
 ## [1.12.20](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.19...v1.12.20) (2025-12-24)
 
 
