@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.13.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.13.0...v1.13.1) (2025-12-24)
+
+
+### Bug Fixes
+
+* **ci:** consolidate npm publish into semantic-release to prevent double-publish errors ([3ecc448](https://github.com/Nekzus/npm-sentinel-mcp/commit/3ecc44845c20569b64f461473e085c3e46648750))
+
+
+### Reverts
+
+* semantic release changes, restore manual publish step ([c24beca](https://github.com/Nekzus/npm-sentinel-mcp/commit/c24becab7a9ff3ca5d1e56f464e48c2990a51a76))
+
 # [1.13.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.36...v1.13.0) (2025-12-24)
 
 
