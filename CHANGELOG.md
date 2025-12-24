@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.10](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.9...v1.12.10) (2025-12-24)
+
+
+### Bug Fixes
+
+* **build:** update @smithery/cli to ^2.0.0 to match npx runtime and fix resolution ([8aa44e3](https://github.com/Nekzus/npm-sentinel-mcp/commit/8aa44e3b984436c0a761e4cad81ff63c5219d8ef))
+
 ## [1.12.9](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.8...v1.12.9) (2025-12-24)
 
 
