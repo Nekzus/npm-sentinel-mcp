@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.2](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.1...v1.12.2) (2025-12-24)
+
+
+### Bug Fixes
+
+* **ci:** restore .npmrc and add dummy token to enable OIDC override ([f1e7ed9](https://github.com/Nekzus/npm-sentinel-mcp/commit/f1e7ed97f83143bbd6e1f685075cea9445a37144))
+
 ## [1.12.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.0...v1.12.1) (2025-12-24)
 
 
