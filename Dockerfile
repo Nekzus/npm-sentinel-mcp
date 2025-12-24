@@ -6,8 +6,12 @@ WORKDIR /app
 # Copy dependency and config files first to leverage cache
 COPY package.json package-lock.json tsconfig.json ./
 
+# Install build dependencies for native modules (keytar)
+RUN apk add --no-cache python3 make g++ libsecret-dev
+
 # Install all dependencies (including dev) for build
-RUN npm install --ignore-scripts
+# Removed --ignore-scripts to allow keytar compilation
+RUN npm install
 
 # Copy source code and other necessary files
 COPY index.ts ./
