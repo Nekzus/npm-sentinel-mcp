@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.12.18](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.17...v1.12.18) (2025-12-24)
+
+
+### Bug Fixes
+
+* **deploy:** configure custom buildCommand in smithery.yaml to match established pipeline ([6d1a975](https://github.com/Nekzus/npm-sentinel-mcp/commit/6d1a97593f92e6e9c801cf1da773a8bb47554c32))
+
 ## [1.12.17](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.12.16...v1.12.17) (2025-12-24)
 
 
