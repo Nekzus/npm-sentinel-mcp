@@ -10,7 +10,7 @@
     "packages": [
         {
             "registryType": "npm",
-            "identifier": "@nekzus/npm-sentinel-mcp",
+            "identifier": "@nekzus/mcp-server",
             "version": "{{VERSION}}",
             "transport": {
                 "type": "stdio"
