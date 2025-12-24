@@ -21,6 +21,10 @@ jobs:
 
         steps:
             - uses: actions/checkout@v4
+            - name: Install system dependencies
+              run: |
+                sudo apt-get update
+                sudo apt-get install -y libsecret-1-0
             - name: Use Node.js ${{matrix.node-version}}
               uses: actions/setup-node@v4
               with:
@@ -54,6 +58,10 @@ jobs:
             - uses: actions/checkout@v4
               with:
                 fetch-depth: 0
+            - name: Install system dependencies
+              run: |
+                sudo apt-get update
+                sudo apt-get install -y libsecret-1-0
             - name: Use Node.js 20.9.0
               uses: actions/setup-node@v4
               with:
