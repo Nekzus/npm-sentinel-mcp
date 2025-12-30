@@ -7,6 +7,7 @@ import fetch from 'node-fetch';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import * as crypto from 'node:crypto';
 import { z } from 'zod';
 
 // Cache configuration
@@ -25,6 +26,35 @@ interface CacheEntry<T> {
 }
 
 const apiCache = new Map<string, CacheEntry<any>>();
+let currentLockfileHash: string | null = null;
+
+function getLockfileHash(): string | null {
+	const lockfiles = ['pnpm-lock.yaml', 'package-lock.json', 'yarn.lock'];
+	for (const lockfile of lockfiles) {
+		const fullPath = path.join(process.cwd(), lockfile);
+		if (fs.existsSync(fullPath)) {
+			try {
+				const content = fs.readFileSync(fullPath);
+				return crypto.createHash('md5').update(content).digest('hex');
+			} catch (e) {
+				console.error(`Error reading lockfile ${lockfile}:`, e);
+			}
+		}
+	}
+	return null;
+}
+
+// Initialize hash
+currentLockfileHash = getLockfileHash();
+
+function checkCacheInvalidation() {
+	const newHash = getLockfileHash();
+	if (newHash !== currentLockfileHash) {
+		console.error('[Cache] Lockfile changed, invalidating all cache entries.');
+		apiCache.clear();
+		currentLockfileHash = newHash;
+	}
+}
 
 function generateCacheKey(
 	toolName: string,
@@ -35,6 +65,9 @@ function generateCacheKey(
 }
 
 function cacheGet<T>(key: string): T | undefined {
+	// Check for global invalidation first
+	checkCacheInvalidation();
+
 	const entry = apiCache.get(key);
 	if (entry && entry.expiresAt > Date.now()) {
 		return entry.data as T;
@@ -390,6 +423,7 @@ function isNpmDownloadsData(data: unknown): data is z.infer<typeof NpmDownloadsD
 
 export async function handleNpmVersions(args: {
 	packages: string[];
+	ignoreCache?: boolean;
 }): Promise<CallToolResult> {
 	try {
 		const packagesToProcess = args.packages || [];
@@ -431,7 +465,7 @@ export async function handleNpmVersions(args: {
 				}
 
 				const cacheKey = generateCacheKey('handleNpmVersions', name);
-				const cachedData = cacheGet<any>(cacheKey); // Using any for the diverse structure from this endpoint
+				const cachedData = args.ignoreCache ? undefined : cacheGet<any>(cacheKey); // Using any for the diverse structure from this endpoint
 
 				if (cachedData) {
 					return {
@@ -538,6 +572,7 @@ interface NpmLatestVersionResponse {
 
 export async function handleNpmLatest(args: {
 	packages: string[];
+	ignoreCache?: boolean;
 }): Promise<CallToolResult> {
 	try {
 		const packagesToProcess = args.packages || [];
@@ -583,7 +618,7 @@ export async function handleNpmLatest(args: {
 				}
 
 				const cacheKey = generateCacheKey('handleNpmLatest', name, versionTag);
-				const cachedData = cacheGet<any>(cacheKey); // Using any for the diverse structure from this endpoint
+				const cachedData = args.ignoreCache ? undefined : cacheGet<any>(cacheKey); // Using any for the diverse structure from this endpoint
 
 				if (cachedData) {
 					return {
@@ -697,6 +732,7 @@ export async function handleNpmLatest(args: {
 
 export async function handleNpmDeps(args: {
 	packages: string[];
+	ignoreCache?: boolean;
 }): Promise<CallToolResult> {
 	try {
 		const packagesToProcess = args.packages || [];
@@ -734,7 +770,7 @@ export async function handleNpmDeps(args: {
 				// we'll cache based on the input version string. This means 'latest' will be cached as 'latest'.
 				// A more advanced caching would fetch resolved version first if 'latest' is given.
 				const cacheKey = generateCacheKey('handleNpmDeps', name, version);
-				const cachedData = cacheGet<any>(cacheKey);
+				const cachedData = args.ignoreCache ? undefined : cacheGet<any>(cacheKey);
 
 				if (cachedData) {
 					return {
@@ -832,7 +868,7 @@ export async function handleNpmDeps(args: {
 	}
 }
 
-export async function handleNpmTypes(args: { packages: string[] }): Promise<CallToolResult> {
+export async function handleNpmTypes(args: { packages: string[]; ignoreCache?: boolean }): Promise<CallToolResult> {
 	try {
 		const packagesToProcess = args.packages || [];
 		if (packagesToProcess.length === 0) {
@@ -866,7 +902,7 @@ export async function handleNpmTypes(args: { packages: string[] }): Promise<Call
 
 				// As with handleNpmDeps, we cache based on the input version string for simplicity.
 				const cacheKey = generateCacheKey('handleNpmTypes', name, version);
-				const cachedData = cacheGet<any>(cacheKey);
+				const cachedData = args.ignoreCache ? undefined : cacheGet<any>(cacheKey);
 
 				if (cachedData) {
 					return {
@@ -984,6 +1020,7 @@ export async function handleNpmTypes(args: { packages: string[] }): Promise<Call
 
 export async function handleNpmSize(args: {
 	packages: string[];
+	ignoreCache?: boolean;
 }): Promise<CallToolResult> {
 	try {
 		const packagesToProcess = args.packages || [];
@@ -1018,7 +1055,7 @@ export async function handleNpmSize(args: {
 				const packageNameForOutput = bundlephobiaQuery;
 
 				const cacheKey = generateCacheKey('handleNpmSize', bundlephobiaQuery);
-				const cachedData = cacheGet<any>(cacheKey);
+				const cachedData = args.ignoreCache ? undefined : cacheGet<any>(cacheKey);
 
 				if (cachedData) {
 					return {
@@ -1170,9 +1207,9 @@ const ECOSYSTEM_MAP: Record<string, string[]> = {
 };
 
 // Helper to fetch full vulnerability details (enrichment)
-async function enrichVulnerabilityData(vulnId: string): Promise<any> {
+async function enrichVulnerabilityData(vulnId: string, ignoreCache: boolean = false): Promise<any> {
     const cacheKey = generateCacheKey('enrichVuln', vulnId);
-    const cached = cacheGet<any>(cacheKey);
+    const cached = ignoreCache ? undefined : cacheGet<any>(cacheKey);
     if (cached) return cached;
 
     try {
@@ -1191,6 +1228,7 @@ async function enrichVulnerabilityData(vulnId: string): Promise<any> {
 
 export async function handleNpmVulnerabilities(args: {
 	packages: string[];
+	ignoreCache?: boolean;
 }): Promise<CallToolResult> {
 	try {
 		const packagesToProcess = args.packages || [];
@@ -1212,7 +1250,7 @@ export async function handleNpmVulnerabilities(args: {
 
 			// Check Cache
 			const cacheKey = generateCacheKey('handleNpmVulnerabilities', name, version || 'all');
-			const cachedData = cacheGet<any>(cacheKey);
+			const cachedData = args.ignoreCache ? undefined : cacheGet<any>(cacheKey);
 
 			if (cachedData) {
 				// Store cached result directly using the same structure as we will build later
@@ -1360,7 +1398,7 @@ export async function handleNpmVulnerabilities(args: {
             // Enrich vulnerabilities with full details (Summary, Aliases/CVEs)
             const processedVulns = await Promise.all(vulns.map(async (vuln: any) => {
                 // Fetch full details
-                const richData = await enrichVulnerabilityData(vuln.id);
+                const richData = await enrichVulnerabilityData(vuln.id, args.ignoreCache);
                 const finalVuln = richData || vuln; // Fallback to basic if fetch fails
 
 				const sev = typeof finalVuln.severity === 'object' ? finalVuln.severity.type || 'Unknown' : finalVuln.severity || 'Unknown';
@@ -1428,6 +1466,7 @@ export async function handleNpmVulnerabilities(args: {
 export async function handleNpmTrends(args: {
 	packages: string[];
 	period?: 'last-week' | 'last-month' | 'last-year';
+	ignoreCache?: boolean;
 }): Promise<CallToolResult> {
 	try {
 		const packagesToProcess = args.packages || [];
@@ -1474,7 +1513,7 @@ export async function handleNpmTrends(args: {
 				}
 
 				const cacheKey = generateCacheKey('handleNpmTrends', name, period);
-				const cachedData = cacheGet<any>(cacheKey);
+				const cachedData = args.ignoreCache ? undefined : cacheGet<any>(cacheKey);
 
 				if (cachedData) {
 					return {
@@ -1600,7 +1639,7 @@ export async function handleNpmTrends(args: {
 	}
 }
 
-export async function handleNpmCompare(args: { packages: string[] }): Promise<CallToolResult> {
+export async function handleNpmCompare(args: { packages: string[]; ignoreCache?: boolean }): Promise<CallToolResult> {
 	try {
 		const packagesToProcess = args.packages || [];
 		if (packagesToProcess.length === 0) {
@@ -1642,7 +1681,7 @@ export async function handleNpmCompare(args: { packages: string[] }): Promise<Ca
 				}
 
 				const cacheKey = generateCacheKey('handleNpmCompare', name, versionTag);
-				const cachedData = cacheGet<any>(cacheKey);
+				const cachedData = args.ignoreCache ? undefined : cacheGet<any>(cacheKey);
 
 				if (cachedData) {
 					return {
@@ -1765,6 +1804,7 @@ export async function handleNpmCompare(args: { packages: string[] }): Promise<Ca
 // Function to get package quality metrics
 export async function handleNpmQuality(args: {
 	packages: string[];
+	ignoreCache?: boolean;
 }): Promise<CallToolResult> {
 	try {
 		const packagesToProcess = args.packages || [];
@@ -1801,7 +1841,7 @@ export async function handleNpmQuality(args: {
 				}
 
 				const cacheKey = generateCacheKey('handleNpmQuality', name);
-				const cachedData = cacheGet<any>(cacheKey);
+				const cachedData = args.ignoreCache ? undefined : cacheGet<any>(cacheKey);
 
 				if (cachedData) {
 					return {
@@ -1914,7 +1954,7 @@ export async function handleNpmQuality(args: {
 	}
 }
 
-export async function handleNpmMaintenance(args: { packages: string[] }): Promise<CallToolResult> {
+export async function handleNpmMaintenance(args: { packages: string[]; ignoreCache?: boolean }): Promise<CallToolResult> {
 	try {
 		const packagesToProcess = args.packages || [];
 		if (packagesToProcess.length === 0) {
@@ -1950,7 +1990,7 @@ export async function handleNpmMaintenance(args: { packages: string[] }): Promis
 				}
 
 				const cacheKey = generateCacheKey('handleNpmMaintenance', name);
-				const cachedData = cacheGet<any>(cacheKey);
+				const cachedData = args.ignoreCache ? undefined : cacheGet<any>(cacheKey);
 
 				if (cachedData) {
 					return {
@@ -2063,6 +2103,7 @@ export async function handleNpmMaintenance(args: { packages: string[] }): Promis
 
 export async function handleNpmMaintainers(args: {
 	packages: string[];
+	ignoreCache?: boolean;
 }): Promise<CallToolResult> {
 	try {
 		const packagesToProcess = args.packages || [];
@@ -2097,7 +2138,7 @@ export async function handleNpmMaintainers(args: {
 				}
 
 				const cacheKey = generateCacheKey('handleNpmMaintainers', name);
-				const cachedData = cacheGet<any>(cacheKey);
+				const cachedData = args.ignoreCache ? undefined : cacheGet<any>(cacheKey);
 
 				if (cachedData) {
 					return {
@@ -2197,7 +2238,7 @@ export async function handleNpmMaintainers(args: {
 	}
 }
 
-export async function handleNpmScore(args: { packages: string[] }): Promise<CallToolResult> {
+export async function handleNpmScore(args: { packages: string[]; ignoreCache?: boolean }): Promise<CallToolResult> {
 	try {
 		const packagesToProcess = args.packages || [];
 		if (packagesToProcess.length === 0) {
@@ -2231,7 +2272,7 @@ export async function handleNpmScore(args: { packages: string[] }): Promise<Call
 				}
 
 				const cacheKey = generateCacheKey('handleNpmScore', name);
-				const cachedData = cacheGet<any>(cacheKey);
+				const cachedData = args.ignoreCache ? undefined : cacheGet<any>(cacheKey);
 
 				if (cachedData) {
 					return {
@@ -2376,6 +2417,7 @@ export async function handleNpmScore(args: { packages: string[] }): Promise<Call
 
 export async function handleNpmPackageReadme(args: {
 	packages: string[];
+	ignoreCache?: boolean;
 }): Promise<CallToolResult> {
 	try {
 		const packagesToProcess = args.packages || [];
@@ -2422,7 +2464,7 @@ export async function handleNpmPackageReadme(args: {
 				}
 
 				const cacheKey = generateCacheKey('handleNpmPackageReadme', name, versionTag);
-				const cachedData = cacheGet<any>(cacheKey);
+				const cachedData = args.ignoreCache ? undefined : cacheGet<any>(cacheKey);
 
 				if (cachedData) {
 					return {
@@ -2548,6 +2590,7 @@ export async function handleNpmPackageReadme(args: {
 export async function handleNpmSearch(args: {
 	query: string;
 	limit?: number;
+	ignoreCache?: boolean;
 }): Promise<CallToolResult> {
 	try {
 		const query = args.query;
@@ -2558,7 +2601,7 @@ export async function handleNpmSearch(args: {
 		}
 
 		const cacheKey = generateCacheKey('handleNpmSearch', query, limit);
-		const cachedData = cacheGet<any>(cacheKey);
+		const cachedData = args.ignoreCache ? undefined : cacheGet<any>(cacheKey);
 
 		if (cachedData) {
 			const cachedResponseJson = JSON.stringify(cachedData, null, 2);
@@ -2651,6 +2694,7 @@ export async function handleNpmSearch(args: {
 // License compatibility checker
 export async function handleNpmLicenseCompatibility(args: {
 	packages: string[];
+	ignoreCache?: boolean;
 }): Promise<CallToolResult> {
 	try {
 		const packagesToProcess = args.packages || [];
@@ -2696,7 +2740,7 @@ export async function handleNpmLicenseCompatibility(args: {
 				}
 
 				const cacheKey = generateCacheKey('npmLicenseInfoForCompatibility', name, versionTag);
-				const cachedLicenseData = cacheGet<{ license: string; versionFetched: string }>(cacheKey);
+				const cachedLicenseData = args.ignoreCache ? undefined : cacheGet<{ license: string; versionFetched: string }>(cacheKey);
 
 				if (cachedLicenseData) {
 					return {
@@ -2861,7 +2905,7 @@ interface GitHubRepoStats {
 }
 
 // Repository statistics analyzer
-export async function handleNpmRepoStats(args: { packages: string[] }): Promise<CallToolResult> {
+export async function handleNpmRepoStats(args: { packages: string[]; ignoreCache?: boolean }): Promise<CallToolResult> {
 	try {
 		const packagesToProcess = args.packages || [];
 		if (packagesToProcess.length === 0) {
@@ -2898,7 +2942,7 @@ export async function handleNpmRepoStats(args: { packages: string[] }): Promise<
 				}
 
 				const cacheKey = generateCacheKey('handleNpmRepoStats', name);
-				const cachedResult = cacheGet<any>(cacheKey); // Cache stores the entire result object structure
+				const cachedResult = args.ignoreCache ? undefined : cacheGet<any>(cacheKey); // Cache stores the entire result object structure
 
 				if (cachedResult) {
 					// Return the entire cached result object, which already includes status, data, message
@@ -3104,7 +3148,7 @@ interface DownloadCount {
 	downloads: number;
 }
 
-export async function handleNpmDeprecated(args: { packages: string[] }): Promise<CallToolResult> {
+export async function handleNpmDeprecated(args: { packages: string[]; ignoreCache?: boolean }): Promise<CallToolResult> {
 	try {
 		const packagesToProcess = args.packages || [];
 		if (packagesToProcess.length === 0) {
@@ -3136,7 +3180,7 @@ export async function handleNpmDeprecated(args: { packages: string[] }): Promise
 
 				const initialPackageNameForOutput = version === 'latest' ? name : `${name}@${version}`;
 				const cacheKey = generateCacheKey('handleNpmDeprecated', name, version);
-				const cachedResult = cacheGet<any>(cacheKey);
+				const cachedResult = args.ignoreCache ? undefined : cacheGet<any>(cacheKey);
 
 				if (cachedResult) {
 					// console.debug(`[handleNpmDeprecated] Cache hit for ${cacheKey}`);
@@ -3341,6 +3385,7 @@ export async function handleNpmDeprecated(args: { packages: string[] }): Promise
 
 export async function handleNpmChangelogAnalysis(args: {
 	packages: string[];
+	ignoreCache?: boolean;
 }): Promise<CallToolResult> {
 	try {
 		const packagesToProcess = args.packages || [];
@@ -3386,7 +3431,7 @@ export async function handleNpmChangelogAnalysis(args: {
 				}
 
 				const cacheKey = generateCacheKey('handleNpmChangelogAnalysis', name);
-				const cachedResult = cacheGet<any>(cacheKey); // Expects the full result object to be cached
+				const cachedResult = args.ignoreCache ? undefined : cacheGet<any>(cacheKey); // Expects the full result object to be cached
 
 				if (cachedResult) {
 					return {
@@ -3590,7 +3635,7 @@ export async function handleNpmChangelogAnalysis(args: {
 	}
 }
 
-export async function handleNpmAlternatives(args: { packages: string[] }): Promise<CallToolResult> {
+export async function handleNpmAlternatives(args: { packages: string[]; ignoreCache?: boolean }): Promise<CallToolResult> {
 	try {
 		const packagesToProcess = args.packages || [];
 		if (packagesToProcess.length === 0) {
@@ -3633,7 +3678,7 @@ export async function handleNpmAlternatives(args: { packages: string[] }): Promi
 				}
 
 				const cacheKey = generateCacheKey('handleNpmAlternatives', originalPackageName);
-				const cachedResult = cacheGet<any>(cacheKey); // Expects the full result object
+				const cachedResult = args.ignoreCache ? undefined : cacheGet<any>(cacheKey); // Expects the full result object
 
 				if (cachedResult) {
 					return {
@@ -3824,10 +3869,20 @@ export default function createServer({
 	// The package root will be one level above __dirname (which is 'dist/' after compilation)
 	const packageRoot = path.join(__dirname, '..');
 
+	// Read version from package.json
+	let serverVersion = '1.0.0';
+	try {
+		const packageJsonPath = path.join(packageRoot, 'package.json');
+		const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+		serverVersion = packageJson.version;
+	} catch (error) {
+		console.error('Error reading package.json version:', error);
+	}
+
 	// Create server instance
 	const server = new McpServer({
 		name: 'npm-sentinel-mcp',
-		version: '1.13.4',
+		version: serverVersion,
 	});
 
 	// Update paths to be relative to the package
@@ -3926,6 +3981,7 @@ export default function createServer({
 			description: 'Get all available versions of an NPM package',
 			inputSchema: {
 				packages: z.array(z.string()).describe('List of package names to get versions for'),
+				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			},
 			annotations: {
 				title: 'Get All Package Versions',
@@ -3945,6 +4001,7 @@ export default function createServer({
 			description: 'Get the latest version and changelog of an NPM package',
 			inputSchema: {
 				packages: z.array(z.string()).describe('List of package names to get latest versions for'),
+				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			},
 			annotations: {
 				title: 'Get Latest Package Information',
@@ -3964,6 +4021,7 @@ export default function createServer({
 			description: 'Analyze dependencies and devDependencies of an NPM package',
 			inputSchema: {
 				packages: z.array(z.string()).describe('List of package names to analyze dependencies for'),
+				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			},
 			annotations: {
 				title: 'Get Package Dependencies',
@@ -3983,6 +4041,7 @@ export default function createServer({
 			description: 'Check TypeScript types availability and version for a package',
 			inputSchema: {
 				packages: z.array(z.string()).describe('List of package names to check types for'),
+				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			},
 			annotations: {
 				title: 'Check TypeScript Type Availability',
@@ -4002,6 +4061,7 @@ export default function createServer({
 			description: 'Get package size information including dependencies and bundle size',
 			inputSchema: {
 				packages: z.array(z.string()).describe('List of package names to get size information for'),
+				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			},
 			annotations: {
 				title: 'Get Package Size (Bundlephobia)',
@@ -4021,6 +4081,7 @@ export default function createServer({
 			description: 'Check for known vulnerabilities in packages',
 			inputSchema: {
 				packages: z.array(z.string()).describe('List of package names to check for vulnerabilities'),
+				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			},
 			annotations: {
 				title: 'Check Package Vulnerabilities (OSV.dev)',
@@ -4045,6 +4106,7 @@ export default function createServer({
 					.describe('Time period for trends. Options: "last-week", "last-month", "last-year"')
 					.optional()
 					.default('last-month'),
+				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			},
 			annotations: {
 				title: 'Get NPM Package Download Trends',
@@ -4064,6 +4126,7 @@ export default function createServer({
 			description: 'Compare multiple NPM packages based on various metrics',
 			inputSchema: {
 				packages: z.array(z.string()).describe('List of package names to compare'),
+				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			},
 			annotations: {
 				title: 'Compare NPM Packages',
@@ -4083,6 +4146,7 @@ export default function createServer({
 			description: 'Get maintainers information for NPM packages',
 			inputSchema: {
 				packages: z.array(z.string()).describe('List of package names to get maintainers for'),
+				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			},
 			annotations: {
 				title: 'Get NPM Package Maintainers',
@@ -4102,6 +4166,7 @@ export default function createServer({
 			description: 'Get consolidated package score based on quality, maintenance, and popularity metrics',
 			inputSchema: {
 				packages: z.array(z.string()).describe('List of package names to get scores for'),
+				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			},
 			annotations: {
 				title: 'Get NPM Package Score (NPMS.io)',
@@ -4121,6 +4186,7 @@ export default function createServer({
 			description: 'Get the README content for NPM packages',
 			inputSchema: {
 				packages: z.array(z.string()).describe('List of package names to get READMEs for'),
+				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			},
 			annotations: {
 				title: 'Get NPM Package README',
@@ -4146,6 +4212,7 @@ export default function createServer({
 					.max(50)
 					.optional()
 					.describe('Maximum number of results to return (default: 10)'),
+				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			},
 			annotations: {
 				title: 'Search NPM Packages',
@@ -4168,6 +4235,7 @@ export default function createServer({
 					.array(z.string())
 					.min(1)
 					.describe('List of package names to check for license compatibility'),
+				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			},
 			annotations: {
 				title: 'Check NPM License Compatibility',
@@ -4187,6 +4255,7 @@ export default function createServer({
 			description: 'Get repository statistics for NPM packages',
 			inputSchema: {
 				packages: z.array(z.string()).describe('List of package names to get repository stats for'),
+				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			},
 			annotations: {
 				title: 'Get NPM Package Repository Stats (GitHub)',
@@ -4206,6 +4275,7 @@ export default function createServer({
 			description: 'Check if packages are deprecated',
 			inputSchema: {
 				packages: z.array(z.string()).describe('List of package names to check for deprecation'),
+				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			},
 			annotations: {
 				title: 'Check NPM Package Deprecation Status',
@@ -4225,6 +4295,7 @@ export default function createServer({
 			description: 'Analyze changelog and release history of packages',
 			inputSchema: {
 				packages: z.array(z.string()).describe('List of package names to analyze changelogs for'),
+				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			},
 			annotations: {
 				title: 'Analyze NPM Package Changelog (GitHub)',
@@ -4244,6 +4315,7 @@ export default function createServer({
 			description: 'Find alternative packages with similar functionality',
 			inputSchema: {
 				packages: z.array(z.string()).describe('List of package names to find alternatives for'),
+				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			},
 			annotations: {
 				title: 'Find NPM Package Alternatives',
@@ -4263,6 +4335,7 @@ export default function createServer({
 			description: 'Analyze package quality metrics',
 			inputSchema: {
 				packages: z.array(z.string()).describe('List of package names to analyze'),
+				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			},
 			annotations: {
 				title: 'Analyze NPM Package Quality (NPMS.io)',
@@ -4282,6 +4355,7 @@ export default function createServer({
 			description: 'Analyze package maintenance metrics',
 			inputSchema: {
 				packages: z.array(z.string()).describe('List of package names to analyze'),
+				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			},
 			annotations: {
 				title: 'Analyze NPM Package Maintenance (NPMS.io)',

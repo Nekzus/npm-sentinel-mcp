@@ -32,6 +32,26 @@ A powerful Model Context Protocol (MCP) server that revolutionizes NPM package a
 
 Note: The server provides AI-assisted analysis through MCP integration.
 
+## Caching and Invalidation
+
+To ensure data accuracy while maintaining performance, the server implements robust caching strategies:
+- **Automatic Invalidation**: The cache is automatically invalidated whenever `pnpm-lock.yaml`, `package-lock.json`, or `yarn.lock` changes in your workspace. This ensures you always get fresh data after installing or updating dependencies.
+- **Force Refresh**: All tools accept an optional `ignoreCache: true` parameter to bypass the cache and force a fresh lookup from the registry.
+
+### Example Usage (JSON-RPC)
+
+When calling a tool, simply include `ignoreCache: true` in the arguments:
+
+```json
+{
+  "name": "npmVersions",
+  "arguments": {
+    "packages": ["react"],
+    "ignoreCache": true
+  }
+}
+```
+
 ## Installation
 
 ### Migration to HTTP Streamable

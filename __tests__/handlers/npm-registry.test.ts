@@ -88,6 +88,19 @@ vi.mock('node-fetch', () => {
 			}
 
 			if (lookupKey.startsWith('express') || url.includes('express')) {
+				// If checking for latest version specifically, return the version object
+				if (url.endsWith('/latest') || lookupKey.endsWith('@latest')) {
+					return createMockResponse({
+						name: 'express',
+						version: '4.18.2',
+						description: 'Fast, unopinionated, minimalist web framework',
+						dependencies: { 'body-parser': '1.20.1' },
+						readme: 'Default Express Readme',
+						maintainers: [{ name: 'dougwilson', email: 'doug@somethingdoug.com' }],
+						dist: { shasum: '...', tarball: '...' }
+					});
+				}
+				// Otherwise return full package info
 				return createMockResponse({
 					name: 'express',
 					'dist-tags': { latest: '4.18.2' },
@@ -119,12 +132,9 @@ describe('npm registry handlers', () => {
 			validateToolResponse(result);
 			const parsed = JSON.parse(result.content[0].text as string);
 			expect(parsed.results[0].packageName).toBe('express');
-			expect(parsed.results[0].status).toBe('error');
-			if (parsed.results[0].error) {
-				expect(parsed.results[0].error).toContain(
-					'Invalid package data format received for version',
-				);
-			}
+			expect(parsed.results[0].packageName).toBe('express');
+			expect(parsed.results[0].status).toBe('success');
+			expect(parsed.results[0].data.version).toBe('4.18.2');
 		});
 
 		test('should handle invalid package name', async () => {
@@ -529,7 +539,7 @@ describe('npm registry handlers', () => {
 			expect(invalidPkgResult.status).toBe('error');
 			expect(invalidPkgResult.error).toContain('Failed to fetch package info');
 			const validPkgResult = parsed.results.find((r: any) => r.packageInput === 'express');
-			expect(validPkgResult.status).toBe('error');
+			expect(validPkgResult.status).toBe('success');
 		});
 	});
 
