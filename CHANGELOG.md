@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.15.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.14.0...v1.15.0) (2025-12-30)
+
+
+### Features
+
+* implement robust cache invalidation mechanisms ([2966672](https://github.com/Nekzus/npm-sentinel-mcp/commit/2966672720d71d3e24314a388a9de9e393b9bdde))
+
 # [1.14.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.13.3...v1.14.0) (2025-12-24)
 
 
