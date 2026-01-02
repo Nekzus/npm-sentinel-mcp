@@ -445,7 +445,7 @@ interface MCPError {
 ```
 
 ### Error Codes
-1000: Invalid package name
+1000: Invalid package name (Rejected by security validation filter due to restricted characters or format)
 1001: Package not found
 1002: Version not found
 1003: Rate limit exceeded
@@ -459,6 +459,12 @@ interface MCPError {
 - All data is processed locally
 - No sensitive information is stored
 - Secure communication channels
+
+### Input Validation
+- Strict Regex-based allowlist for package names
+- Prevents Path Traversal (`../`)
+- Prevents Command Injection (`&`, `;`, `|`)
+- Prevents SSRF attacks
 
 ### Rate Limiting
 - Implements fair usage policies
