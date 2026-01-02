@@ -20,6 +20,7 @@ A powerful Model Context Protocol (MCP) server that revolutionizes NPM package a
 - **Version analysis and tracking**
 - **Dependency analysis and mapping**
 - **Advanced Security Scanning**: Recursive dependency checks, ecosystem awareness (e.g., React), and accurate version resolution.
+- **Strict Input Validation**: Protection against Path Traversal, SSRF, and Command Injection via rigorous input sanitization.
 - **Package quality metrics**
 - **Download trends and statistics**
 - **TypeScript support verification**
