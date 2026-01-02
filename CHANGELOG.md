@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.15.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.15.0...v1.15.1) (2026-01-02)
+
+
+### Bug Fixes
+
+* **deps:** downgrade semantic-release-github to v10 for node 20 compatibility ([a86dd4f](https://github.com/Nekzus/npm-sentinel-mcp/commit/a86dd4f49f3cffc9799c9f3d0d9861788679ce4a))
+* **deps:** resolve merge conflict using compatible versions for node 20 ([3d2e619](https://github.com/Nekzus/npm-sentinel-mcp/commit/3d2e61929431f1ec04fdd08fafa0735095f5c346))
+* **deps:** update semantic-release to resolve peer dependency conflicts ([2affc90](https://github.com/Nekzus/npm-sentinel-mcp/commit/2affc9045e4477614c2e03936901ebdfec41a0ff))
+* **security:** remediation of vulnerabilities, input validation and build fix ([39066be](https://github.com/Nekzus/npm-sentinel-mcp/commit/39066be40f370890091bf0cfccabd75e9a886b8f))
+
 # [1.15.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.14.0...v1.15.0) (2025-12-30)
 
 
