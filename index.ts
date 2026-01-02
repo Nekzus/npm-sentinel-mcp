@@ -421,6 +421,12 @@ function isNpmDownloadsData(data: unknown): data is z.infer<typeof NpmDownloadsD
 	}
 }
 
+// Helper for validating NPM package names
+function isValidNpmPackageName(name: string): boolean {
+    const npmPackageRegex = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/;
+    return npmPackageRegex.test(name) && name.length <= 214 && !name.startsWith('_') && !name.startsWith('.');
+}
+
 export async function handleNpmVersions(args: {
 	packages: string[];
 	ignoreCache?: boolean;
@@ -452,6 +458,17 @@ export async function handleNpmVersions(args: {
 						message: 'Package input was not a string.',
 					};
 				}
+
+                if (!isValidNpmPackageName(name)) {
+                     return {
+                        packageInput: pkgInput,
+                        packageName: name,
+                        status: 'error',
+                        error: 'Invalid package name format',
+                        data: null,
+                        message: `The package name "${name}" is invalid/malformed.`,
+                    };
+                }
 
 				if (!name) {
 					return {
@@ -604,6 +621,18 @@ export async function handleNpmLatest(args: {
 						message: 'Package input was not a string.',
 					};
 				}
+
+                if (!isValidNpmPackageName(name)) {
+                    return {
+                        packageInput: pkgInput,
+                        packageName: name,
+                        versionQueried: versionTag,
+                        status: 'error',
+                        error: 'Invalid package name format',
+                        data: null,
+                        message: `The package name "${name}" is invalid/malformed.`,
+                    };
+                }
 
 				if (!name) {
 					return {
@@ -763,6 +792,16 @@ export async function handleNpmDeps(args: {
 					};
 				}
 
+                if (!isValidNpmPackageName(name)) {
+                     return {
+                        package: pkgInput,
+                        status: 'error',
+                        error: 'Invalid package name format',
+                        data: null,
+                        message: `The package name "${name}" is invalid/malformed.`,
+                    };
+                }
+
 				const packageNameForOutput = version === 'latest' ? name : `${name}@${version}`;
 
 				// Note: The cache key should ideally use the *resolved* version if 'latest' is input.
@@ -897,6 +936,16 @@ export async function handleNpmTypes(args: { packages: string[]; ignoreCache?: b
 						message: 'Package input was not a string.',
 					};
 				}
+
+                if (!isValidNpmPackageName(name)) {
+                    return {
+                        package: pkgInput,
+                        status: 'error',
+                        error: 'Invalid package name format',
+                        data: null,
+                        message: `The package name "${name}" is invalid/malformed.`,
+                    };
+                }
 
 				const packageNameForOutput = version === 'latest' ? name : `${name}@${version}`;
 
@@ -3866,15 +3915,22 @@ export default function createServer({
 		__dirname = path.dirname(__filename);
 	}
 
-	// The package root will be one level above __dirname (which is 'dist/' after compilation)
-	const packageRoot = path.join(__dirname, '..');
+	// Determine package root
+	let packageRoot = __dirname;
+    if (fs.existsSync(path.join(__dirname, 'package.json'))) {
+        packageRoot = __dirname;
+    } else if (fs.existsSync(path.join(__dirname, '..', 'package.json'))) {
+        packageRoot = path.join(__dirname, '..');
+    }
 
 	// Read version from package.json
 	let serverVersion = '1.0.0';
 	try {
 		const packageJsonPath = path.join(packageRoot, 'package.json');
-		const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
-		serverVersion = packageJson.version;
+        if (fs.existsSync(packageJsonPath)) {
+		    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+		    serverVersion = packageJson.version;
+        }
 	} catch (error) {
 		console.error('Error reading package.json version:', error);
 	}
