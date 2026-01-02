@@ -1100,6 +1100,16 @@ export async function handleNpmSize(args: {
 					};
 				}
 
+                if (!isValidNpmPackageName(name)) {
+                    return {
+                        package: pkgInput,
+                        status: 'error',
+                        error: 'Invalid package name format',
+                        data: null,
+                        message: `The package name "${name}" is invalid/malformed.`,
+                    };
+                }
+
 				const bundlephobiaQuery = version === 'latest' ? name : `${name}@${version}`;
 				const packageNameForOutput = bundlephobiaQuery;
 
@@ -1353,8 +1363,46 @@ export async function handleNpmVulnerabilities(args: {
 			}));
 		};
 
+
+
+        const validationErrors: any[] = [];
+        const validPackagesToProcess = packagesToProcess.filter(pkgInput => {
+            let name = '';
+            if (typeof pkgInput === 'string') {
+                const atIdx = pkgInput.lastIndexOf('@');
+				if (pkgInput.startsWith('@')) {
+					const secondAt = pkgInput.indexOf('@', 1);
+					if (secondAt > 0) {
+						name = pkgInput.slice(0, secondAt);
+					} else {
+						name = pkgInput;
+					}
+				} else {
+					if (atIdx > 0) {
+						name = pkgInput.slice(0, atIdx);
+					} else {
+						name = pkgInput;
+					}
+				}
+            } else {
+                 return false; // Type check handled before basically or skipped
+            }
+
+            if (!isValidNpmPackageName(name)) {
+                validationErrors.push({
+                    package: pkgInput,
+                    status: 'error',
+                    error: 'Invalid package name format',
+                    data: null,
+                    message: `The package name "${name}" is invalid/malformed.`,
+                });
+                return false;
+            }
+            return true;
+        });
+
 		await Promise.all(
-			packagesToProcess.map(async (pkgInput) => {
+			validPackagesToProcess.map(async (pkgInput) => {
 				let name = '';
 				let version = 'latest';
 
@@ -1376,8 +1424,6 @@ export async function handleNpmVulnerabilities(args: {
 							name = pkgInput;
 						}
 					}
-				} else {
-					return; // Skip invalid
 				}
 
 				// Resolve 'latest' to actual version number for the root package
@@ -1489,8 +1535,8 @@ export async function handleNpmVulnerabilities(args: {
 		const finalOutput = processedResults.filter(r => r.count > 0 || !r.isDependency); 
 
 		const responseJson = JSON.stringify({ 
-			summary: `Scanned ${packageMap.size} packages (including dependencies). Found vulnerabilities in ${finalOutput.filter(r => r.count > 0).length} packages. (${cachedResultsMap.size} from cache, ${finalBatchQueries.length} from API)`,
-			results: finalOutput 
+			summary: `Scanned ${packageMap.size} packages (including dependencies). Found vulnerabilities in ${finalOutput.filter(r => r.count > 0).length} packages. (${cachedResultsMap.size} from cache, ${finalBatchQueries.length} from API). ${validationErrors.length} invalid inputs skipped.`,
+			results: [...finalOutput, ...validationErrors]
 		}, null, 2);
 
 		return { content: [{ type: 'text', text: responseJson }], isError: false };
@@ -1550,6 +1596,17 @@ export async function handleNpmTrends(args: {
 						data: null,
 					};
 				}
+
+                if (!isValidNpmPackageName(name)) {
+                    return {
+                        packageInput: pkgInput,
+                        packageName: name,
+                        status: 'error' as const,
+                        error: 'Invalid package name format',
+                        data: null,
+                         message: `The package name "${name}" is invalid/malformed.`,
+                    };
+                }
 
 				if (!name) {
 					return {
@@ -1718,6 +1775,18 @@ export async function handleNpmCompare(args: { packages: string[]; ignoreCache?:
 						data: null,
 					};
 				}
+
+                if (!isValidNpmPackageName(name)) {
+                    return {
+                        packageInput: pkgInput,
+                        packageName: name,
+                        versionQueried: versionTag,
+                        status: 'error' as const,
+                        error: 'Invalid package name format',
+                        data: null,
+                         message: `The package name "${name}" is invalid/malformed.`,
+                    };
+                }
 				if (!name) {
 					return {
 						packageInput: pkgInput,
@@ -1878,6 +1947,17 @@ export async function handleNpmQuality(args: {
 					};
 				}
 
+                if (!isValidNpmPackageName(name)) {
+                    return {
+                        packageInput: pkgInput,
+                        packageName: name,
+                        status: 'error' as const,
+                        error: 'Invalid package name format',
+                        data: null,
+                         message: `The package name "${name}" is invalid/malformed.`,
+                    };
+                }
+
 				if (!name) {
 					return {
 						packageInput: pkgInput,
@@ -2026,6 +2106,17 @@ export async function handleNpmMaintenance(args: { packages: string[]; ignoreCac
 						message: 'Package input was not a string.',
 					};
 				}
+
+                if (!isValidNpmPackageName(name)) {
+                    return {
+                        packageInput: pkgInput,
+                        packageName: name,
+                        status: 'error' as const,
+                        error: 'Invalid package name format',
+                        data: null,
+                         message: `The package name "${name}" is invalid/malformed.`,
+                    };
+                }
 
 				if (!name) {
 					return {
@@ -2176,6 +2267,17 @@ export async function handleNpmMaintainers(args: {
 					};
 				}
 
+                if (!isValidNpmPackageName(name)) {
+                    return {
+                        packageInput: pkgInput,
+                        packageName: name,
+                        status: 'error' as const,
+                        error: 'Invalid package name format',
+                        data: null,
+                         message: `The package name "${name}" is invalid/malformed.`,
+                    };
+                }
+
 				if (!name) {
 					return {
 						packageInput: pkgInput,
@@ -2309,6 +2411,17 @@ export async function handleNpmScore(args: { packages: string[]; ignoreCache?: b
 						data: null,
 					};
 				}
+
+                if (!isValidNpmPackageName(name)) {
+                    return {
+                        packageInput: pkgInput,
+                        packageName: name,
+                        status: 'error' as const,
+                        error: 'Invalid package name format',
+                        data: null,
+                         message: `The package name "${name}" is invalid/malformed.`,
+                    };
+                }
 
 				if (!name) {
 					return {
@@ -2499,6 +2612,19 @@ export async function handleNpmPackageReadme(args: {
 						data: null,
 					};
 				}
+
+                if (!isValidNpmPackageName(name)) {
+                    return {
+                        packageInput: pkgInput,
+                        packageName: name,
+                        versionQueried: versionTag,
+                        versionFetched: null,
+                        status: 'error' as const,
+                        error: 'Invalid package name format',
+                        data: null,
+                         message: `The package name "${name}" is invalid/malformed.`,
+                    };
+                }
 
 				if (!name) {
 					return {
@@ -2776,6 +2902,19 @@ export async function handleNpmLicenseCompatibility(args: {
 					};
 				}
 
+                if (!isValidNpmPackageName(name)) {
+                    return {
+                        packageInput: pkgInput,
+                        packageName: name,
+                         versionQueried: versionTag,
+                        versionFetched: null,
+                        status: 'error' as const,
+                        error: 'Invalid package name format',
+                        data: null,
+                         message: `The package name "${name}" is invalid/malformed.`,
+                    };
+                }
+
 				if (!name) {
 					return {
 						packageInput: pkgInput,
@@ -2978,6 +3117,17 @@ export async function handleNpmRepoStats(args: { packages: string[]; ignoreCache
 						message: 'Package input was not a string.',
 					};
 				}
+
+                if (!isValidNpmPackageName(name)) {
+                    return {
+                        packageInput: pkgInput,
+                        packageName: name,
+                        status: 'error' as const,
+                        error: 'Invalid package name format',
+                        data: null,
+                         message: `The package name "${name}" is invalid/malformed.`,
+                    };
+                }
 
 				if (!name) {
 					return {
@@ -3227,6 +3377,16 @@ export async function handleNpmDeprecated(args: { packages: string[]; ignoreCach
 					};
 				}
 
+                if (!isValidNpmPackageName(name)) {
+                    return {
+                        package: pkgInput,
+                        status: 'error',
+                        error: 'Invalid package name format',
+                        data: null,
+                        message: `The package name "${name}" is invalid/malformed.`,
+                    };
+                }
+
 				const initialPackageNameForOutput = version === 'latest' ? name : `${name}@${version}`;
 				const cacheKey = generateCacheKey('handleNpmDeprecated', name, version);
 				const cachedResult = args.ignoreCache ? undefined : cacheGet<any>(cacheKey);
@@ -3466,6 +3626,18 @@ export async function handleNpmChangelogAnalysis(args: {
 						message: 'Package input was not a string.',
 					};
 				}
+
+                if (!isValidNpmPackageName(name)) {
+                    return {
+                        packageInput: pkgInput,
+                        packageName: name,
+                        versionQueried: versionQueried,
+                        status: 'error' as const,
+                        error: 'Invalid package name format',
+                        data: null,
+                         message: `The package name "${name}" is invalid/malformed.`,
+                    };
+                }
 
 				if (!name) {
 					return {
@@ -3714,6 +3886,17 @@ export async function handleNpmAlternatives(args: { packages: string[]; ignoreCa
 						message: 'Package input was not a string.',
 					};
 				}
+
+                if (!isValidNpmPackageName(originalPackageName)) {
+                    return {
+                        packageInput: pkgInput,
+                        packageName: originalPackageName,
+                        status: 'error' as const,
+                        error: 'Invalid package name format',
+                        data: null,
+                         message: `The package name "${originalPackageName}" is invalid/malformed.`,
+                    };
+                }
 
 				if (!originalPackageName) {
 					return {
