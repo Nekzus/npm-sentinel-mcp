@@ -260,6 +260,12 @@ Returns: Similar packages with comparisons for each specified package. The respo
   }
 }
 
+  }
+}
+
+## Security Note
+All tools that accept package names enforce strict input validation. Inputs containing special characters, spaces, or malformed text will be rejected with an "Invalid package name format" error (Code 1000).
+
 ## Integration
 ```json
 {
