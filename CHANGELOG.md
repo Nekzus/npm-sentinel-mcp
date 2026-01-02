@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.16.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.15.1...v1.16.0) (2026-01-02)
+
+
+### Features
+
+* **security:** enforce strict package name validation across all tools ([02c4a88](https://github.com/Nekzus/npm-sentinel-mcp/commit/02c4a889438f841df628d5312009455e41092813))
+
 ## [1.15.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.15.0...v1.15.1) (2026-01-02)
 
 
