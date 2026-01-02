@@ -1266,7 +1266,7 @@ const ECOSYSTEM_MAP: Record<string, string[]> = {
 };
 
 // Helper to fetch full vulnerability details (enrichment)
-async function enrichVulnerabilityData(vulnId: string, ignoreCache: boolean = false): Promise<any> {
+async function enrichVulnerabilityData(vulnId: string, ignoreCache = false): Promise<any> {
     const cacheKey = generateCacheKey('enrichVuln', vulnId);
     const cached = ignoreCache ? undefined : cacheGet<any>(cacheKey);
     if (cached) return cached;

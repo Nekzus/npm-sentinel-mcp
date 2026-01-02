@@ -30,7 +30,7 @@ describe('Security: Input Validation', () => {
         'InvalidCapitals'
     ];
 
-    const runTest = async (handler: Function, args: any) => {
+    const runTest = async (handler: (args: any) => Promise<any>, args: any) => {
         const result = await handler(args);
         
         // Some handlers might return isError: true for validation errors, others might return isError: false with error status in content
@@ -80,13 +80,13 @@ describe('Security: Input Validation', () => {
         { name: 'handleNpmAlternatives', fn: handleNpmAlternatives },
     ];
 
-    handlersToTest.forEach(({ name, fn }) => {
+    for (const { name, fn } of handlersToTest) {
         describe(name, () => {
              test.each(invalidInputs)('should reject invalid package name: %s', async (input) => {
                 await runTest(fn, { packages: [input] });
             });
         });
-    });
+    }
 
     // Special case for handleNpmTrends with period arg (though optional, good to pass)
     describe('handleNpmTrends', () => {
@@ -94,6 +94,9 @@ describe('Security: Input Validation', () => {
             // Trend handler also takes period
             const result = await handleNpmTrends({ packages: [input], period: 'last-month' });
             const content = result.content[0];
+            if (content.type !== 'text') {
+                throw new Error('Expected text content');
+            }
             const parsed = JSON.parse(content.text);
             expect(parsed.results[0].status).toBe('error');
             expect(parsed.results[0].error).toMatch(/Invalid package name|package name.*invalid/i);
