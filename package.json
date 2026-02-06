@@ -10,14 +10,7 @@
   "bin": {
     "mcp-server-nekzus": "dist/index.js"
   },
-  "files": [
-    "dist",
-    "README.md",
-    "llms-full.txt",
-    "LICENSE",
-    "smithery.yaml",
-    "server.json"
-  ],
+  "files": ["dist", "README.md", "llms-full.txt", "LICENSE", "smithery.yaml", "server.json"],
   "scripts": {
     "build": "npm run build:http",
     "build:stdio": "tsc && shx chmod +x dist/*.js",
@@ -84,10 +77,17 @@
   },
   "homepage": "https://github.com/Nekzus/npm-sentinel-mcp#readme",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.25.1",
+    "@modelcontextprotocol/sdk": "^1.26.0",
     "@smithery/sdk": "3.0.1",
     "node-fetch": "3.3.2",
     "zod": "^4.2.0"
+  },
+  "overrides": {
+    "hono": "^4.11.7",
+    "qs": "^6.14.1",
+    "form-data": "^4.0.4",
+    "undici": "^5.28.5",
+    "lodash": "^4.17.23"
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",

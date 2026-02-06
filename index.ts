@@ -1,17 +1,20 @@
 #!/usr/bin/env node
 
+import * as crypto from 'node:crypto';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 import fetch from 'node-fetch';
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import * as crypto from 'node:crypto';
 import { z } from 'zod';
 
 // Cache configuration
-let NPM_REGISTRY_URL = (process.env.NPM_REGISTRY_URL || 'https://registry.npmjs.org').replace(/\/$/, '');
+let NPM_REGISTRY_URL = (process.env.NPM_REGISTRY_URL || 'https://registry.npmjs.org').replace(
+	/\/$/,
+	'',
+);
 
 // Cache configuration
 const CACHE_TTL_SHORT = 15 * 60 * 1000; // 15 minutes
@@ -171,17 +174,19 @@ export const NpmPackageInfoSchema = z
 	})
 	.loose();
 
-export const NpmPackageDataSchema = z.object({
-	name: z.string(),
-	version: z.string(),
-	description: z.string().optional(),
-	license: z.string().optional(),
-	dependencies: z.record(z.string(), z.string()).optional(),
-	devDependencies: z.record(z.string(), z.string()).optional(),
-	peerDependencies: z.record(z.string(), z.string()).optional(),
-	types: z.string().optional(),
-	typings: z.string().optional(),
-}).loose();
+export const NpmPackageDataSchema = z
+	.object({
+		name: z.string(),
+		version: z.string(),
+		description: z.string().optional(),
+		license: z.string().optional(),
+		dependencies: z.record(z.string(), z.string()).optional(),
+		devDependencies: z.record(z.string(), z.string()).optional(),
+		peerDependencies: z.record(z.string(), z.string()).optional(),
+		types: z.string().optional(),
+		typings: z.string().optional(),
+	})
+	.loose();
 
 export const BundlephobiaDataSchema = z.object({
 	size: z.number(),
@@ -389,14 +394,17 @@ function isNpmPackageInfo(data: unknown): data is NpmPackageInfo {
 
 function isNpmPackageData(data: unknown): data is z.infer<typeof NpmPackageDataSchema> {
 	try {
-        // Use safeParse to get error details
+		// Use safeParse to get error details
 		const result = NpmPackageDataSchema.safeParse(data);
-        if (!result.success) {
-            console.error('isNpmPackageData validation failed:', JSON.stringify(result.error.issues, null, 2));
-        }
+		if (!result.success) {
+			console.error(
+				'isNpmPackageData validation failed:',
+				JSON.stringify(result.error.issues, null, 2),
+			);
+		}
 		return result.success;
 	} catch (e) {
-        console.error('isNpmPackageData threw exception:', e);
+		console.error('isNpmPackageData threw exception:', e);
 		return false;
 	}
 }
@@ -411,20 +419,30 @@ function isBundlephobiaData(data: unknown): data is z.infer<typeof BundlephobiaD
 
 function isNpmDownloadsData(data: unknown): data is z.infer<typeof NpmDownloadsDataSchema> {
 	try {
-        const result = NpmDownloadsDataSchema.safeParse(data);
+		const result = NpmDownloadsDataSchema.safeParse(data);
 		if (!result.success) {
-            console.error('isNpmDownloadsData validation failed:', JSON.stringify(result.error.issues, null, 2));
-        }
+			console.error(
+				'isNpmDownloadsData validation failed:',
+				JSON.stringify(result.error.issues, null, 2),
+			);
+		}
 		return result.success;
 	} catch {
 		return false;
 	}
 }
 
+
+
 // Helper for validating NPM package names
 function isValidNpmPackageName(name: string): boolean {
-    const npmPackageRegex = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/;
-    return npmPackageRegex.test(name) && name.length <= 214 && !name.startsWith('_') && !name.startsWith('.');
+	const npmPackageRegex = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/;
+	return (
+		npmPackageRegex.test(name) &&
+		name.length <= 214 &&
+		!name.startsWith('_') &&
+		!name.startsWith('.')
+	);
 }
 
 export async function handleNpmVersions(args: {
@@ -459,16 +477,16 @@ export async function handleNpmVersions(args: {
 					};
 				}
 
-                if (!isValidNpmPackageName(name)) {
-                     return {
-                        packageInput: pkgInput,
-                        packageName: name,
-                        status: 'error',
-                        error: 'Invalid package name format',
-                        data: null,
-                        message: `The package name "${name}" is invalid/malformed.`,
-                    };
-                }
+				if (!isValidNpmPackageName(name)) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						status: 'error',
+						error: 'Invalid package name format',
+						data: null,
+						message: `The package name "${name}" is invalid/malformed.`,
+					};
+				}
 
 				if (!name) {
 					return {
@@ -622,17 +640,17 @@ export async function handleNpmLatest(args: {
 					};
 				}
 
-                if (!isValidNpmPackageName(name)) {
-                    return {
-                        packageInput: pkgInput,
-                        packageName: name,
-                        versionQueried: versionTag,
-                        status: 'error',
-                        error: 'Invalid package name format',
-                        data: null,
-                        message: `The package name "${name}" is invalid/malformed.`,
-                    };
-                }
+				if (!isValidNpmPackageName(name)) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						versionQueried: versionTag,
+						status: 'error',
+						error: 'Invalid package name format',
+						data: null,
+						message: `The package name "${name}" is invalid/malformed.`,
+					};
+				}
 
 				if (!name) {
 					return {
@@ -792,15 +810,15 @@ export async function handleNpmDeps(args: {
 					};
 				}
 
-                if (!isValidNpmPackageName(name)) {
-                     return {
-                        package: pkgInput,
-                        status: 'error',
-                        error: 'Invalid package name format',
-                        data: null,
-                        message: `The package name "${name}" is invalid/malformed.`,
-                    };
-                }
+				if (!isValidNpmPackageName(name)) {
+					return {
+						package: pkgInput,
+						status: 'error',
+						error: 'Invalid package name format',
+						data: null,
+						message: `The package name "${name}" is invalid/malformed.`,
+					};
+				}
 
 				const packageNameForOutput = version === 'latest' ? name : `${name}@${version}`;
 
@@ -907,7 +925,10 @@ export async function handleNpmDeps(args: {
 	}
 }
 
-export async function handleNpmTypes(args: { packages: string[]; ignoreCache?: boolean }): Promise<CallToolResult> {
+export async function handleNpmTypes(args: {
+	packages: string[];
+	ignoreCache?: boolean;
+}): Promise<CallToolResult> {
 	try {
 		const packagesToProcess = args.packages || [];
 		if (packagesToProcess.length === 0) {
@@ -937,15 +958,15 @@ export async function handleNpmTypes(args: { packages: string[]; ignoreCache?: b
 					};
 				}
 
-                if (!isValidNpmPackageName(name)) {
-                    return {
-                        package: pkgInput,
-                        status: 'error',
-                        error: 'Invalid package name format',
-                        data: null,
-                        message: `The package name "${name}" is invalid/malformed.`,
-                    };
-                }
+				if (!isValidNpmPackageName(name)) {
+					return {
+						package: pkgInput,
+						status: 'error',
+						error: 'Invalid package name format',
+						data: null,
+						message: `The package name "${name}" is invalid/malformed.`,
+					};
+				}
 
 				const packageNameForOutput = version === 'latest' ? name : `${name}@${version}`;
 
@@ -996,15 +1017,12 @@ export async function handleNpmTypes(args: { packages: string[]; ignoreCache?: b
 					};
 
 					try {
-						const typesResponse = await fetch(
-							`${NPM_REGISTRY_URL}/${typesPackageName}/latest`,
-							{
-								headers: {
-									Accept: 'application/json',
-									'User-Agent': 'NPM-Sentinel-MCP',
-								},
+						const typesResponse = await fetch(`${NPM_REGISTRY_URL}/${typesPackageName}/latest`, {
+							headers: {
+								Accept: 'application/json',
+								'User-Agent': 'NPM-Sentinel-MCP',
 							},
-						);
+						});
 						if (typesResponse.ok) {
 							const typesData = (await typesResponse.json()) as NpmPackageData;
 							typesPackageInfo = {
@@ -1100,15 +1118,15 @@ export async function handleNpmSize(args: {
 					};
 				}
 
-                if (!isValidNpmPackageName(name)) {
-                    return {
-                        package: pkgInput,
-                        status: 'error',
-                        error: 'Invalid package name format',
-                        data: null,
-                        message: `The package name "${name}" is invalid/malformed.`,
-                    };
-                }
+				if (!isValidNpmPackageName(name)) {
+					return {
+						package: pkgInput,
+						status: 'error',
+						error: 'Invalid package name format',
+						data: null,
+						message: `The package name "${name}" is invalid/malformed.`,
+					};
+				}
 
 				const bundlephobiaQuery = version === 'latest' ? name : `${name}@${version}`;
 				const packageNameForOutput = bundlephobiaQuery;
@@ -1250,10 +1268,10 @@ async function getPackageDependencies(
 async function resolveLatestVersion(packageName: string): Promise<string | null> {
 	try {
 		const response = await fetch(`${NPM_REGISTRY_URL}/${packageName}/latest`, {
-			headers: { 'User-Agent': 'NPM-Sentinel-MCP' }
+			headers: { 'User-Agent': 'NPM-Sentinel-MCP' },
 		});
 		if (!response.ok) return null;
-		const data = await response.json() as any;
+		const data = (await response.json()) as any;
 		return data.version || null;
 	} catch {
 		return null;
@@ -1262,27 +1280,27 @@ async function resolveLatestVersion(packageName: string): Promise<string | null>
 
 // Known ecosystem groups that share versioning
 const ECOSYSTEM_MAP: Record<string, string[]> = {
-	'react': ['react-dom', 'react-server-dom-webpack', 'react-server-dom-parcel'],
+	react: ['react-dom', 'react-server-dom-webpack', 'react-server-dom-parcel'],
 };
 
 // Helper to fetch full vulnerability details (enrichment)
 async function enrichVulnerabilityData(vulnId: string, ignoreCache = false): Promise<any> {
-    const cacheKey = generateCacheKey('enrichVuln', vulnId);
-    const cached = ignoreCache ? undefined : cacheGet<any>(cacheKey);
-    if (cached) return cached;
+	const cacheKey = generateCacheKey('enrichVuln', vulnId);
+	const cached = ignoreCache ? undefined : cacheGet<any>(cacheKey);
+	if (cached) return cached;
 
-    try {
-        const response = await fetch(`https://api.osv.dev/v1/vulns/${vulnId}`, {
-            headers: { 'User-Agent': 'NPM-Sentinel-MCP' }
-        });
-        if (!response.ok) return null;
-        const data = await response.json();
-        cacheSet(cacheKey, data, CACHE_TTL_LONG);
-        return data;
-    } catch (error) {
-        console.error(`Failed to enrich vulnerability ${vulnId}:`, error);
-        return null;
-    }
+	try {
+		const response = await fetch(`https://api.osv.dev/v1/vulns/${vulnId}`, {
+			headers: { 'User-Agent': 'NPM-Sentinel-MCP' },
+		});
+		if (!response.ok) return null;
+		const data = await response.json();
+		cacheSet(cacheKey, data, CACHE_TTL_LONG);
+		return data;
+	} catch (error) {
+		console.error(`Failed to enrich vulnerability ${vulnId}:`, error);
+		return null;
+	}
 }
 
 export async function handleNpmVulnerabilities(args: {
@@ -1295,16 +1313,18 @@ export async function handleNpmVulnerabilities(args: {
 			throw new Error('No package names provided');
 		}
 
-
 		// Prepare batch query, checking cache first
 		const finalBatchQueries: any[] = [];
-		const packageMap = new Map<string, { name: string; version?: string; isDependency?: boolean }>();
+		const packageMap = new Map<
+			string,
+			{ name: string; version?: string; isDependency?: boolean }
+		>();
 		const cachedResultsMap = new Map<string, any>();
 
 		const addToQuery = (name: string, releaseVersion: string, isDep: boolean) => {
 			const version = releaseVersion === 'latest' ? undefined : releaseVersion;
 			const key = `${name}@${version || 'latest'}`;
-			
+
 			if (packageMap.has(key)) return; // Already requested/processed
 
 			// Check Cache
@@ -1319,9 +1339,9 @@ export async function handleNpmVulnerabilities(args: {
 					vulnerabilities: cachedData.vulnerabilities,
 					count: cachedData.vulnerabilities.length,
 					status: cachedData.vulnerabilities.length > 0 ? 'vulnerable' : 'secure',
-					source: 'cache'
+					source: 'cache',
 				});
-				packageMap.set(key, { name, version, isDependency: isDep }); 
+				packageMap.set(key, { name, version, isDependency: isDep });
 			} else {
 				// Not in cache, add to API query
 				packageMap.set(key, { name, version, isDependency: isDep });
@@ -1336,7 +1356,11 @@ export async function handleNpmVulnerabilities(args: {
 		const seenPackages = new Set<string>();
 		const depthLimit = 2; // Default depth limit for transitive scanning
 
-		const processPackage = async (name: string, version: string | undefined, currentDepth: number) => {
+		const processPackage = async (
+			name: string,
+			version: string | undefined,
+			currentDepth: number,
+		) => {
 			const pkgKey = `${name}@${version || 'latest'}`;
 			if (seenPackages.has(pkgKey)) return;
 			seenPackages.add(pkgKey);
@@ -1346,30 +1370,30 @@ export async function handleNpmVulnerabilities(args: {
 			addToQuery(name, version || 'latest', currentDepth > 0);
 
 			if (currentDepth >= depthLimit) return;
-			
+
 			// If version is 'latest' or undefined, we settled it in addToQuery, but for fetching deps we need a concrete version
 			// If we don't have one, we might need to resolve it again or let getPackageDependencies handle 'latest'
 			// getPackageDependencies handles 'latest' by default.
-			
+
 			const { dependencies } = await getPackageDependencies(name, version || 'latest');
-			
+
 			// Process children
 			const children = Object.entries(dependencies);
-			await Promise.all(children.map(async ([depName, depVersion]) => {
-				const cleanVersion = depVersion.replace(/[\^~]/g, '');
-				if (/^\d+\.\d+\.\d+/.test(cleanVersion)) {
-					await processPackage(depName, cleanVersion, currentDepth + 1);
-				}
-			}));
+			await Promise.all(
+				children.map(async ([depName, depVersion]) => {
+					const cleanVersion = depVersion.replace(/[\^~]/g, '');
+					if (/^\d+\.\d+\.\d+/.test(cleanVersion)) {
+						await processPackage(depName, cleanVersion, currentDepth + 1);
+					}
+				}),
+			);
 		};
 
-
-
-        const validationErrors: any[] = [];
-        const validPackagesToProcess = packagesToProcess.filter(pkgInput => {
-            let name = '';
-            if (typeof pkgInput === 'string') {
-                const atIdx = pkgInput.lastIndexOf('@');
+		const validationErrors: any[] = [];
+		const validPackagesToProcess = packagesToProcess.filter((pkgInput) => {
+			let name = '';
+			if (typeof pkgInput === 'string') {
+				const atIdx = pkgInput.lastIndexOf('@');
 				if (pkgInput.startsWith('@')) {
 					const secondAt = pkgInput.indexOf('@', 1);
 					if (secondAt > 0) {
@@ -1384,22 +1408,22 @@ export async function handleNpmVulnerabilities(args: {
 						name = pkgInput;
 					}
 				}
-            } else {
-                 return false; // Type check handled before basically or skipped
-            }
+			} else {
+				return false; // Type check handled before basically or skipped
+			}
 
-            if (!isValidNpmPackageName(name)) {
-                validationErrors.push({
-                    package: pkgInput,
-                    status: 'error',
-                    error: 'Invalid package name format',
-                    data: null,
-                    message: `The package name "${name}" is invalid/malformed.`,
-                });
-                return false;
-            }
-            return true;
-        });
+			if (!isValidNpmPackageName(name)) {
+				validationErrors.push({
+					package: pkgInput,
+					status: 'error',
+					error: 'Invalid package name format',
+					data: null,
+					message: `The package name "${name}" is invalid/malformed.`,
+				});
+				return false;
+			}
+			return true;
+		});
 
 		await Promise.all(
 			validPackagesToProcess.map(async (pkgInput) => {
@@ -1448,7 +1472,7 @@ export async function handleNpmVulnerabilities(args: {
 			}),
 		);
 		let apiResults: any[] = [];
-		
+
 		if (finalBatchQueries.length > 0) {
 			// Perform Batch API call to OSV for non-cached items
 			const response = await fetch('https://api.osv.dev/v1/querybatch', {
@@ -1468,7 +1492,7 @@ export async function handleNpmVulnerabilities(args: {
 		// Reconstruct all results (Cache + API)
 		// We iterate over the packageMap to maintain order essentially, or we reconstruct based on what we see
 		// Since map iteration order is insertion order, we can use that to return results generally in order of discovery
-		
+
 		// Map API results back to their query keys to merge easily
 		const apiResultsMap = new Map<string, any>();
 		finalBatchQueries.forEach((query, index) => {
@@ -1480,7 +1504,7 @@ export async function handleNpmVulnerabilities(args: {
 		});
 
 		const processedResults: any[] = [];
-		
+
 		for (const [key, info] of packageMap.entries()) {
 			if (cachedResultsMap.has(key)) {
 				processedResults.push(cachedResultsMap.get(key));
@@ -1489,28 +1513,33 @@ export async function handleNpmVulnerabilities(args: {
 
 			// Process API result
 			const vulns = apiResultsMap.get(key) || [];
-			
-            // Enrich vulnerabilities with full details (Summary, Aliases/CVEs)
-            const processedVulns = await Promise.all(vulns.map(async (vuln: any) => {
-                // Fetch full details
-                const richData = await enrichVulnerabilityData(vuln.id, args.ignoreCache);
-                const finalVuln = richData || vuln; // Fallback to basic if fetch fails
 
-				const sev = typeof finalVuln.severity === 'object' ? finalVuln.severity.type || 'Unknown' : finalVuln.severity || 'Unknown';
-				const refs = finalVuln.references ? finalVuln.references.map((r: any) => r.url) : [];
-				
-				const vulnerabilityDetails: any = {
-					id: finalVuln.id,
-					summary: finalVuln.summary || 'No summary available',
-					severity: sev,
-					references: refs,
-					aliases: finalVuln.aliases || [],
-					modified: finalVuln.modified,
-					published: finalVuln.published,
-				};
-				if (finalVuln.affected) vulnerabilityDetails.affected = finalVuln.affected;
-				return vulnerabilityDetails;
-			}));
+			// Enrich vulnerabilities with full details (Summary, Aliases/CVEs)
+			const processedVulns = await Promise.all(
+				vulns.map(async (vuln: any) => {
+					// Fetch full details
+					const richData = await enrichVulnerabilityData(vuln.id, args.ignoreCache);
+					const finalVuln = richData || vuln; // Fallback to basic if fetch fails
+
+					const sev =
+						typeof finalVuln.severity === 'object'
+							? finalVuln.severity.type || 'Unknown'
+							: finalVuln.severity || 'Unknown';
+					const refs = finalVuln.references ? finalVuln.references.map((r: any) => r.url) : [];
+
+					const vulnerabilityDetails: any = {
+						id: finalVuln.id,
+						summary: finalVuln.summary || 'No summary available',
+						severity: sev,
+						references: refs,
+						aliases: finalVuln.aliases || [],
+						modified: finalVuln.modified,
+						published: finalVuln.published,
+					};
+					if (finalVuln.affected) vulnerabilityDetails.affected = finalVuln.affected;
+					return vulnerabilityDetails;
+				}),
+			);
 
 			const resultEntry = {
 				package: `${info.name}${info.version && info.version !== 'latest' && info.version !== undefined ? `@${info.version}` : ''}`,
@@ -1518,30 +1547,43 @@ export async function handleNpmVulnerabilities(args: {
 				vulnerabilities: processedVulns,
 				count: processedVulns.length,
 				status: processedVulns.length > 0 ? 'vulnerable' : 'secure',
-				message: processedVulns.length > 0 ? `${processedVulns.length} vulnerability(ies) found` : 'No known vulnerabilities found',
+				message:
+					processedVulns.length > 0
+						? `${processedVulns.length} vulnerability(ies) found`
+						: 'No known vulnerabilities found',
 			};
 
 			processedResults.push(resultEntry);
 
 			// Cache this result for future
-			const cacheKey = generateCacheKey('handleNpmVulnerabilities', info.name, info.version || 'all');
-			cacheSet(cacheKey, { 
-				vulnerabilities: processedVulns, 
-				message: `${processedVulns.length} vulnerabilities found` 
-			}, CACHE_TTL_MEDIUM);
+			const cacheKey = generateCacheKey(
+				'handleNpmVulnerabilities',
+				info.name,
+				info.version || 'all',
+			);
+			cacheSet(
+				cacheKey,
+				{
+					vulnerabilities: processedVulns,
+					message: `${processedVulns.length} vulnerabilities found`,
+				},
+				CACHE_TTL_MEDIUM,
+			);
 		}
 
 		// Filter final output
-		const finalOutput = processedResults.filter(r => r.count > 0 || !r.isDependency); 
+		const finalOutput = processedResults.filter((r) => r.count > 0 || !r.isDependency);
 
-		const responseJson = JSON.stringify({ 
-			summary: `Scanned ${packageMap.size} packages (including dependencies). Found vulnerabilities in ${finalOutput.filter(r => r.count > 0).length} packages. (${cachedResultsMap.size} from cache, ${finalBatchQueries.length} from API). ${validationErrors.length} invalid inputs skipped.`,
-			results: [...finalOutput, ...validationErrors]
-		}, null, 2);
+		const responseJson = JSON.stringify(
+			{
+				summary: `Scanned ${packageMap.size} packages (including dependencies). Found vulnerabilities in ${finalOutput.filter((r) => r.count > 0).length} packages. (${cachedResultsMap.size} from cache, ${finalBatchQueries.length} from API). ${validationErrors.length} invalid inputs skipped.`,
+				results: [...finalOutput, ...validationErrors],
+			},
+			null,
+			2,
+		);
 
 		return { content: [{ type: 'text', text: responseJson }], isError: false };
-
-
 	} catch (error) {
 		const errorResponse = JSON.stringify(
 			{
@@ -1597,16 +1639,16 @@ export async function handleNpmTrends(args: {
 					};
 				}
 
-                if (!isValidNpmPackageName(name)) {
-                    return {
-                        packageInput: pkgInput,
-                        packageName: name,
-                        status: 'error' as const,
-                        error: 'Invalid package name format',
-                        data: null,
-                         message: `The package name "${name}" is invalid/malformed.`,
-                    };
-                }
+				if (!isValidNpmPackageName(name)) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						status: 'error' as const,
+						error: 'Invalid package name format',
+						data: null,
+						message: `The package name "${name}" is invalid/malformed.`,
+					};
+				}
 
 				if (!name) {
 					return {
@@ -1745,7 +1787,10 @@ export async function handleNpmTrends(args: {
 	}
 }
 
-export async function handleNpmCompare(args: { packages: string[]; ignoreCache?: boolean }): Promise<CallToolResult> {
+export async function handleNpmCompare(args: {
+	packages: string[];
+	ignoreCache?: boolean;
+}): Promise<CallToolResult> {
 	try {
 		const packagesToProcess = args.packages || [];
 		if (packagesToProcess.length === 0) {
@@ -1776,17 +1821,17 @@ export async function handleNpmCompare(args: { packages: string[]; ignoreCache?:
 					};
 				}
 
-                if (!isValidNpmPackageName(name)) {
-                    return {
-                        packageInput: pkgInput,
-                        packageName: name,
-                        versionQueried: versionTag,
-                        status: 'error' as const,
-                        error: 'Invalid package name format',
-                        data: null,
-                         message: `The package name "${name}" is invalid/malformed.`,
-                    };
-                }
+				if (!isValidNpmPackageName(name)) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						versionQueried: versionTag,
+						status: 'error' as const,
+						error: 'Invalid package name format',
+						data: null,
+						message: `The package name "${name}" is invalid/malformed.`,
+					};
+				}
 				if (!name) {
 					return {
 						packageInput: pkgInput,
@@ -1947,16 +1992,16 @@ export async function handleNpmQuality(args: {
 					};
 				}
 
-                if (!isValidNpmPackageName(name)) {
-                    return {
-                        packageInput: pkgInput,
-                        packageName: name,
-                        status: 'error' as const,
-                        error: 'Invalid package name format',
-                        data: null,
-                         message: `The package name "${name}" is invalid/malformed.`,
-                    };
-                }
+				if (!isValidNpmPackageName(name)) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						status: 'error' as const,
+						error: 'Invalid package name format',
+						data: null,
+						message: `The package name "${name}" is invalid/malformed.`,
+					};
+				}
 
 				if (!name) {
 					return {
@@ -2083,7 +2128,10 @@ export async function handleNpmQuality(args: {
 	}
 }
 
-export async function handleNpmMaintenance(args: { packages: string[]; ignoreCache?: boolean }): Promise<CallToolResult> {
+export async function handleNpmMaintenance(args: {
+	packages: string[];
+	ignoreCache?: boolean;
+}): Promise<CallToolResult> {
 	try {
 		const packagesToProcess = args.packages || [];
 		if (packagesToProcess.length === 0) {
@@ -2107,16 +2155,16 @@ export async function handleNpmMaintenance(args: { packages: string[]; ignoreCac
 					};
 				}
 
-                if (!isValidNpmPackageName(name)) {
-                    return {
-                        packageInput: pkgInput,
-                        packageName: name,
-                        status: 'error' as const,
-                        error: 'Invalid package name format',
-                        data: null,
-                         message: `The package name "${name}" is invalid/malformed.`,
-                    };
-                }
+				if (!isValidNpmPackageName(name)) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						status: 'error' as const,
+						error: 'Invalid package name format',
+						data: null,
+						message: `The package name "${name}" is invalid/malformed.`,
+					};
+				}
 
 				if (!name) {
 					return {
@@ -2267,16 +2315,16 @@ export async function handleNpmMaintainers(args: {
 					};
 				}
 
-                if (!isValidNpmPackageName(name)) {
-                    return {
-                        packageInput: pkgInput,
-                        packageName: name,
-                        status: 'error' as const,
-                        error: 'Invalid package name format',
-                        data: null,
-                         message: `The package name "${name}" is invalid/malformed.`,
-                    };
-                }
+				if (!isValidNpmPackageName(name)) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						status: 'error' as const,
+						error: 'Invalid package name format',
+						data: null,
+						message: `The package name "${name}" is invalid/malformed.`,
+					};
+				}
 
 				if (!name) {
 					return {
@@ -2389,7 +2437,10 @@ export async function handleNpmMaintainers(args: {
 	}
 }
 
-export async function handleNpmScore(args: { packages: string[]; ignoreCache?: boolean }): Promise<CallToolResult> {
+export async function handleNpmScore(args: {
+	packages: string[];
+	ignoreCache?: boolean;
+}): Promise<CallToolResult> {
 	try {
 		const packagesToProcess = args.packages || [];
 		if (packagesToProcess.length === 0) {
@@ -2412,16 +2463,16 @@ export async function handleNpmScore(args: { packages: string[]; ignoreCache?: b
 					};
 				}
 
-                if (!isValidNpmPackageName(name)) {
-                    return {
-                        packageInput: pkgInput,
-                        packageName: name,
-                        status: 'error' as const,
-                        error: 'Invalid package name format',
-                        data: null,
-                         message: `The package name "${name}" is invalid/malformed.`,
-                    };
-                }
+				if (!isValidNpmPackageName(name)) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						status: 'error' as const,
+						error: 'Invalid package name format',
+						data: null,
+						message: `The package name "${name}" is invalid/malformed.`,
+					};
+				}
 
 				if (!name) {
 					return {
@@ -2613,18 +2664,18 @@ export async function handleNpmPackageReadme(args: {
 					};
 				}
 
-                if (!isValidNpmPackageName(name)) {
-                    return {
-                        packageInput: pkgInput,
-                        packageName: name,
-                        versionQueried: versionTag,
-                        versionFetched: null,
-                        status: 'error' as const,
-                        error: 'Invalid package name format',
-                        data: null,
-                         message: `The package name "${name}" is invalid/malformed.`,
-                    };
-                }
+				if (!isValidNpmPackageName(name)) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						versionQueried: versionTag,
+						versionFetched: null,
+						status: 'error' as const,
+						error: 'Invalid package name format',
+						data: null,
+						message: `The package name "${name}" is invalid/malformed.`,
+					};
+				}
 
 				if (!name) {
 					return {
@@ -2902,18 +2953,18 @@ export async function handleNpmLicenseCompatibility(args: {
 					};
 				}
 
-                if (!isValidNpmPackageName(name)) {
-                    return {
-                        packageInput: pkgInput,
-                        packageName: name,
-                         versionQueried: versionTag,
-                        versionFetched: null,
-                        status: 'error' as const,
-                        error: 'Invalid package name format',
-                        data: null,
-                         message: `The package name "${name}" is invalid/malformed.`,
-                    };
-                }
+				if (!isValidNpmPackageName(name)) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						versionQueried: versionTag,
+						versionFetched: null,
+						status: 'error' as const,
+						error: 'Invalid package name format',
+						data: null,
+						message: `The package name "${name}" is invalid/malformed.`,
+					};
+				}
 
 				if (!name) {
 					return {
@@ -2928,7 +2979,9 @@ export async function handleNpmLicenseCompatibility(args: {
 				}
 
 				const cacheKey = generateCacheKey('npmLicenseInfoForCompatibility', name, versionTag);
-				const cachedLicenseData = args.ignoreCache ? undefined : cacheGet<{ license: string; versionFetched: string }>(cacheKey);
+				const cachedLicenseData = args.ignoreCache
+					? undefined
+					: cacheGet<{ license: string; versionFetched: string }>(cacheKey);
 
 				if (cachedLicenseData) {
 					return {
@@ -3093,7 +3146,10 @@ interface GitHubRepoStats {
 }
 
 // Repository statistics analyzer
-export async function handleNpmRepoStats(args: { packages: string[]; ignoreCache?: boolean }): Promise<CallToolResult> {
+export async function handleNpmRepoStats(args: {
+	packages: string[];
+	ignoreCache?: boolean;
+}): Promise<CallToolResult> {
 	try {
 		const packagesToProcess = args.packages || [];
 		if (packagesToProcess.length === 0) {
@@ -3118,16 +3174,16 @@ export async function handleNpmRepoStats(args: { packages: string[]; ignoreCache
 					};
 				}
 
-                if (!isValidNpmPackageName(name)) {
-                    return {
-                        packageInput: pkgInput,
-                        packageName: name,
-                        status: 'error' as const,
-                        error: 'Invalid package name format',
-                        data: null,
-                         message: `The package name "${name}" is invalid/malformed.`,
-                    };
-                }
+				if (!isValidNpmPackageName(name)) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						status: 'error' as const,
+						error: 'Invalid package name format',
+						data: null,
+						message: `The package name "${name}" is invalid/malformed.`,
+					};
+				}
 
 				if (!name) {
 					return {
@@ -3347,7 +3403,10 @@ interface DownloadCount {
 	downloads: number;
 }
 
-export async function handleNpmDeprecated(args: { packages: string[]; ignoreCache?: boolean }): Promise<CallToolResult> {
+export async function handleNpmDeprecated(args: {
+	packages: string[];
+	ignoreCache?: boolean;
+}): Promise<CallToolResult> {
 	try {
 		const packagesToProcess = args.packages || [];
 		if (packagesToProcess.length === 0) {
@@ -3377,15 +3436,15 @@ export async function handleNpmDeprecated(args: { packages: string[]; ignoreCach
 					};
 				}
 
-                if (!isValidNpmPackageName(name)) {
-                    return {
-                        package: pkgInput,
-                        status: 'error',
-                        error: 'Invalid package name format',
-                        data: null,
-                        message: `The package name "${name}" is invalid/malformed.`,
-                    };
-                }
+				if (!isValidNpmPackageName(name)) {
+					return {
+						package: pkgInput,
+						status: 'error',
+						error: 'Invalid package name format',
+						data: null,
+						message: `The package name "${name}" is invalid/malformed.`,
+					};
+				}
 
 				const initialPackageNameForOutput = version === 'latest' ? name : `${name}@${version}`;
 				const cacheKey = generateCacheKey('handleNpmDeprecated', name, version);
@@ -3627,17 +3686,17 @@ export async function handleNpmChangelogAnalysis(args: {
 					};
 				}
 
-                if (!isValidNpmPackageName(name)) {
-                    return {
-                        packageInput: pkgInput,
-                        packageName: name,
-                        versionQueried: versionQueried,
-                        status: 'error' as const,
-                        error: 'Invalid package name format',
-                        data: null,
-                         message: `The package name "${name}" is invalid/malformed.`,
-                    };
-                }
+				if (!isValidNpmPackageName(name)) {
+					return {
+						packageInput: pkgInput,
+						packageName: name,
+						versionQueried: versionQueried,
+						status: 'error' as const,
+						error: 'Invalid package name format',
+						data: null,
+						message: `The package name "${name}" is invalid/malformed.`,
+					};
+				}
 
 				if (!name) {
 					return {
@@ -3856,7 +3915,10 @@ export async function handleNpmChangelogAnalysis(args: {
 	}
 }
 
-export async function handleNpmAlternatives(args: { packages: string[]; ignoreCache?: boolean }): Promise<CallToolResult> {
+export async function handleNpmAlternatives(args: {
+	packages: string[];
+	ignoreCache?: boolean;
+}): Promise<CallToolResult> {
 	try {
 		const packagesToProcess = args.packages || [];
 		if (packagesToProcess.length === 0) {
@@ -3887,16 +3949,16 @@ export async function handleNpmAlternatives(args: { packages: string[]; ignoreCa
 					};
 				}
 
-                if (!isValidNpmPackageName(originalPackageName)) {
-                    return {
-                        packageInput: pkgInput,
-                        packageName: originalPackageName,
-                        status: 'error' as const,
-                        error: 'Invalid package name format',
-                        data: null,
-                         message: `The package name "${originalPackageName}" is invalid/malformed.`,
-                    };
-                }
+				if (!isValidNpmPackageName(originalPackageName)) {
+					return {
+						packageInput: pkgInput,
+						packageName: originalPackageName,
+						status: 'error' as const,
+						error: 'Invalid package name format',
+						data: null,
+						message: `The package name "${originalPackageName}" is invalid/malformed.`,
+					};
+				}
 
 				if (!originalPackageName) {
 					return {
@@ -4071,7 +4133,7 @@ export async function handleNpmAlternatives(args: { packages: string[]; ignoreCa
 // Get __dirname in an ES module environment
 // Define session configuration schema
 export const configSchema = z.object({
-	NPM_REGISTRY_URL: z.string().optional().describe("URL of the NPM registry to use"),
+	NPM_REGISTRY_URL: z.string().optional().describe('URL of the NPM registry to use'),
 });
 
 // Create server function for Smithery CLI
@@ -4100,20 +4162,20 @@ export default function createServer({
 
 	// Determine package root
 	let packageRoot = __dirname;
-    if (fs.existsSync(path.join(__dirname, 'package.json'))) {
-        packageRoot = __dirname;
-    } else if (fs.existsSync(path.join(__dirname, '..', 'package.json'))) {
-        packageRoot = path.join(__dirname, '..');
-    }
+	if (fs.existsSync(path.join(__dirname, 'package.json'))) {
+		packageRoot = __dirname;
+	} else if (fs.existsSync(path.join(__dirname, '..', 'package.json'))) {
+		packageRoot = path.join(__dirname, '..');
+	}
 
 	// Read version from package.json
 	let serverVersion = '1.0.0';
 	try {
 		const packageJsonPath = path.join(packageRoot, 'package.json');
-        if (fs.existsSync(packageJsonPath)) {
-		    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
-		    serverVersion = packageJson.version;
-        }
+		if (fs.existsSync(packageJsonPath)) {
+			const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
+			serverVersion = packageJson.version;
+		}
 	} catch (error) {
 		console.error('Error reading package.json version:', error);
 	}
@@ -4319,7 +4381,9 @@ export default function createServer({
 		{
 			description: 'Check for known vulnerabilities in packages',
 			inputSchema: {
-				packages: z.array(z.string()).describe('List of package names to check for vulnerabilities'),
+				packages: z
+					.array(z.string())
+					.describe('List of package names to check for vulnerabilities'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			},
 			annotations: {
@@ -4402,7 +4466,8 @@ export default function createServer({
 	server.registerTool(
 		'npmScore',
 		{
-			description: 'Get consolidated package score based on quality, maintenance, and popularity metrics',
+			description:
+				'Get consolidated package score based on quality, maintenance, and popularity metrics',
 			inputSchema: {
 				packages: z.array(z.string()).describe('List of package names to get scores for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
@@ -4643,11 +4708,14 @@ async function main() {
 // Type guard for NpmPackageVersionSchema
 function isNpmPackageVersionData(data: unknown): data is z.infer<typeof NpmPackageVersionSchema> {
 	try {
-        const result = NpmPackageVersionSchema.safeParse(data);
+		const result = NpmPackageVersionSchema.safeParse(data);
 		if (!result.success) {
-            console.error('isNpmPackageVersionData validation failed:', JSON.stringify(result.error.issues, null, 2));
-        }
-        return result.success;
+			console.error(
+				'isNpmPackageVersionData validation failed:',
+				JSON.stringify(result.error.issues, null, 2),
+			);
+		}
+		return result.success;
 	} catch (e) {
 		// This catch block might not be strictly necessary with safeParse but kept for safety
 		// console.error("isNpmPackageVersionData validation failed unexpectedly:", e);

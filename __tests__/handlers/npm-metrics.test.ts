@@ -123,65 +123,72 @@ vi.mock('node-fetch', () => {
 			const match = url.match(/registry\.npmjs\.org\/(.+?)(\/|$)/);
 			const pkgName = match ? match[1] : 'express'; // Default to express if not found
 
-            // Check if requesting version-specific data (latest or specific)
-            // handleNpmDeps calls /latest, handleNpmRepoStats calls /latest via handleNpmLatest (actually it calls /latest directly inside handleNpmRepoStats)
-            // BUT handleNpmDeps logic calls /latest.
-            
-            // Wait, previous failure for handleNpmRepoStats was due to invalid format.
-            // registry.npmjs.org/${name}/latest returns VERSION object.
-            // registry.npmjs.org/${name} returns PACKAGE INFO object (with versions map).
-            
-            const isVersionRequest = url.includes('/latest') || url.match(/\/(\d+\.\d+\.\d+)$/);
+			// Check if requesting version-specific data (latest or specific)
+			// handleNpmDeps calls /latest, handleNpmRepoStats calls /latest via handleNpmLatest (actually it calls /latest directly inside handleNpmRepoStats)
+			// BUT handleNpmDeps logic calls /latest.
 
-            if (isVersionRequest) {
-			    return Promise.resolve({
-				    ok: true,
-				    json: () =>
-					    Promise.resolve({
-						    name: pkgName,
-						    version: '4.18.2',
-						    description: 'Fast, unopinionated, minimalist web framework',
-						    license: 'MIT',
-						    'dist-tags': { latest: '4.18.2' }, 
-                            // Note: Real registry /latest might NOT have dist-tags, but NpmPackageVersionSchema is passthrough.
-                            // Crucial: It does NOT have 'versions' map usually.
-						    time: {
-							    modified: '2023-01-01T00:00:00.000Z',
-						    },
-						    dependencies: {
-							    accepts: '~1.3.8',
-							    'array-flatten': '1.1.1',
-							    'body-parser': '1.20.1',
-						    },
-						    maintainers: [{ name: 'dougwilson', email: 'doug@something.com' }],
-						    // For "no-repo-pkg", we should omit repository field if pkgName matches
-						    repository: pkgName === 'no-repo-pkg' ? undefined : {
-							    type: 'git',
-							    url: `https://github.com/${pkgName}/${pkgName}.git`,
-						    },
-					    }),
-			    });
-            }
-                
+			// Wait, previous failure for handleNpmRepoStats was due to invalid format.
+			// registry.npmjs.org/${name}/latest returns VERSION object.
+			// registry.npmjs.org/${name} returns PACKAGE INFO object (with versions map).
+
+			const isVersionRequest = url.includes('/latest') || url.match(/\/(\d+\.\d+\.\d+)$/);
+
+			if (isVersionRequest) {
+				return Promise.resolve({
+					ok: true,
+					json: () =>
+						Promise.resolve({
+							name: pkgName,
+							version: '4.18.2',
+							description: 'Fast, unopinionated, minimalist web framework',
+							license: 'MIT',
+							'dist-tags': { latest: '4.18.2' },
+							// Note: Real registry /latest might NOT have dist-tags, but NpmPackageVersionSchema is passthrough.
+							// Crucial: It does NOT have 'versions' map usually.
+							time: {
+								modified: '2023-01-01T00:00:00.000Z',
+							},
+							dependencies: {
+								accepts: '~1.3.8',
+								'array-flatten': '1.1.1',
+								'body-parser': '1.20.1',
+							},
+							maintainers: [{ name: 'dougwilson', email: 'doug@something.com' }],
+							// For "no-repo-pkg", we should omit repository field if pkgName matches
+							repository:
+								pkgName === 'no-repo-pkg'
+									? undefined
+									: {
+											type: 'git',
+											url: `https://github.com/${pkgName}/${pkgName}.git`,
+										},
+						}),
+				});
+			}
+
 			// Package Info Request (root)
 			return Promise.resolve({
 				ok: true,
-				json: () => Promise.resolve({
-					name: pkgName,
-					'dist-tags': { latest: '4.18.2' },
-					versions: {
-						'4.18.2': {
-							name: pkgName,
-							version: '4.18.2',
-							dist: { tarball: '...' },
-						}
-					},
-					time: { modified: '2023-01-01T00:00:00.000Z' },
-					repository: pkgName === 'no-repo-pkg' ? undefined : {
-						type: 'git',
-						url: `https://github.com/${pkgName}/${pkgName}.git`,
-					},
-				})
+				json: () =>
+					Promise.resolve({
+						name: pkgName,
+						'dist-tags': { latest: '4.18.2' },
+						versions: {
+							'4.18.2': {
+								name: pkgName,
+								version: '4.18.2',
+								dist: { tarball: '...' },
+							},
+						},
+						time: { modified: '2023-01-01T00:00:00.000Z' },
+						repository:
+							pkgName === 'no-repo-pkg'
+								? undefined
+								: {
+										type: 'git',
+										url: `https://github.com/${pkgName}/${pkgName}.git`,
+									},
+					}),
 			});
 		}),
 	};
@@ -335,9 +342,9 @@ describe('npm metrics handlers', () => {
 			const result = await handleNpmRepoStats({ packages: ['express'] });
 			validateToolResponse(result);
 			expect((result.content[0] as any).text).not.toContain('No repository URL found');
-            const parsed = JSON.parse((result.content[0] as any).text as string);
-            expect(parsed.results[0].status).toBe('success');
-            expect(parsed.results[0].data).toHaveProperty('githubRepoUrl');
+			const parsed = JSON.parse((result.content[0] as any).text as string);
+			expect(parsed.results[0].status).toBe('success');
+			expect(parsed.results[0].data).toHaveProperty('githubRepoUrl');
 		});
 
 		test('should handle package without repository', async () => {

@@ -1,20 +1,20 @@
 {
-    "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-    "name": "io.github.Nekzus/npm-sentinel-mcp",
-    "description": "Advanced NPM analysis: Recursive security scanning, ecosystem awareness, and deep insights.",
-    "repository": {
-        "url": "https://github.com/Nekzus/npm-sentinel-mcp",
-        "source": "github"
-    },
-    "version": "{{VERSION}}",
-    "packages": [
-        {
-            "registryType": "npm",
-            "identifier": "@nekzus/mcp-server",
-            "version": "{{VERSION}}",
-            "transport": {
-                "type": "stdio"
-            }
-        }
-    ]
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.Nekzus/npm-sentinel-mcp",
+  "description": "Advanced NPM analysis: Recursive security scanning, ecosystem awareness, and deep insights.",
+  "repository": {
+    "url": "https://github.com/Nekzus/npm-sentinel-mcp",
+    "source": "github"
+  },
+  "version": "{{VERSION}}",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@nekzus/mcp-server",
+      "version": "{{VERSION}}",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
 }
