@@ -8,7 +8,7 @@ export default defineConfig({
 		exclude: ['node_modules', 'dist', '**/__tests__/utils/test-helpers.ts'],
 		coverage: {
 			provider: 'v8',
-			reporter: ['text', 'json', 'html'],
+			reporter: ['text', 'json', 'html', 'json-summary'],
 			include: ['*.ts'],
 			exclude: [
 				'node_modules/**',

@@ -11,7 +11,7 @@ import {
 	handleNpmTrends,
 	handleNpmVersions,
 } from '../../index';
-import { validateToolResponse } from '../utils/test-helpers';
+import { validateToolResponse, extractTextFromResponse } from '../utils/test-helpers';
 
 // Define a Map to store mock responses
 // Key: package name (or part of URL that identifies the resource)
@@ -97,7 +97,7 @@ vi.mock('node-fetch', () => {
 						dependencies: { 'body-parser': '1.20.1' },
 						readme: 'Default Express Readme',
 						maintainers: [{ name: 'dougwilson', email: 'doug@somethingdoug.com' }],
-						dist: { shasum: '...', tarball: '...' }
+						dist: { shasum: '...', tarball: '...' },
 					});
 				}
 				// Otherwise return full package info
@@ -130,7 +130,7 @@ describe('npm registry handlers', () => {
 		test('should return latest info for a valid package', async () => {
 			const result = await handleNpmLatest({ packages: ['express'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse(extractTextFromResponse(result));
 			expect(parsed.results[0].packageName).toBe('express');
 			expect(parsed.results[0].packageName).toBe('express');
 			expect(parsed.results[0].status).toBe('success');
@@ -142,7 +142,7 @@ describe('npm registry handlers', () => {
 			mockResponses.set(packageName, () => createMockErrorResponse(404, 'Not Found'));
 			const result = await handleNpmLatest({ packages: [packageName] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse(extractTextFromResponse(result));
 			expect(parsed.results[0].packageName).toBe(packageName);
 			expect(parsed.results[0].status).toBe('error');
 			expect(parsed.results[0].error).toBe('Package invalid-package-name@latest not found.');
@@ -153,7 +153,7 @@ describe('npm registry handlers', () => {
 		test('should return version info for a valid package', async () => {
 			const result = await handleNpmVersions({ packages: ['express'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse(extractTextFromResponse(result));
 			expect(parsed.results[0].packageName).toBe('express');
 			expect(parsed.results[0].status).toBe('success');
 			expect(parsed.results[0].data.allVersions).toContain('4.18.2');
@@ -164,7 +164,7 @@ describe('npm registry handlers', () => {
 			const packageName = 'invalid-package-name';
 			const result = await handleNpmVersions({ packages: [packageName] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse(extractTextFromResponse(result));
 			expect(parsed.results[0].packageName).toBe(packageName);
 			expect(parsed.results[0].status).toBe('error');
 			expect(parsed.results[0].error).toContain(
@@ -177,7 +177,7 @@ describe('npm registry handlers', () => {
 		test('should return maintainers info for a valid package', async () => {
 			const result = await handleNpmMaintainers({ packages: ['express'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse(extractTextFromResponse(result));
 			expect(parsed.results[0].packageName).toBe('express');
 			expect(parsed.results[0].status).toBe('success');
 			expect(parsed.results[0].data.maintainers).toEqual([]);
@@ -191,7 +191,7 @@ describe('npm registry handlers', () => {
 			mockResponses.set(packageName, () => createMockErrorResponse(404, 'Not Found'));
 			const result = await handleNpmMaintainers({ packages: [packageName] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse(extractTextFromResponse(result));
 
 			expect(parsed.queryPackages).toEqual([packageName]);
 			expect(parsed.results.length).toBe(1);
@@ -229,7 +229,7 @@ describe('npm registry handlers', () => {
 
 			const result = await handleNpmSearch({ query: 'express' });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse(extractTextFromResponse(result));
 			expect(parsed.query).toBe('express');
 			expect(parsed.results[0].name).toBe('express');
 			expect(parsed.message).toContain('Search completed. Found 1 total packages, returning 1.');
@@ -240,7 +240,7 @@ describe('npm registry handlers', () => {
 			mockResponses.set(`search:${query}`, () => createMockResponse({ total: 0, objects: [] }));
 			const result = await handleNpmSearch({ query });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse(extractTextFromResponse(result));
 			expect(parsed.query).toBe(query);
 			expect(parsed.results).toEqual([]);
 			expect(parsed.message).toContain('Found 0 total packages, returning 0.');
@@ -251,7 +251,7 @@ describe('npm registry handlers', () => {
 		test('should return readme for a valid package', async () => {
 			const result = await handleNpmPackageReadme({ packages: ['express'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse(extractTextFromResponse(result));
 			expect(parsed.results[0].packageName).toBe('express');
 			expect(parsed.results[0].status).toBe('success');
 			expect(parsed.results[0].data.readme).toContain('Default Express Readme');
@@ -269,7 +269,7 @@ describe('npm registry handlers', () => {
 			);
 			const result = await handleNpmPackageReadme({ packages: [packageName] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse(extractTextFromResponse(result));
 			expect(parsed.results[0].packageName).toBe(packageName);
 			expect(parsed.results[0].status).toBe('success');
 			expect(parsed.results[0].data.readme).toBeNull();
@@ -282,157 +282,14 @@ describe('npm registry handlers', () => {
 			const packageName = 'invalid-package-name';
 			const result = await handleNpmPackageReadme({ packages: [packageName] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse(extractTextFromResponse(result));
 			expect(parsed.results[0].packageName).toBe(packageName);
 			expect(parsed.results[0].status).toBe('error');
 			expect(parsed.results[0].error).toBe('Package invalid-package-name not found.');
 		});
 	});
 
-	describe('handleNpmDeprecated', () => {
-		test('should report a non-deprecated package with no deprecated dependencies', async () => {
-			const packageName = 'my-package';
-			mockResponses.set(packageName, () =>
-				createMockResponse({
-					name: packageName,
-					'dist-tags': { latest: '1.0.0' },
-					versions: {
-						'1.0.0': {
-							name: packageName,
-							version: '1.0.0',
-							deprecated: undefined,
-							dependencies: { 'dep-a': '1.0.0' },
-						},
-					},
-				}),
-			);
-			mockResponses.set('dep-a', () =>
-				createMockResponse({
-					name: 'dep-a',
-					'dist-tags': { latest: '1.0.0' },
-					versions: { '1.0.0': { deprecated: undefined } },
-				}),
-			);
 
-			const result = await handleNpmDeprecated({ packages: [{ name: packageName }] as any });
-			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
-			expect(result.content[0].isError).toBeUndefined();
-
-			expect(parsed.results?.[0]?.package).toBe('unknown_package_input');
-			expect(parsed.results?.[0]?.status).toBe('error');
-			expect(parsed.results?.[0]?.error).toBe('Invalid package input type');
-			expect(parsed.results?.[0]?.message).toBe('Package input was not a string.');
-			expect(parsed.results?.[0]?.data).toBeNull();
-		});
-
-		test('should report a deprecated package', async () => {
-			const packageName = 'deprecated-pkg';
-			mockResponses.set(packageName, () =>
-				createMockResponse({
-					name: packageName,
-					'dist-tags': { latest: '1.0.0' },
-					versions: {
-						'1.0.0': {
-							name: packageName,
-							version: '1.0.0',
-							deprecated: 'This package is deprecated.',
-						},
-					},
-				}),
-			);
-			const result = await handleNpmDeprecated({ packages: [{ name: packageName }] as any });
-			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
-			expect(result.content[0].isError).toBeUndefined();
-
-			expect(parsed.results?.[0]?.package).toBe('unknown_package_input');
-			expect(parsed.results?.[0]?.status).toBe('error');
-			expect(parsed.results?.[0]?.error).toBe('Invalid package input type');
-			expect(parsed.results?.[0]?.message).toBe('Package input was not a string.');
-			expect(parsed.results?.[0]?.data).toBeNull();
-		});
-
-		test('should handle unverifiable dependencies (404 for a dep)', async () => {
-			const packageName = 'pkg-with-bad-dep';
-			mockResponses.set(packageName, () =>
-				createMockResponse({
-					name: packageName,
-					'dist-tags': { latest: '1.0.0' },
-					versions: {
-						'1.0.0': {
-							name: packageName,
-							version: '1.0.0',
-							dependencies: { 'unverifiable-dep': '1.0.0' },
-						},
-					},
-				}),
-			);
-			mockResponses.set('unverifiable-dep', () => createMockErrorResponse(404, 'Not Found'));
-
-			const result = await handleNpmDeprecated({ packages: [{ name: packageName }] as any });
-			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
-			expect(result.content[0].isError).toBeUndefined();
-
-			expect(parsed.results?.[0]?.package).toBe('unknown_package_input');
-			expect(parsed.results?.[0]?.status).toBe('error');
-			expect(parsed.results?.[0]?.error).toBe('Invalid package input type');
-			expect(parsed.results?.[0]?.message).toBe('Package input was not a string.');
-			expect(parsed.results?.[0]?.data).toBeNull();
-		});
-
-		test('should correctly use cache for subsequent identical requests', async () => {
-			const packageName = 'cache-test-pkg';
-			const packageVersion = '1.0.0';
-			mockResponses.set(packageName, () =>
-				createMockResponse({
-					name: packageName,
-					'dist-tags': { latest: packageVersion },
-					versions: {
-						[packageVersion]: { name: packageName, version: packageVersion, deprecated: undefined },
-					},
-				}),
-			);
-			const result1 = await handleNpmDeprecated({
-				packages: [{ name: packageName, version: packageVersion }] as any,
-			});
-			validateToolResponse(result1);
-			const parsedResult1 = JSON.parse(result1.content[0].text as string);
-
-			expect(parsedResult1.results?.[0]?.package).toBe('unknown_package_input');
-			expect(parsedResult1.results?.[0]?.status).toBe('error');
-			expect(parsedResult1.results?.[0]?.error).toBe('Invalid package input type');
-			expect(parsedResult1.results?.[0]?.message).toBe('Package input was not a string.');
-			expect(parsedResult1.results?.[0]?.data).toBeNull();
-
-			const result2 = await handleNpmDeprecated({
-				packages: [{ name: packageName, version: packageVersion }] as any,
-			});
-			validateToolResponse(result2);
-			const parsedResult2 = JSON.parse(result2.content[0].text as string);
-
-			expect(parsedResult2.results?.[0]?.package).toBe('unknown_package_input');
-			expect(parsedResult2.results?.[0]?.status).toBe('error');
-			expect(parsedResult2.results?.[0]?.error).toBe('Invalid package input type');
-			expect(parsedResult2.results?.[0]?.message).toBe('Package input was not a string.');
-			expect(parsedResult2.results?.[0]?.data).toBeNull();
-		});
-
-		test('should handle package not found (404)', async () => {
-			const packageName = 'non-existent-pkg';
-			const result = await handleNpmDeprecated({ packages: [{ name: packageName }] as any });
-			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
-
-			expect(result.content[0].isError).toBeUndefined();
-			expect(parsed.results?.[0]?.package).toBe('unknown_package_input');
-			expect(parsed.results?.[0]?.status).toBe('error');
-			expect(parsed.results?.[0]?.error).toBe('Invalid package input type');
-			expect(parsed.results?.[0]?.message).toBe('Package input was not a string.');
-			expect(parsed.results?.[0]?.data).toBeNull();
-		});
-	});
 
 	describe('handleNpmChangelogAnalysis', () => {
 		test('should analyze changelog for a valid package', async () => {
@@ -463,7 +320,7 @@ describe('npm registry handlers', () => {
 
 			const result = await handleNpmChangelogAnalysis({ packages: ['express'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse(extractTextFromResponse(result));
 			expect(parsed.results[0].packageName).toBe('express');
 			expect(parsed.results[0].status).toBe('no_repo_found');
 			expect(parsed.results[0].message).toContain(
@@ -482,7 +339,7 @@ describe('npm registry handlers', () => {
 			);
 			const result = await handleNpmChangelogAnalysis({ packages: [packageName] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse(extractTextFromResponse(result));
 			expect(parsed.results[0].packageName).toBe(packageName);
 			expect(parsed.results[0].status).toBe('no_repo_found');
 			expect(parsed.results[0].message).toContain(
@@ -494,7 +351,7 @@ describe('npm registry handlers', () => {
 			const packageName = 'invalid-package-name';
 			const result = await handleNpmChangelogAnalysis({ packages: [packageName] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse(extractTextFromResponse(result));
 			expect(parsed.results[0].packageName).toBe(packageName);
 			expect(parsed.results[0].status).toBe('error');
 			expect(parsed.results[0].error).toContain('Failed to fetch npm info');
@@ -510,19 +367,52 @@ describe('npm registry handlers', () => {
 					versions: {
 						'4.18.2': { name: 'express', version: '4.18.2', description: 'Express desc' },
 					},
+					time: { '4.18.2': '2023-01-01T00:00:00.000Z' },
 				}),
 			);
-			mockResponses.set('koa', () =>
+			mockResponses.set('express@latest', () =>
+				createMockResponse({
+					name: 'express',
+					version: '4.18.2',
+					description: 'Express desc',
+					dependencies: {},
+					devDependencies: {},
+					dist: { shasum: 'sha', tarball: 'url' },
+				}),
+			);
+			mockResponses.set('koa@latest', () =>
 				createMockResponse({
 					name: 'koa',
-					'dist-tags': { latest: '2.13.4' },
-					versions: { '2.13.4': { name: 'koa', version: '2.13.4', description: 'Koa desc' } },
+					version: '2.13.4',
+					description: 'Koa desc',
+					main: 'index.js',
+					author: { name: 'Koa Team' },
+					license: 'MIT',
+					dist: { shasum: 'sha1-koa', tarball: 'https://registry.npmjs.org/koa/-/koa-2.13.4.tgz' },
 				}),
 			);
 
+            mockResponses.set('https://api.npmjs.org/downloads/point/last-month/express', () =>
+                createMockResponse({
+                    package: 'express',
+                    downloads: 10000,
+                    start: '2023-01-01',
+                    end: '2023-01-31'
+                })
+            );
+
+            mockResponses.set('https://api.npmjs.org/downloads/point/last-month/koa', () =>
+                createMockResponse({
+                    package: 'koa',
+                    downloads: 5000,
+                    start: '2023-01-01',
+                    end: '2023-01-31'
+                })
+            );
+
 			const result = await handleNpmCompare({ packages: ['express', 'koa'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse(extractTextFromResponse(result));
 			if (parsed.results && parsed.results.length === 2) {
 				const expressData = parsed.results.find((p: any) => p.name === 'express');
 				const koaData = parsed.results.find((p: any) => p.name === 'koa');
@@ -530,9 +420,41 @@ describe('npm registry handlers', () => {
 		});
 
 		test('should handle invalid package name', async () => {
-			const result = await handleNpmCompare({ packages: ['invalid-package-name', 'express'] });
+			mockResponses.set('express', () =>
+				createMockResponse({
+					name: 'express',
+					'dist-tags': { latest: '4.18.2' },
+					versions: {
+						'4.18.2': { name: 'express', version: '4.18.2', description: 'Express desc' },
+					},
+					time: { '4.18.2': '2023-01-01T00:00:00.000Z' },
+				}),
+			);
+            mockResponses.set('https://api.npmjs.org/downloads/point/last-month/express', () =>
+                createMockResponse({
+                    package: 'express',
+                    downloads: 10000,
+                    start: '2023-01-01',
+                    end: '2023-01-31'
+                })
+            );
+            mockResponses.set('express@latest', () =>
+                createMockResponse({
+                    name: 'express',
+                    version: '4.18.2',
+                    description: 'Express desc',
+                    dependencies: {},
+                    devDependencies: {},
+                    dist: { shasum: 'sha', tarball: 'url' },
+                }),
+            );
+
+			const result = await handleNpmCompare({
+				packages: ['invalid-package-name', 'express'],
+				ignoreCache: true,
+			});
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse(extractTextFromResponse(result));
 			const invalidPkgResult = parsed.results.find(
 				(r: any) => r.packageInput === 'invalid-package-name',
 			);
@@ -547,37 +469,35 @@ describe('npm registry handlers', () => {
 		test('should return alternatives for a valid package', async () => {
 			const result = await handleNpmAlternatives({ packages: ['express'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse(extractTextFromResponse(result));
 			expect(parsed.results[0].status).toBe('no_alternatives_found');
 		});
 
 		test('should handle invalid package name', async () => {
 			const result = await handleNpmAlternatives({ packages: ['invalid-package-name'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse(extractTextFromResponse(result));
 			expect(parsed.results[0].status).toBe('success');
 		});
 	});
 
 	describe('handleNpmTrends', () => {
 		test('should return download trends for a valid package', async () => {
-			mockResponses.set('https://api.npmjs.org/downloads/range/last-month/express', () =>
+			mockResponses.set('https://api.npmjs.org/downloads/point/last-month/express', () =>
 				createMockResponse({
 					package: 'express',
-					downloads: [{ day: '2023-01-01', downloads: 100 }],
+					downloads: 100,
+					start: '2023-01-01',
+					end: '2023-02-01',
 				}),
 			);
 			const result = await handleNpmTrends({ packages: ['express'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
-			expect(parsed.results[0].status).toBe('error');
-			if (parsed.results[0].status !== 'error') {
-				expect(parsed.results[0].data.trends).toBeDefined();
-				expect(Array.isArray(parsed.results[0].data.trends)).toBe(true);
-				expect(parsed.summary.overallTotalDownloads).toBeGreaterThanOrEqual(100);
-			} else {
-				expect(parsed.results[0].error).toContain('Invalid response format from npm downloads API');
-			}
+			const parsed = JSON.parse(extractTextFromResponse(result));
+
+			expect(parsed.results[0].status).toBe('success');
+			expect(parsed.results[0].data.downloads).toBe(100);
+			expect(parsed.results[0].data.period).toBe('last-month');
 		});
 
 		test('should handle invalid package name for trends', async () => {
@@ -586,9 +506,61 @@ describe('npm registry handlers', () => {
 			);
 			const result = await handleNpmTrends({ packages: ['invalid-trend-pkg'] });
 			validateToolResponse(result);
-			const parsed = JSON.parse(result.content[0].text as string);
+			const parsed = JSON.parse(extractTextFromResponse(result));
 			expect(parsed.results[0].status).toBe('error');
 			expect(parsed.results[0].error).toContain('not found or no download data');
+		});
+	});
+
+
+	describe('handleNpmDeprecated', () => {
+		test('should correctly identify a deprecated package', async () => {
+			mockResponses.set('deprecated-pkg', () =>
+				createMockResponse({
+					name: 'deprecated-pkg',
+					'dist-tags': { latest: '1.0.0' },
+					versions: {
+						'1.0.0': { deprecated: 'This package is deprecated' },
+					},
+				}),
+			);
+
+			const result = await handleNpmDeprecated({ packages: ['deprecated-pkg'] });
+			validateToolResponse(result);
+			const parsed = JSON.parse(extractTextFromResponse(result));
+			
+			expect(result.isError).toBe(false);
+			expect(parsed.results[0].status).toBe('success');
+			expect(parsed.results[0].data.isPackageDeprecated).toBe(true);
+			expect(parsed.results[0].data.packageDeprecationMessage).toBe('This package is deprecated');
+		});
+
+		test('should correctly identify a non-deprecated package', async () => {
+			mockResponses.set('active-pkg', () =>
+				createMockResponse({
+					name: 'active-pkg',
+					'dist-tags': { latest: '1.0.0' },
+					versions: {
+						'1.0.0': { },
+					},
+				}),
+			);
+
+			const result = await handleNpmDeprecated({ packages: ['active-pkg'] });
+			validateToolResponse(result);
+			const parsed = JSON.parse(extractTextFromResponse(result));
+			
+			expect(result.isError).toBe(false);
+			expect(parsed.results[0].status).toBe('success');
+			expect(parsed.results[0].data.isPackageDeprecated).toBe(false);
+			expect(parsed.results[0].data.packageDeprecationMessage).toBeNull();
+		});
+
+		test('should handle invalid package name', async () => {
+			const result = await handleNpmDeprecated({ packages: ['invalid-package-name'] });
+			validateToolResponse(result);
+			const parsed = JSON.parse(extractTextFromResponse(result));
+			expect(parsed.results[0].status).toBe('error');
 		});
 	});
 });
