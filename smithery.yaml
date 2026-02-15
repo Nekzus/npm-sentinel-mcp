@@ -11,7 +11,11 @@ configSchema:
       default: "https://registry.npmjs.org"
 
 startCommand:
-  type: "http"
+  type: "stdio"
+  command: "npx"
+  args:
+    - "-y"
+    - "@nekzus/mcp-server"
   configSchema:
     type: "object"
     required: []
