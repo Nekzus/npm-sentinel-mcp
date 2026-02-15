@@ -1,4 +1,4 @@
-
+runtime: "container"
 
 # Smithery configuration file: https://smithery.ai/docs/config#smitheryyaml
 configSchema:
