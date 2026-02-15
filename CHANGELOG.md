@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.16.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.16.0...v1.16.1) (2026-02-15)
+
+
+### Bug Fixes
+
+* **test:** resolve Zod validation errors in npm-registry.test.ts and cleanup obsolete tests ([c3a2eb2](https://github.com/Nekzus/npm-sentinel-mcp/commit/c3a2eb26aea2cce0bb35ecc320a73cb89715f945))
+
 # [1.16.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.15.1...v1.16.0) (2026-01-02)
 
 
