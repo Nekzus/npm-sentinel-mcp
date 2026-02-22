@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.18.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.17.0...v1.18.0) (2026-02-22)
+
+
+### Features
+
+* **1.18.0:** inject transitive topology insights via deps.dev into npmDeps ([a6595c3](https://github.com/Nekzus/npm-sentinel-mcp/commit/a6595c3400fe5e714e6deee9bba912709cbbb840))
+
 # [1.17.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.16.2...v1.17.0) (2026-02-22)
 
 
