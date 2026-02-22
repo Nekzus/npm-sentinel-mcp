@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.17.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.16.2...v1.17.0) (2026-02-22)
+
+
+### Features
+
+* **mcp:** integrate deps.dev for massive dependency tree resolution bypassing edge subrequest limits in vulnerability scans ([255d599](https://github.com/Nekzus/npm-sentinel-mcp/commit/255d5991dc3e74941ee336abab4517c9e00bfb2f))
+
 ## [1.16.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.16.0...v1.16.1) (2026-02-15)
 
 
