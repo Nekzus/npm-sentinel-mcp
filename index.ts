@@ -874,14 +874,24 @@ export async function handleNpmDeps(args: {
 						}));
 					};
 
+					const actualVersion = rawData.version || version; // Use version from response if available
+					const finalPackageName = `${name}@${actualVersion}`;
+
+					// Fetch transitive dependencies from deps.dev to provide deep topological insights
+					const transitiveGraphRaw = await fetchTransitiveDependenciesFromDepsDev(
+						name,
+						actualVersion,
+					);
+					// Erase root package from the graph to avoid self-counting if returned
+					const transitiveGraph = transitiveGraphRaw.filter((dep) => dep.name !== name);
+
 					const depData = {
 						dependencies: mapDeps(rawData.dependencies),
 						devDependencies: mapDeps(rawData.devDependencies),
 						peerDependencies: mapDeps(rawData.peerDependencies),
+						transitiveCount: transitiveGraph.length,
+						transitiveGraph: transitiveGraph,
 					};
-
-					const actualVersion = rawData.version || version; // Use version from response if available
-					const finalPackageName = `${name}@${actualVersion}`;
 
 					// Store with the actual resolved package name if 'latest' was used
 					cacheSet(cacheKey, { depData, packageNameForCache: finalPackageName }, CACHE_TTL_MEDIUM);
@@ -891,7 +901,7 @@ export async function handleNpmDeps(args: {
 						status: 'success',
 						error: null,
 						data: depData,
-						message: `Dependencies for ${finalPackageName}`,
+						message: `Dependencies for ${finalPackageName} (Direct: ${depData.dependencies.length}, Transitive: ${depData.transitiveCount})`,
 					};
 				} catch (error) {
 					return {

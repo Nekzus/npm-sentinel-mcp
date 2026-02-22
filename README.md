@@ -285,7 +285,7 @@ The server also provides the following informational resources accessible via MC
 #### npmDeps
 - Analyze package dependencies
 - Input: `packages` (string[])
-- Returns: Complete dependency tree analysis
+- Returns: Complete dependency tree analysis including direct dependencies and full transitive graph (count and explicit flatten list) mapping through deps.dev.
 
 #### npmTypes
 - Check TypeScript support
