@@ -432,8 +432,6 @@ function isNpmDownloadsData(data: unknown): data is z.infer<typeof NpmDownloadsD
 	}
 }
 
-
-
 // Helper for validating NPM package names
 function isValidNpmPackageName(name: string): boolean {
 	const npmPackageRegex = /^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-~][a-z0-9-._~]*$/;
@@ -1241,26 +1239,37 @@ export async function handleNpmSize(args: {
 	}
 }
 
-// Helper to detect dependencies
-async function getPackageDependencies(
+// Helper to fetch full transitive dependency graph from deps.dev
+async function fetchTransitiveDependenciesFromDepsDev(
 	pkgName: string,
 	version: string,
-): Promise<{ dependencies: Record<string, string>; devDependencies: Record<string, string> }> {
+): Promise<{ name: string; version: string }[]> {
 	try {
-		const response = await fetch(`${NPM_REGISTRY_URL}/${pkgName}/${version}`, {
+		const encodedName = encodeURIComponent(pkgName);
+		const encodedVersion = encodeURIComponent(version);
+		const url = `https://api.deps.dev/v3/systems/npm/packages/${encodedName}/versions/${encodedVersion}:dependencies`;
+
+		const response = await fetch(url, {
 			headers: { Accept: 'application/json', 'User-Agent': 'NPM-Sentinel-MCP' },
 		});
 
-		if (!response.ok) return { dependencies: {}, devDependencies: {} };
+		if (!response.ok) {
+			console.warn(`deps.dev API returned ${response.status} for ${pkgName}@${version}`);
+			return [];
+		}
 
-		const data = (await response.json()) as NpmPackageData;
-		return {
-			dependencies: data.dependencies || {},
-			devDependencies: data.devDependencies || {},
-		};
+		const data = (await response.json()) as any;
+		if (!data.nodes || !Array.isArray(data.nodes)) return [];
+
+		return data.nodes
+			.filter((node: any) => node.versionKey?.name)
+			.map((node: any) => ({
+				name: node.versionKey.name,
+				version: node.versionKey.version,
+			}));
 	} catch (error) {
-		console.error(`Error fetching dependencies for ${pkgName}:`, error);
-		return { dependencies: {}, devDependencies: {} };
+		console.error(`Error fetching transitive dependencies from deps.dev for ${pkgName}:`, error);
+		return [];
 	}
 }
 
@@ -1352,41 +1361,21 @@ export async function handleNpmVulnerabilities(args: {
 			}
 		};
 
-		// Recursive dependency fetcher
-		const seenPackages = new Set<string>();
-		const depthLimit = 2; // Default depth limit for transitive scanning
+		const processPackage = async (name: string, version: string | undefined) => {
+			const safeVersion = version || 'latest';
 
-		const processPackage = async (
-			name: string,
-			version: string | undefined,
-			currentDepth: number,
-		) => {
-			const pkgKey = `${name}@${version || 'latest'}`;
-			if (seenPackages.has(pkgKey)) return;
-			seenPackages.add(pkgKey);
+			// Always add the root package (depth 0 logic)
+			addToQuery(name, safeVersion, false);
 
-			// Add to vulnerability query
-			// For the main package (depth 0), isDependency is false. For others, true.
-			addToQuery(name, version || 'latest', currentDepth > 0);
+			// Try to get all transitive dependencies in a single call to deps.dev
+			// They require a concrete version (or we pass exactly what we have)
+			const allDeps = await fetchTransitiveDependenciesFromDepsDev(name, safeVersion);
 
-			if (currentDepth >= depthLimit) return;
-
-			// If version is 'latest' or undefined, we settled it in addToQuery, but for fetching deps we need a concrete version
-			// If we don't have one, we might need to resolve it again or let getPackageDependencies handle 'latest'
-			// getPackageDependencies handles 'latest' by default.
-
-			const { dependencies } = await getPackageDependencies(name, version || 'latest');
-
-			// Process children
-			const children = Object.entries(dependencies);
-			await Promise.all(
-				children.map(async ([depName, depVersion]) => {
-					const cleanVersion = depVersion.replace(/[\^~]/g, '');
-					if (/^\d+\.\d+\.\d+/.test(cleanVersion)) {
-						await processPackage(depName, cleanVersion, currentDepth + 1);
-					}
-				}),
-			);
+			for (const dep of allDeps) {
+				// Avoid adding the root package itself again, which is included in the graph
+				if (dep.name === name) continue;
+				addToQuery(dep.name, dep.version, true);
+			}
 		};
 
 		const validationErrors: any[] = [];
@@ -1458,15 +1447,13 @@ export async function handleNpmVulnerabilities(args: {
 					}
 				}
 
-				// Start recursive processing
-				await processPackage(name, version, 0);
+				// Start fetching dependencies with deps.dev
+				await processPackage(name, version);
 
 				// Ecosystem Check: Scan associated packages that share the same version
 				if (ECOSYSTEM_MAP[name]) {
 					for (const associatedPkg of ECOSYSTEM_MAP[name]) {
-						// We scan these as "depth 0" (explicitly requested by ecosystem logic)
-						// so they are checked fully.
-						await processPackage(associatedPkg, version, 0);
+						await processPackage(associatedPkg, version);
 					}
 				}
 			}),
@@ -2641,7 +2628,7 @@ export async function handleNpmPackageReadme(args: {
 		const processedResults = await Promise.all(
 			packagesToProcess.map(async (pkgInput) => {
 				let name = '';
-				let versionTag: string | undefined = undefined; // Explicitly undefined if not specified
+				let versionTag: string | undefined; // Explicitly undefined if not specified
 
 				if (typeof pkgInput === 'string') {
 					const atIdx = pkgInput.lastIndexOf('@');
@@ -3251,7 +3238,7 @@ export async function handleNpmRepoStats(args: {
 						return resultNoRepo;
 					}
 
-					const githubMatch = repoUrl.match(/github\.com[:\/]([^\/]+)\/([^\/.]+)/);
+					const githubMatch = repoUrl.match(/github\.com[:/]([^/]+)\/([^/.]+)/);
 					if (!githubMatch) {
 						const resultNotGitHub = {
 							packageInput: pkgInput,
@@ -3664,7 +3651,7 @@ export async function handleNpmChangelogAnalysis(args: {
 		const processedResults = await Promise.all(
 			packagesToProcess.map(async (pkgInput) => {
 				let name = '';
-				let versionQueried: string | undefined = undefined;
+				let versionQueried: string | undefined;
 
 				if (typeof pkgInput === 'string') {
 					const atIdx = pkgInput.lastIndexOf('@');
@@ -3767,7 +3754,7 @@ export async function handleNpmChangelogAnalysis(args: {
 						return resultNoRepo;
 					}
 
-					const githubMatch = repositoryUrl.match(/github\.com[:\/]([^\/]+)\/([^\/.]+)/);
+					const githubMatch = repositoryUrl.match(/github\.com[:/]([^/]+)\/([^/.]+)/);
 					if (!githubMatch) {
 						const resultNotGitHub = {
 							packageInput: pkgInput,
@@ -3928,7 +3915,7 @@ export async function handleNpmAlternatives(args: {
 		const processedResults = await Promise.all(
 			packagesToProcess.map(async (pkgInput) => {
 				let originalPackageName = '';
-				let versionQueried: string | undefined = undefined;
+				let versionQueried: string | undefined;
 
 				if (typeof pkgInput === 'string') {
 					const atIdx = pkgInput.lastIndexOf('@');
@@ -4137,11 +4124,7 @@ export const configSchema = z.object({
 });
 
 // Create server function for Smithery CLI
-export default function createServer({
-	config,
-}: {
-	config: z.infer<typeof configSchema>;
-}) {
+export default function createServer({ config }: { config: z.infer<typeof configSchema> }) {
 	// Apply config overrides
 	if (config.NPM_REGISTRY_URL) {
 		NPM_REGISTRY_URL = config.NPM_REGISTRY_URL.replace(/\/$/, '');

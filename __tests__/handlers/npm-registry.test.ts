@@ -11,7 +11,7 @@ import {
 	handleNpmTrends,
 	handleNpmVersions,
 } from '../../index';
-import { validateToolResponse, extractTextFromResponse } from '../utils/test-helpers';
+import { extractTextFromResponse, validateToolResponse } from '../utils/test-helpers';
 
 // Define a Map to store mock responses
 // Key: package name (or part of URL that identifies the resource)
@@ -289,8 +289,6 @@ describe('npm registry handlers', () => {
 		});
 	});
 
-
-
 	describe('handleNpmChangelogAnalysis', () => {
 		test('should analyze changelog for a valid package', async () => {
 			mockResponses.set('express', () =>
@@ -392,30 +390,29 @@ describe('npm registry handlers', () => {
 				}),
 			);
 
-            mockResponses.set('https://api.npmjs.org/downloads/point/last-month/express', () =>
-                createMockResponse({
-                    package: 'express',
-                    downloads: 10000,
-                    start: '2023-01-01',
-                    end: '2023-01-31'
-                })
-            );
+			mockResponses.set('https://api.npmjs.org/downloads/point/last-month/express', () =>
+				createMockResponse({
+					package: 'express',
+					downloads: 10000,
+					start: '2023-01-01',
+					end: '2023-01-31',
+				}),
+			);
 
-            mockResponses.set('https://api.npmjs.org/downloads/point/last-month/koa', () =>
-                createMockResponse({
-                    package: 'koa',
-                    downloads: 5000,
-                    start: '2023-01-01',
-                    end: '2023-01-31'
-                })
-            );
+			mockResponses.set('https://api.npmjs.org/downloads/point/last-month/koa', () =>
+				createMockResponse({
+					package: 'koa',
+					downloads: 5000,
+					start: '2023-01-01',
+					end: '2023-01-31',
+				}),
+			);
 
 			const result = await handleNpmCompare({ packages: ['express', 'koa'] });
 			validateToolResponse(result);
 			const parsed = JSON.parse(extractTextFromResponse(result));
 			if (parsed.results && parsed.results.length === 2) {
-				const expressData = parsed.results.find((p: any) => p.name === 'express');
-				const koaData = parsed.results.find((p: any) => p.name === 'koa');
+				// We just ensure length is 2 as expected
 			}
 		});
 
@@ -430,24 +427,24 @@ describe('npm registry handlers', () => {
 					time: { '4.18.2': '2023-01-01T00:00:00.000Z' },
 				}),
 			);
-            mockResponses.set('https://api.npmjs.org/downloads/point/last-month/express', () =>
-                createMockResponse({
-                    package: 'express',
-                    downloads: 10000,
-                    start: '2023-01-01',
-                    end: '2023-01-31'
-                })
-            );
-            mockResponses.set('express@latest', () =>
-                createMockResponse({
-                    name: 'express',
-                    version: '4.18.2',
-                    description: 'Express desc',
-                    dependencies: {},
-                    devDependencies: {},
-                    dist: { shasum: 'sha', tarball: 'url' },
-                }),
-            );
+			mockResponses.set('https://api.npmjs.org/downloads/point/last-month/express', () =>
+				createMockResponse({
+					package: 'express',
+					downloads: 10000,
+					start: '2023-01-01',
+					end: '2023-01-31',
+				}),
+			);
+			mockResponses.set('express@latest', () =>
+				createMockResponse({
+					name: 'express',
+					version: '4.18.2',
+					description: 'Express desc',
+					dependencies: {},
+					devDependencies: {},
+					dist: { shasum: 'sha', tarball: 'url' },
+				}),
+			);
 
 			const result = await handleNpmCompare({
 				packages: ['invalid-package-name', 'express'],
@@ -512,7 +509,6 @@ describe('npm registry handlers', () => {
 		});
 	});
 
-
 	describe('handleNpmDeprecated', () => {
 		test('should correctly identify a deprecated package', async () => {
 			mockResponses.set('deprecated-pkg', () =>
@@ -528,7 +524,7 @@ describe('npm registry handlers', () => {
 			const result = await handleNpmDeprecated({ packages: ['deprecated-pkg'] });
 			validateToolResponse(result);
 			const parsed = JSON.parse(extractTextFromResponse(result));
-			
+
 			expect(result.isError).toBe(false);
 			expect(parsed.results[0].status).toBe('success');
 			expect(parsed.results[0].data.isPackageDeprecated).toBe(true);
@@ -541,7 +537,7 @@ describe('npm registry handlers', () => {
 					name: 'active-pkg',
 					'dist-tags': { latest: '1.0.0' },
 					versions: {
-						'1.0.0': { },
+						'1.0.0': {},
 					},
 				}),
 			);
@@ -549,7 +545,7 @@ describe('npm registry handlers', () => {
 			const result = await handleNpmDeprecated({ packages: ['active-pkg'] });
 			validateToolResponse(result);
 			const parsed = JSON.parse(extractTextFromResponse(result));
-			
+
 			expect(result.isError).toBe(false);
 			expect(parsed.results[0].status).toBe('success');
 			expect(parsed.results[0].data.isPackageDeprecated).toBe(false);

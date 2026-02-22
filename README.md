@@ -300,9 +300,9 @@ The server also provides the following informational resources accessible via MC
 #### npmVulnerabilities
 - Scan for security vulnerabilities
 - Features: 
-  - **Transitive Scanning**: Checks dependencies up to depth 2.
-  - **Ecosystem Awareness**: Automatically scans related packages (e.g., React Server Components).
-  - **Rich Reports**: Includes CVE IDs and full summaries.
+  - **Instant Transitive Scanning**: Powered by Google's `deps.dev` API to resolve massive dependency trees (e.g. Next.js, Astro) in a single request, bypassing deep recursion limitations.
+  - **Ecosystem Awareness**: Automatically scans related packages efficiently.
+  - **Rich Reports**: Includes CVE IDs and full summaries from OSV.dev.
 - Input: `packages` (string[])
 - Returns: Detailed security advisories, CVEs, and severity ratings
 
