@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/nekzus-npm-sentinel-mcp-badge.png)](https://mseep.ai/app/nekzus-npm-sentinel-mcp)
+
 # NPM Sentinel MCP
 
 <div align="center">
