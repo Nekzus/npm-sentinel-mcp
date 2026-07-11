@@ -25,26 +25,24 @@ jobs:
               run: |
                 sudo apt-get update
                 sudo apt-get install -y libsecret-1-0
+            - name: Install pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  version: 11.10.0
             - name: Use Node.js ${{matrix.node-version}}
               uses: actions/setup-node@v6
               with:
                   node-version: ${{matrix.node-version}}
-                  cache: 'npm'
-            - run: npm ci
-            - name: Handle optional dependencies
-              run: |
-                # Force reinstall to handle optional dependencies properly
-                npm ci --no-optional
-                # Install optional dependencies separately if needed
-                npm install --optional
+                  cache: 'pnpm'
+            - run: pnpm install --frozen-lockfile
             - name: Lint
-              run: npm run lint --if-present
+              run: pnpm run lint --if-present
             - name: Test
-              run: npm run test
+              run: pnpm run test
             - name: Build STDIO
-              run: npm run build:stdio
+              run: pnpm run build:stdio
             - name: Build HTTP
-              run: npm run build:http
+              run: pnpm run build:http
 
     publish:
         permissions:
@@ -62,19 +60,20 @@ jobs:
               run: |
                 sudo apt-get update
                 sudo apt-get install -y libsecret-1-0
+            - name: Install pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  version: 11.10.0
             - name: Use Node.js lts/*
               uses: actions/setup-node@v6
               with:
                   node-version: 'lts/*'
-                  cache: 'npm'
+                  cache: 'pnpm'
             
-            - name: Update npm to latest
-              run: npm install -g npm@latest
-
-            - run: npm ci
+            - run: pnpm install --frozen-lockfile
             
             - name: Semantic Release
-              run: npm run semantic-release
+              run: pnpm run semantic-release
               env:
                   GH_TOKEN: ${{secrets.GH_TOKEN}}
                   NPM_CONFIG_PROVENANCE: true
@@ -107,7 +106,7 @@ jobs:
             # Build STDIO version for npm package (excludes Smithery artifacts)
             - name: Build STDIO version for npm package
               run: |
-                npm run build:stdio
+                pnpm run build:stdio
                 # Remove Smithery artifacts to avoid publishing them to npm
                 rm -rf .smithery/
                 # Smithery artifacts removed from npm package via .npmignore/files list inherently
@@ -138,7 +137,7 @@ jobs:
             # Build HTTP version for Smithery deployment (separate from npm)
             - name: Build HTTP version for Smithery
               run: |
-                npm run build:http
+                pnpm run build:http
                 echo "=== Smithery build artifacts ==="
                 ls -la .smithery/
                 
