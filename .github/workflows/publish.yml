@@ -20,13 +20,13 @@ jobs:
                 os: [ubuntu-latest]
 
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v7
             - name: Install system dependencies
               run: |
                 sudo apt-get update
                 sudo apt-get install -y libsecret-1-0
             - name: Use Node.js ${{matrix.node-version}}
-              uses: actions/setup-node@v4
+              uses: actions/setup-node@v6
               with:
                   node-version: ${{matrix.node-version}}
                   cache: 'npm'
@@ -55,18 +55,21 @@ jobs:
         if: ${{github.ref == 'refs/heads/main'}}
         needs: [quality]
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v7
               with:
                 fetch-depth: 0
             - name: Install system dependencies
               run: |
                 sudo apt-get update
                 sudo apt-get install -y libsecret-1-0
-            - name: Use Node.js 20.9.0
-              uses: actions/setup-node@v4
+            - name: Use Node.js lts/*
+              uses: actions/setup-node@v6
               with:
-                  node-version: '20.9.0'
+                  node-version: 'lts/*'
                   cache: 'npm'
+            
+            - name: Update npm to latest
+              run: npm install -g npm@latest
 
             - run: npm ci
             
