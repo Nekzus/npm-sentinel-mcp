@@ -72,25 +72,38 @@ jobs:
             
             - run: pnpm install --frozen-lockfile
             
+            # Save the version before semantic-release
+            - name: Save current version
+              id: prev_version
+              run: |
+                VERSION=$(node -p "require('./package.json').version")
+                echo "version=$VERSION" >> $GITHUB_OUTPUT
+            
             - name: Semantic Release
               run: pnpm run semantic-release
               env:
                   GH_TOKEN: ${{secrets.GH_TOKEN}}
+                  NPM_TOKEN: ${{secrets.NPM_TOKEN}}
                   NPM_CONFIG_PROVENANCE: true
-                  
-            
 
-                  
             # Get the new version from package.json after semantic-release
             - name: Get new version
               id: get_version
               run: |
                 NEW_VERSION=$(node -p "require('./package.json').version")
+                PREV_VERSION="${{ steps.prev_version.outputs.version }}"
                 echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-                echo "📦 New version: $NEW_VERSION"
+                if [ "$NEW_VERSION" = "$PREV_VERSION" ]; then
+                  echo "released=false" >> $GITHUB_OUTPUT
+                  echo "ℹ️ No new version released by semantic-release."
+                else
+                  echo "released=true" >> $GITHUB_OUTPUT
+                  echo "📦 New version released: $NEW_VERSION"
+                fi
                 
             # Update server.json version and SHA256 (like the example workflow)
             - name: Update server.json version and SHA256
+              if: steps.get_version.outputs.released == 'true'
               run: |
                 VERSION=$(node -p "require('./package.json').version")
                 echo "📦 Updating server.json with version: $VERSION"
@@ -105,6 +118,7 @@ jobs:
             
             # Build STDIO version for npm package (excludes Smithery artifacts)
             - name: Build STDIO version for npm package
+              if: steps.get_version.outputs.released == 'true'
               run: |
                 pnpm run build:stdio
                 # Remove Smithery artifacts to avoid publishing them to npm
@@ -113,6 +127,7 @@ jobs:
                 
             # Verify npm package contents
             - name: Verify npm package contents
+              if: steps.get_version.outputs.released == 'true'
               run: |
                 echo "=== NPM Package Contents ==="
                 ls -la dist/
@@ -123,19 +138,23 @@ jobs:
                   
             # Install MCP Publisher for registry publishing
             - name: Install MCP Publisher
+              if: steps.get_version.outputs.released == 'true'
               run: |
                 curl -L "https://github.com/modelcontextprotocol/registry/releases/download/v1.7.9/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
                 
             # Login to MCP Registry using GitHub OIDC
             - name: Login to MCP Registry
+              if: steps.get_version.outputs.released == 'true'
               run: ./mcp-publisher login github-oidc
               
             # Publish to MCP Registry
             - name: Publish to MCP Registry
+              if: steps.get_version.outputs.released == 'true'
               run: ./mcp-publisher publish
                   
             # Build HTTP version for Smithery deployment (separate from npm)
             - name: Build HTTP version for Smithery
+              if: steps.get_version.outputs.released == 'true'
               run: |
                 pnpm run build:http
                 echo "=== Smithery build artifacts ==="
@@ -143,6 +162,7 @@ jobs:
                 
             # Verify Smithery deployment readiness
             - name: Verify Smithery deployment readiness
+              if: steps.get_version.outputs.released == 'true'
               run: |
                 echo "=== Required files for Smithery deploy ==="
                 echo "smithery.yaml:"
@@ -158,6 +178,7 @@ jobs:
                 
             # Set Dockerfile version label from package.json
             - name: Set Dockerfile version label from package.json
+              if: steps.get_version.outputs.released == 'true'
               run: |
                 VERSION=$(node -p "require('./package.json').version")
                 sed -i "s/LABEL version=\"[^\"]*\"/LABEL version=\"$VERSION\"/" Dockerfile
