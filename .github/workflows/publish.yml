@@ -5,9 +5,9 @@ name: npm-mcp-server
 
 on:
     push:
-        branches: [main]
+        branches: [main, alpha]
     pull_request:
-        branches: [main]
+        branches: [main, alpha]
 
 jobs:
     quality:
@@ -50,7 +50,7 @@ jobs:
             id-token: write
         runs-on: ubuntu-latest
         timeout-minutes: 15
-        if: ${{github.ref == 'refs/heads/main'}}
+        if: ${{github.ref == 'refs/heads/main' || github.ref == 'refs/heads/alpha'}}
         needs: [quality]
         steps:
             - uses: actions/checkout@v7

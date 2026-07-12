@@ -51,3 +51,6 @@ memory.json
 
 # MCP Registry
 .mcpregistry*
+
+# docs
+npm_sentinel.md
