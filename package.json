@@ -33,7 +33,7 @@
     "lint": "biome lint --write .",
     "check": "biome check --apply .",
     "commit": "git-cz",
-    "semantic-release": "semantic-release --branches main",
+    "semantic-release": "semantic-release",
     "watch": "tsc --watch",
     "prepublishOnly": "npm run build:stdio",
     "changelog:init": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0"
