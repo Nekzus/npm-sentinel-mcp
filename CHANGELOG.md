@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.18.2](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.18.1...v1.18.2) (2026-07-12)
+
+
+### Bug Fixes
+
+* **smithery:** actualizar @smithery/cli a v3.19.0 para resolver error de keytar ([6c459a2](https://github.com/Nekzus/npm-sentinel-mcp/commit/6c459a24a06422c97050fb165e30b2b878d6da83))
+
 ## [1.18.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.18.0...v1.18.1) (2026-07-11)
 
 
