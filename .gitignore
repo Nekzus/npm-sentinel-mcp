@@ -52,5 +52,5 @@ memory.json
 # MCP Registry
 .mcpregistry*
 
-# docs
+# Docs
 npm_sentinel.md
