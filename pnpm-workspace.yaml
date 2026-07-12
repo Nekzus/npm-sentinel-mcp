@@ -1,3 +1,6 @@
 allowBuilds:
+  '@smithery/cli': true
   esbuild: true
   keytar: true
+  sharp: true
+  workerd: true
