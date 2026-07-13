@@ -41,8 +41,6 @@ jobs:
               run: pnpm run test
             - name: Build STDIO
               run: pnpm run build:stdio
-            - name: Build HTTP
-              run: pnpm run build:http
 
     publish:
         permissions:
@@ -116,14 +114,11 @@ jobs:
                 echo "📋 Final server.json version:"
                 cat server.json | jq '.version, .packages[0].version'
             
-            # Build STDIO version for npm package (excludes Smithery artifacts)
+            # Build STDIO version for npm package
             - name: Build STDIO version for npm package
               if: steps.get_version.outputs.released == 'true'
               run: |
                 pnpm run build:stdio
-                # Remove Smithery artifacts to avoid publishing them to npm
-                rm -rf .smithery/
-                # Smithery artifacts removed from npm package via .npmignore/files list inherently
                 
             # Verify npm package contents
             - name: Verify npm package contents
@@ -131,8 +126,6 @@ jobs:
               run: |
                 echo "=== NPM Package Contents ==="
                 ls -la dist/
-                echo "=== Excluded Smithery artifacts ==="
-                ls -la .smithery/ 2>/dev/null || echo "Smithery artifacts removed successfully"
                 echo "=== Version in compiled code ==="
                 grep -n "version:" dist/index.js | head -1
                   
@@ -152,14 +145,6 @@ jobs:
               if: steps.get_version.outputs.released == 'true'
               run: ./mcp-publisher publish
                   
-            # Build HTTP version for Smithery deployment (separate from npm)
-            - name: Build HTTP version for Smithery
-              if: steps.get_version.outputs.released == 'true'
-              run: |
-                pnpm run build:http
-                echo "=== Smithery build artifacts ==="
-                ls -la .smithery/
-                
             # Verify Smithery deployment readiness
             - name: Verify Smithery deployment readiness
               if: steps.get_version.outputs.released == 'true'
@@ -170,9 +155,6 @@ jobs:
                 echo ""
                 echo "package.json module field:"
                 node -p "require('./package.json').module"
-                echo ""
-                echo "Smithery build artifacts:"
-                ls -la .smithery/
                 echo ""
                 echo "✅ Smithery deployment files verified!"
                 
