@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.19.0-alpha.4](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.3...v1.19.0-alpha.4) (2026-07-13)
+
+
+### Bug Fixes
+
+* **smithery:** pin smithery dependencies to v3 to keep shttp build command functional ([8b52d15](https://github.com/Nekzus/npm-sentinel-mcp/commit/8b52d15f23a3d428bbd2085d145e78458d37218c))
+
 # [1.19.0-alpha.3](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.2...v1.19.0-alpha.3) (2026-07-13)
 
 
