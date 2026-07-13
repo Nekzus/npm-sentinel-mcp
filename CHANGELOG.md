@@ -3,34 +3,6 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-# [1.19.0-alpha.3](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.2...v1.19.0-alpha.3) (2026-07-13)
-
-
-### Features
-
-* **alpha:** migrate GitHub API calls to deps.dev and integrate OpenSSF Scorecard ([44fe973](https://github.com/Nekzus/npm-sentinel-mcp/commit/44fe97345ec03d34a9266620a343e8f783f09edb))
-
-# [1.19.0-alpha.2](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.1...v1.19.0-alpha.2) (2026-07-12)
-
-
-### Bug Fixes
-
-* **build:** asegurar compilacion de typescript en build script para entornos con --ignore-scripts ([aa0721a](https://github.com/Nekzus/npm-sentinel-mcp/commit/aa0721a8281f7cfd0785e871333ac2f86b459176))
-* **smithery:** actualizar @smithery/cli a v3.19.0 para resolver error de keytar ([d4434b3](https://github.com/Nekzus/npm-sentinel-mcp/commit/d4434b34b235b1db24ad4059bf326cfc56a81aed))
-
-# [1.19.0-alpha.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.18.1...v1.19.0-alpha.1) (2026-07-12)
-
-
-### Bug Fixes
-
-* **ci:** skip publish steps to MCP Registry if semantic-release does not release a new version ([599da59](https://github.com/Nekzus/npm-sentinel-mcp/commit/599da5992a9fb9590a4dc81f9b7956868bffa7df))
-* **release:** remove --branches main from semantic-release script in package.json ([380a5a7](https://github.com/Nekzus/npm-sentinel-mcp/commit/380a5a7906d18021da77fef855994443954db8f4))
-
-
-### Features
-
-* **alpha:** implement local scoring engine, HTTP retry client, CDN readme fallback, and setup alpha release pipeline ([875b8f8](https://github.com/Nekzus/npm-sentinel-mcp/commit/875b8f88ccfa98110a9f2237d90f8a7701a6eac8))
-
 ## [1.18.3](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.18.2...v1.18.3) (2026-07-12)
 
 ## [1.18.2](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.18.1...v1.18.2) (2026-07-12)
