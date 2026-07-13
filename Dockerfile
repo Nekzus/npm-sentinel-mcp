@@ -3,24 +3,25 @@
 FROM node:lts-alpine AS builder
 WORKDIR /app
 
+# Enable corepack for pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 # Copy dependency and config files first to leverage cache
-COPY package.json package-lock.json tsconfig.json ./
+COPY package.json pnpm-lock.yaml tsconfig.json ./
 
 # Install build dependencies for native modules (keytar)
 RUN apk add --no-cache python3 make g++ libsecret-dev
 
-# Install all dependencies (including dev) for build
-# Use --ignore-scripts then rebuild to compile native modules without running prepare
-RUN npm install --ignore-scripts && npm rebuild
+# Install all dependencies (including dev) for build using ignore-scripts to skip compile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
-# Copy source code and other necessary files
 # Copy source code and other necessary files
 COPY index.ts smithery.yaml ./
 COPY llms.txt llms-full.txt ./
 
 # Build the project
 # 1. Compile TS to JS (dist/)
-RUN npm run build
+RUN pnpm run build
 
 # ----- Production Stage -----
 FROM node:lts-alpine AS production
@@ -29,14 +30,17 @@ LABEL description="NPM Sentinel MCP Server for package analysis"
 LABEL version="1.7.8"
 WORKDIR /app
 
+# Enable corepack for pnpm
+RUN corepack enable && corepack prepare pnpm@latest --activate
+
 # Copy only the necessary artifacts from the build
 COPY --from=builder /app/package.json ./
-COPY --from=builder /app/package-lock.json ./
+COPY --from=builder /app/pnpm-lock.yaml ./
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/llms.txt /app/llms-full.txt ./
 
 # Install only production dependencies
-RUN npm install --omit=dev --ignore-scripts && npm cache clean --force
+RUN pnpm install --prod --frozen-lockfile --ignore-scripts && pnpm store prune
 
 # Use non-root user for security
 USER node
