@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.19.0-alpha.6](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.5...v1.19.0-alpha.6) (2026-07-13)
+
+
+### Bug Fixes
+
+* **docker:** configure dockerfile to use pnpm and fix build caching ([4bb1978](https://github.com/Nekzus/npm-sentinel-mcp/commit/4bb1978ac367878ddcbe7d4a4a813250e6cdc231))
+
 # [1.19.0-alpha.5](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.4...v1.19.0-alpha.5) (2026-07-13)
 
 
