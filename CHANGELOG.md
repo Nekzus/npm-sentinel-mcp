@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.19.0-alpha.5](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.4...v1.19.0-alpha.5) (2026-07-13)
+
+
+### Features
+
+* **smithery:** migrate mcp server to smithery v4 declarative stdio architecture ([db0d3f5](https://github.com/Nekzus/npm-sentinel-mcp/commit/db0d3f5e9bbf7e1f6bd2873630c5241d9fbc3532))
+
 # [1.19.0-alpha.4](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.3...v1.19.0-alpha.4) (2026-07-13)
 
 
