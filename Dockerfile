@@ -20,8 +20,7 @@ COPY llms.txt llms-full.txt ./
 
 # Build the project
 # 1. Compile TS to JS (dist/)
-# 2. Build Smithery HTTP adapter (.smithery/)
-RUN npm run build:stdio && npm run build:http
+RUN npm run build
 
 # ----- Production Stage -----
 FROM node:lts-alpine AS production
@@ -34,7 +33,6 @@ WORKDIR /app
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/package-lock.json ./
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/.smithery ./.smithery
 COPY --from=builder /app/llms.txt /app/llms-full.txt ./
 
 # Install only production dependencies
@@ -43,11 +41,5 @@ RUN npm install --omit=dev --ignore-scripts && npm cache clean --force
 # Use non-root user for security
 USER node
 
-# Expose the standard port (adjust if you use another)
-EXPOSE 3000
-
-# Optional HEALTHCHECK (uncomment and adjust the endpoint if you have one)
-
-
-# Startup command (Run the Smithery HTTP adapter)
-CMD ["node", ".smithery/index.cjs"] 
+# Startup command (Run the STDIO MCP server)
+CMD ["node", "dist/index.js"] 

@@ -19,14 +19,11 @@
     "server.json"
   ],
   "scripts": {
-    "build": "npm run build:stdio && npm run build:http",
+    "build": "npm run build:stdio",
     "build:stdio": "tsc && shx chmod +x dist/*.js",
-    "build:http": "smithery build",
     "prepare": "npm run build:stdio",
     "dev": "npx @smithery/cli dev",
-    "start": "npm run start:http",
-    "start:http": "node .smithery/index.cjs",
-    "start:stdio": "node dist/index.js",
+    "start": "node dist/index.js",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
     "format": "biome format --write .",
@@ -85,7 +82,7 @@
   "homepage": "https://github.com/Nekzus/npm-sentinel-mcp#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
-    "@smithery/sdk": "3.0.1",
+    "@smithery/sdk": "4.3.0",
     "node-fetch": "3.3.2",
     "zod": "^4.4.3"
   },
@@ -103,7 +100,7 @@
     "@semantic-release/github": "12.0.9",
     "@semantic-release/npm": "13.1.5",
     "@semantic-release/release-notes-generator": "14.1.1",
-    "@smithery/cli": "3.19.0",
+    "@smithery/cli": "4.11.1",
     "@types/node": "26.1.1",
     "@vitest/coverage-v8": "4.1.10",
     "chalk": "^5.6.2",

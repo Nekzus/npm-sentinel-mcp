@@ -11,7 +11,7 @@ configSchema:
       default: "https://registry.npmjs.org"
 
 startCommand:
-  type: "http"
+  type: "stdio"
   configSchema:
     type: "object"
     required: []
@@ -19,4 +19,12 @@ startCommand:
       NPM_REGISTRY_URL:
         type: "string"
         description: "URL of the NPM registry to use (default: https://registry.npmjs.org)"
-        default: "https://registry.npmjs.org" 
+        default: "https://registry.npmjs.org"
+  commandFunction: |-
+    (config) => ({
+      command: 'node',
+      args: ['dist/index.js'],
+      env: {
+        NPM_REGISTRY_URL: config.NPM_REGISTRY_URL
+      }
+    }) 
