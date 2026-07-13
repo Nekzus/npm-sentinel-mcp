@@ -1198,6 +1198,62 @@ async function fetchTransitiveDependenciesFromDepsDev(
 	}
 }
 
+export interface DepsDevProjectData {
+	starsCount: number;
+	forksCount: number;
+	openIssuesCount: number;
+	license: string;
+	description: string;
+	homepage: string;
+	scorecard?: {
+		overallScore: number;
+		checks: Array<{ name: string; score: number; reason: string }>;
+	};
+}
+
+export async function fetchRepoStatsFromDepsDev(
+	owner: string,
+	repo: string,
+	ignoreCache = false
+): Promise<DepsDevProjectData | null> {
+	const projectKey = encodeURIComponent(`github.com/${owner}/${repo}`);
+	const cacheKey = generateCacheKey('depsDevProject', owner, repo);
+	const cached = ignoreCache ? undefined : cacheGet<DepsDevProjectData>(cacheKey);
+	if (cached) return cached;
+
+	try {
+		const response = await fetchWithRetry(
+			`https://api.deps.dev/v3alpha/projects/${projectKey}`,
+			{},
+			{ maxRetries: 1 }
+		);
+		if (!response.ok) return null;
+
+		const data = (await response.json()) as any;
+		const result: DepsDevProjectData = {
+			starsCount: data.starsCount ?? 0,
+			forksCount: data.forksCount ?? 0,
+			openIssuesCount: data.openIssuesCount ?? 0,
+			license: data.license ?? 'unknown',
+			description: data.description ?? '',
+			homepage: data.homepage ?? '',
+			scorecard: data.scorecard ? {
+				overallScore: data.scorecard.overallScore,
+				checks: (data.scorecard.checks || []).map((c: any) => ({
+					name: c.name,
+					score: c.score,
+					reason: c.reason,
+				})),
+			} : undefined,
+		};
+
+		cacheSet(cacheKey, result, CACHE_TTL_VERY_LONG);
+		return result;
+	} catch {
+		return null;
+	}
+}
+
 // Helper to resolve 'latest' tag to actual version number
 async function resolveLatestVersion(packageName: string): Promise<string | null> {
 	try {
@@ -1888,6 +1944,10 @@ export interface LocalScoreResult {
 			maintenance: number;
 		};
 	};
+	scorecard?: {
+		overallScore: number;
+		checks: Array<{ name: string; score: number; reason: string }>;
+	};
 }
 
 export async function getLocalPackageMetrics(name: string, ignoreCache = false): Promise<LocalScoreResult> {
@@ -1927,7 +1987,7 @@ export async function getLocalPackageMetrics(name: string, ignoreCache = false):
 		console.debug(`Could not fetch downloads for ${name}: ${dlError}`);
 	}
 
-	// 3. Fetch GitHub stats (optional, graceful degradation)
+	// 3. Fetch GitHub stats via deps.dev (optional, graceful degradation)
 	let github = {
 		starsCount: 0,
 		forksCount: 0,
@@ -1935,6 +1995,7 @@ export async function getLocalPackageMetrics(name: string, ignoreCache = false):
 		openIssuesCount: 0,
 		hasGitHubData: false,
 	};
+	let scorecard: LocalScoreResult['scorecard'];
 
 	const repoUrl = versionData.repository?.url || packageInfo.repository?.url;
 	if (repoUrl?.includes('github.com')) {
@@ -1943,19 +2004,19 @@ export async function getLocalPackageMetrics(name: string, ignoreCache = false):
 			const [, owner, repo] = githubMatch;
 			const cleanRepo = repo.replace(/\.git$/, '');
 			try {
-				const ghResponse = await fetchWithRetry(`https://api.github.com/repos/${owner}/${cleanRepo}`, {}, { maxRetries: 0 });
-				if (ghResponse.ok) {
-					const ghData = await ghResponse.json();
+				const depsDevData = await fetchRepoStatsFromDepsDev(owner, cleanRepo, ignoreCache);
+				if (depsDevData) {
 					github = {
-						starsCount: ghData.stargazers_count || 0,
-						forksCount: ghData.forks_count || 0,
-						subscribersCount: ghData.subscribers_count || 0,
-						openIssuesCount: ghData.open_issues_count || 0,
+						starsCount: depsDevData.starsCount,
+						forksCount: depsDevData.forksCount,
+						subscribersCount: 0,
+						openIssuesCount: depsDevData.openIssuesCount,
 						hasGitHubData: true,
 					};
+					scorecard = depsDevData.scorecard;
 				}
 			} catch (ghError) {
-				console.debug(`Could not fetch GitHub data for ${owner}/${cleanRepo}: ${ghError}`);
+				console.debug(`Could not fetch deps.dev project data for ${owner}/${cleanRepo}: ${ghError}`);
 			}
 		}
 	}
@@ -2010,6 +2071,7 @@ export async function getLocalPackageMetrics(name: string, ignoreCache = false):
 				maintenance,
 			},
 		},
+		scorecard,
 	};
 
 	cacheSet(cacheKey, result, CACHE_TTL_LONG);
@@ -2490,6 +2552,7 @@ export async function handleNpmScore(args: {
 									},
 								}
 							: null,
+						scorecard: metrics.scorecard,
 					};
 
 					cacheSet(cacheKey, scoreData, CACHE_TTL_LONG);
@@ -3084,18 +3147,6 @@ export async function handleNpmLicenseCompatibility(args: {
 	}
 }
 
-interface GitHubRepoStats {
-	stargazers_count: number;
-	forks_count: number;
-	open_issues_count: number;
-	watchers_count: number;
-	updated_at: string;
-	created_at: string;
-	has_wiki: boolean;
-	default_branch: string;
-	topics: string[];
-}
-
 // Repository statistics analyzer
 export async function handleNpmRepoStats(args: {
 	packages: string[];
@@ -3215,30 +3266,22 @@ export async function handleNpmRepoStats(args: {
 						cacheSet(cacheKey, resultNotGitHub, CACHE_TTL_LONG);
 						return resultNotGitHub;
 					}
-
 					const [, owner, repo] = githubMatch;
-					const githubRepoApiUrl = `https://api.github.com/repos/${owner}/${repo.replace(/\.git$/, '')}`;
+					const cleanRepo = repo.replace(/\.git$/, '');
 
-					const githubResponse = await fetchWithRetry(githubRepoApiUrl, {
-						headers: {
-							Accept: 'application/vnd.github.v3+json',
-						},
-					});
+					const depsDevData = await fetchRepoStatsFromDepsDev(owner, cleanRepo, args.ignoreCache);
 
-					if (!githubResponse.ok) {
+					if (!depsDevData) {
 						const errorData = {
 							packageInput: pkgInput,
 							packageName: name,
 							status: 'error' as const,
-							error: `Failed to fetch GitHub repo stats for ${owner}/${repo}: ${githubResponse.status} ${githubResponse.statusText}`,
-							data: { githubRepoUrl: githubRepoApiUrl },
-							message: `Could not retrieve GitHub repository statistics from ${githubRepoApiUrl}.`,
+							error: `Failed to fetch project stats for github.com/${owner}/${cleanRepo} from deps.dev`,
+							data: { repositoryUrl: repoUrl },
+							message: `Could not retrieve repository statistics from deps.dev.`,
 						};
-						// Do not cache GitHub API call failures for now
 						return errorData;
 					}
-
-					const githubData = (await githubResponse.json()) as GitHubRepoStats;
 
 					const successResult = {
 						packageInput: pkgInput,
@@ -3246,18 +3289,19 @@ export async function handleNpmRepoStats(args: {
 						status: 'success' as const,
 						error: null,
 						data: {
-							githubRepoUrl: `https://github.com/${owner}/${repo.replace(/\.git$/, '')}`,
-							stars: githubData.stargazers_count,
-							forks: githubData.forks_count,
-							openIssues: githubData.open_issues_count,
-							watchers: githubData.watchers_count,
-							createdAt: githubData.created_at,
-							updatedAt: githubData.updated_at,
-							defaultBranch: githubData.default_branch,
-							hasWiki: githubData.has_wiki,
-							topics: githubData.topics || [],
+							githubRepoUrl: `https://github.com/${owner}/${cleanRepo}`,
+							stars: depsDevData.starsCount,
+							forks: depsDevData.forksCount,
+							openIssues: depsDevData.openIssuesCount,
+							watchers: 0,
+							createdAt: null,
+							updatedAt: null,
+							defaultBranch: null,
+							hasWiki: null,
+							topics: [],
+							scorecard: depsDevData.scorecard,
 						},
-						message: 'GitHub repository statistics fetched successfully.',
+						message: 'Repository statistics fetched successfully from deps.dev.',
 					};
 					cacheSet(cacheKey, successResult, CACHE_TTL_LONG);
 					return successResult;
@@ -3297,14 +3341,6 @@ export async function handleNpmRepoStats(args: {
 			isError: true,
 		};
 	}
-}
-
-
-
-interface GithubRelease {
-	tag_name?: string;
-	name?: string;
-	published_at?: string;
 }
 
 interface NpmSearchResponse {
@@ -3741,19 +3777,22 @@ export async function handleNpmChangelogAnalysis(args: {
 					let changelogSourceUrl: string | null = null;
 					let hasChangelogFile = false;
 
-					for (const file of changelogFiles) {
-						try {
-							const rawChangelogUrl = `https://raw.githubusercontent.com/${owner}/${repoNameForUrl}/master/${file}`;
-							const response = await fetchWithRetry(rawChangelogUrl);
-							if (response.ok) {
-								changelogContent = await response.text();
-								changelogSourceUrl = rawChangelogUrl;
-								hasChangelogFile = true;
-								break;
+					for (const branch of ['main', 'master']) {
+						for (const file of changelogFiles) {
+							try {
+								const rawChangelogUrl = `https://raw.githubusercontent.com/${owner}/${repoNameForUrl}/${branch}/${file}`;
+								const response = await fetchWithRetry(rawChangelogUrl, {}, { maxRetries: 0 });
+								if (response.ok) {
+									changelogContent = await response.text();
+									changelogSourceUrl = rawChangelogUrl;
+									hasChangelogFile = true;
+									break;
+								}
+							} catch {
+								// Sigue intentando
 							}
-						} catch (error) {
-							console.debug(`Error fetching changelog file ${file} for ${name}: ${error}`);
 						}
+						if (hasChangelogFile) break;
 					}
 
 					let githubReleases: any[] = [];
@@ -3765,17 +3804,36 @@ export async function handleNpmChangelogAnalysis(args: {
 									Accept: 'application/vnd.github.v3+json',
 								},
 							},
+							{ maxRetries: 0 }
 						);
 						if (githubApiResponse.ok) {
-							const releasesData = (await githubApiResponse.json()) as GithubRelease[];
+							const releasesData = (await githubApiResponse.json()) as any[];
 							githubReleases = releasesData.map((r) => ({
 								tag_name: r.tag_name || null,
 								name: r.name || null,
 								published_at: r.published_at || null,
+								source: 'github-api',
 							}));
 						}
 					} catch (error) {
 						console.debug(`Error fetching GitHub releases for ${name}: ${error}`);
+					}
+
+					// Fallback to NPM Registry time/publish history if GitHub releases couldn't be fetched
+					const publishTime = npmData.time;
+					if (githubReleases.length === 0 && publishTime) {
+						const timeKeys = Object.keys(publishTime).filter(
+							(k) => k !== 'modified' && k !== 'created'
+						);
+						const sortedVersions = timeKeys.sort((a, b) => {
+							return new Date(publishTime[b]).getTime() - new Date(publishTime[a]).getTime();
+						});
+						githubReleases = sortedVersions.slice(0, 5).map((v) => ({
+							tag_name: `v${v}`,
+							name: `Release ${v} (NPM Publish)`,
+							published_at: publishTime[v],
+							source: 'npm-registry',
+						}));
 					}
 
 					const versions = Object.keys(npmData.versions || {});
@@ -3796,7 +3854,7 @@ export async function handleNpmChangelogAnalysis(args: {
 								: `Changelog analysis for ${name}.`;
 
 					const resultToCache = {
-						packageInput: pkgInput, // This might differ on subsequent cache hits, so store the original reference for this specific cache entry
+						packageInput: pkgInput,
 						packageName: name,
 						versionQueried: versionQueried,
 						status: status as 'success' | 'no_changelog_found',
