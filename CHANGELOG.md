@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.20.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0...v1.20.0) (2026-07-13)
+
+
+### Bug Fixes
+
+* **docker:** configure dockerfile to use pnpm and fix build caching ([4bb1978](https://github.com/Nekzus/npm-sentinel-mcp/commit/4bb1978ac367878ddcbe7d4a4a813250e6cdc231))
+* **smithery:** pin smithery dependencies to v3 to keep shttp build command functional ([8b52d15](https://github.com/Nekzus/npm-sentinel-mcp/commit/8b52d15f23a3d428bbd2085d145e78458d37218c))
+
+
+### Features
+
+* **smithery:** merge branch 'alpha' into main (upgrade to smithery v4) ([c05b8ec](https://github.com/Nekzus/npm-sentinel-mcp/commit/c05b8ec145fd7b70f7112c631b3bae0451dd251e))
+* **smithery:** migrate mcp server to smithery v4 declarative stdio architecture ([db0d3f5](https://github.com/Nekzus/npm-sentinel-mcp/commit/db0d3f5e9bbf7e1f6bd2873630c5241d9fbc3532))
+
 # [1.19.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.18.3...v1.19.0) (2026-07-13)
 
 
