@@ -66,14 +66,14 @@ This MCP server now supports both STDIO and HTTP streamable transport. Your exis
 
 **Development commands:**
 ```bash
+# Compile TypeScript
+pnpm run build
+
+# Start STDIO server
+pnpm run start
+
 # Development server with playground
-npm run dev
-
-# Build for HTTP
-npm run build:http
-
-# Start HTTP server
-npm run start:http
+pnpm run dev
 ```
 
 ### Install in VS Code
@@ -379,16 +379,16 @@ The server also provides the following informational resources accessible via MC
 
 ```bash
 # Install dependencies
-npm install
+pnpm install
 
-# Build for STDIO (traditional)
-npm run build:stdio
+# Build TypeScript
+pnpm run build
 
-# Build for HTTP (Smithery)
-npm run build:http
+# Start the STDIO server
+pnpm run start
 
 # Development server
-npm run dev
+pnpm run dev
 ```
 
 ## License
