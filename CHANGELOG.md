@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.19.0-alpha.3](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.2...v1.19.0-alpha.3) (2026-07-13)
+
+
+### Features
+
+* **alpha:** migrate GitHub API calls to deps.dev and integrate OpenSSF Scorecard ([44fe973](https://github.com/Nekzus/npm-sentinel-mcp/commit/44fe97345ec03d34a9266620a343e8f783f09edb))
+
 # [1.19.0-alpha.2](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.1...v1.19.0-alpha.2) (2026-07-12)
 
 
