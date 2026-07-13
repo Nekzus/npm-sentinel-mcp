@@ -164,7 +164,7 @@ Schema: {
     "description": "List of package names to analyze"
   }
 }
-Returns: Comprehensive quality scores (e.g., from npms.io) for each package. The response is provided within the standard MCP wrapper: {"content": [{"type": "text", "text": "<output>", "isError": boolean}]}.
+Returns: Comprehensive quality scores, local scoring metrics, and OpenSSF Scorecard for each package. The response is provided within the standard MCP wrapper: {"content": [{"type": "text", "text": "<output>", "isError": boolean}]}.
 
 npmPackageReadme
 Description: Get package README content
@@ -213,7 +213,7 @@ Schema: {
     "description": "List of package names to analyze"
   }
 }
-Returns: GitHub/repository metrics for each package. The response is provided within the standard MCP wrapper: {"content": [{"type": "text", "text": "<output>", "isError": boolean}]}.
+Returns: GitHub/repository metrics (stars, forks, open issues) along with OpenSSF Scorecard checks and scores via deps.dev. The response is provided within the standard MCP wrapper: {"content": [{"type": "text", "text": "<output>", "isError": boolean}]}.
 
 npmDeprecated
 Description: Check for deprecation

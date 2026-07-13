@@ -240,11 +240,53 @@ interface ScoreDetails {
   quality: number;
   popularity: number;
   maintenance: number;
-  overall: number;
+  final: number;
 }
 
 interface NpmScoreResponse {
-  [packageName: string]: ScoreDetails;
+  queryPackages: string[];
+  results: Array<{
+    packageInput: string;
+    packageName: string;
+    status: 'success' | 'error' | 'success_cache';
+    error: string | null;
+    data: {
+      analyzedAt: string;
+      versionInScore: string;
+      score: {
+        final: number;
+        detail: {
+          quality: number;
+          popularity: number;
+          maintenance: number;
+        };
+      };
+      packageInfoFromScore: {
+        name: string;
+        version: string;
+        description: string | null;
+      };
+      npmStats: {
+        downloadsLastMonth: number;
+        starsCount: number;
+      };
+      githubStats: {
+        starsCount: number;
+        forksCount: number;
+        subscribersCount: number;
+        issues: {
+          count: number;
+          openCount: number;
+        };
+      } | null;
+      scorecard?: {
+        overallScore: number;
+        checks: Array<{ name: string; score: number; reason: string }>;
+      };
+    };
+    message: string;
+  }>;
+  message: string;
 }
 ```
 
@@ -312,16 +354,32 @@ interface NpmRepoStatsInput {
 }
 
 interface RepoStats {
-  stars?: number;
-  forks?: number;
-  openIssues?: number;
-  lastCommitDate?: string;
-  contributorsCount?: number;
-  repoUrl?: string;
+  githubRepoUrl: string;
+  stars: number;
+  forks: number;
+  openIssues: number;
+  watchers: number;
+  createdAt: string | null;
+  updatedAt: string | null;
+  defaultBranch: string | null;
+  hasWiki: boolean | null;
+  topics: string[];
+  scorecard?: {
+    overallScore: number;
+    checks: Array<{ name: string; score: number; reason: string }>;
+  };
 }
 
 interface NpmRepoStatsResponse {
-  [packageName: string]: RepoStats;
+  queryPackages: string[];
+  results: Array<{
+    packageInput: string;
+    packageName: string;
+    status: 'success' | 'error' | 'success_cache';
+    error: string | null;
+    data: RepoStats;
+    message: string;
+  }>;
 }
 ```
 

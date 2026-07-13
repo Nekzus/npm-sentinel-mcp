@@ -17,7 +17,6 @@ let NPM_REGISTRY_URL = (process.env.NPM_REGISTRY_URL || 'https://registry.npmjs.
 );
 
 // Cache configuration
-const CACHE_TTL_SHORT = 15 * 60 * 1000; // 15 minutes
 const CACHE_TTL_MEDIUM = 60 * 60 * 1000; // 1 hour
 const CACHE_TTL_LONG = 6 * 60 * 60 * 1000; // 6 hours
 const CACHE_TTL_VERY_LONG = 24 * 60 * 60 * 1000; // 24 hours
@@ -93,6 +92,85 @@ function cacheSet<T>(key: string, value: T, ttlMilliseconds: number): void {
 		const oldestKey = apiCache.keys().next().value;
 		if (oldestKey) {
 			apiCache.delete(oldestKey);
+		}
+	}
+}
+
+// HTTP wrapper configuration
+const HTTP_MAX_RETRIES = 3;
+const HTTP_INITIAL_BACKOFF_MS = 1000;
+const HTTP_MAX_CONCURRENT_REQUESTS = 5;
+const DEFAULT_HEADERS = {
+	Accept: 'application/json',
+	'User-Agent': 'NPM-Sentinel-MCP/1.x',
+};
+
+// Semaphore for concurrency control
+let activeRequests = 0;
+const requestQueue: (() => void)[] = [];
+
+function acquireSlot(): Promise<void> {
+	if (activeRequests < HTTP_MAX_CONCURRENT_REQUESTS) {
+		activeRequests++;
+		return Promise.resolve();
+	}
+	return new Promise((resolve) => {
+		requestQueue.push(() => {
+			activeRequests++;
+			resolve();
+		});
+	});
+}
+
+function releaseSlot(): void {
+	activeRequests--;
+	const next = requestQueue.shift();
+	if (next) next();
+}
+
+export async function fetchWithRetry(
+	url: string,
+	options: any = {},
+	config: { maxRetries?: number; skipThrottle?: boolean } = {},
+): Promise<any> {
+	const maxRetries = config.maxRetries ?? HTTP_MAX_RETRIES;
+	const mergedHeaders = { ...DEFAULT_HEADERS, ...(options.headers || {}) };
+	const mergedOptions = { ...options, headers: mergedHeaders };
+
+	if (!config.skipThrottle) {
+		await acquireSlot();
+	}
+
+	try {
+		for (let attempt = 0; attempt <= maxRetries; attempt++) {
+			try {
+				const response = await fetch(url, mergedOptions);
+
+				if (response.status === 429 || (response.status >= 500 && response.status < 600)) {
+					if (attempt < maxRetries) {
+						const retryAfter = response.headers.get('retry-after');
+						const waitMs = retryAfter
+							? parseInt(retryAfter, 10) * 1000
+							: HTTP_INITIAL_BACKOFF_MS * (2 ** attempt);
+						await new Promise((resolve) => setTimeout(resolve, waitMs));
+						continue;
+					}
+				}
+				return response;
+			} catch (err) {
+				if (attempt < maxRetries) {
+					const waitMs = HTTP_INITIAL_BACKOFF_MS * (2 ** attempt);
+					await new Promise((resolve) => setTimeout(resolve, waitMs));
+					continue;
+				}
+				throw err;
+			}
+		}
+		// Fallback
+		return await fetch(url, mergedOptions);
+	} finally {
+		if (!config.skipThrottle) {
+			releaseSlot();
 		}
 	}
 }
@@ -201,118 +279,7 @@ export const NpmDownloadsDataSchema = z.object({
 	package: z.string(),
 });
 
-// Updated interface for npms.io response
-interface NpmsApiResponse {
-	analyzedAt: string;
-	collected: {
-		metadata: {
-			name: string;
-			version: string;
-			description?: string;
-		};
-		npm: {
-			downloads: Array<{
-				from: string;
-				to: string;
-				count: number;
-			}>;
-			starsCount: number;
-		};
-		github?: {
-			starsCount: number;
-			forksCount: number;
-			subscribersCount: number;
-			issues: {
-				count: number;
-				openCount: number;
-			};
-		};
-	};
-	score: {
-		final: number;
-		detail: {
-			quality: number;
-			popularity: number;
-			maintenance: number;
-		};
-	};
-}
-
-function isValidNpmsResponse(data: unknown): data is NpmsApiResponse {
-	if (typeof data !== 'object' || data === null) {
-		console.debug('NpmsApiResponse validation: Response is not an object or is null');
-		return false;
-	}
-
-	const response = data as Partial<NpmsApiResponse>;
-
-	// Check score structure
-	if (
-		!response.score ||
-		typeof response.score !== 'object' ||
-		!('final' in response.score) ||
-		typeof response.score.final !== 'number' ||
-		!('detail' in response.score) ||
-		typeof response.score.detail !== 'object'
-	) {
-		console.debug('NpmsApiResponse validation: Invalid score structure');
-		return false;
-	}
-
-	// Check score detail metrics
-	const detail = response.score.detail;
-	if (
-		typeof detail.quality !== 'number' ||
-		typeof detail.popularity !== 'number' ||
-		typeof detail.maintenance !== 'number'
-	) {
-		console.debug('NpmsApiResponse validation: Invalid score detail metrics');
-		return false;
-	}
-
-	// Check collected data structure
-	if (
-		!response.collected ||
-		typeof response.collected !== 'object' ||
-		!response.collected.metadata ||
-		typeof response.collected.metadata !== 'object' ||
-		typeof response.collected.metadata.name !== 'string' ||
-		typeof response.collected.metadata.version !== 'string'
-	) {
-		console.debug('NpmsApiResponse validation: Invalid collected data structure');
-		return false;
-	}
-
-	// Check npm data
-	if (
-		!response.collected.npm ||
-		typeof response.collected.npm !== 'object' ||
-		!Array.isArray(response.collected.npm.downloads) ||
-		typeof response.collected.npm.starsCount !== 'number'
-	) {
-		console.debug('NpmsApiResponse validation: Invalid npm data structure');
-		return false;
-	}
-
-	// Optional github data check
-	if (response.collected.github) {
-		if (
-			typeof response.collected.github !== 'object' ||
-			typeof response.collected.github.starsCount !== 'number' ||
-			typeof response.collected.github.forksCount !== 'number' ||
-			typeof response.collected.github.subscribersCount !== 'number' ||
-			!response.collected.github.issues ||
-			typeof response.collected.github.issues !== 'object' ||
-			typeof response.collected.github.issues.count !== 'number' ||
-			typeof response.collected.github.issues.openCount !== 'number'
-		) {
-			console.debug('NpmsApiResponse validation: Invalid github data structure');
-			return false;
-		}
-	}
-
-	return true;
-}
+// Schema for search results from npm registry v1 search api
 
 export const NpmSearchResultSchema = z
 	.object({
@@ -360,17 +327,7 @@ export type NpmPackageData = z.infer<typeof NpmPackageDataSchema>;
 export type BundlephobiaData = z.infer<typeof BundlephobiaDataSchema>;
 export type NpmDownloadsData = z.infer<typeof NpmDownloadsDataSchema>;
 
-// Logger function that uses stderr - only for critical errors
-const log = (...args: any[]) => {
-	// Filter out server status messages
-	const message = args[0];
-	if (
-		typeof message === 'string' &&
-		(!message.startsWith('[Server]') || message.includes('error') || message.includes('Error'))
-	) {
-		console.error(...args);
-	}
-};
+
 
 // Type guards for API responses
 function isNpmPackageInfo(data: unknown): data is NpmPackageInfo {
@@ -510,14 +467,8 @@ export async function handleNpmVersions(args: {
 						message: `Successfully fetched versions for ${name} from cache.`,
 					};
 				}
-
 				try {
-					const response = await fetch(`${NPM_REGISTRY_URL}/${name}`, {
-						headers: {
-							Accept: 'application/json',
-							'User-Agent': 'NPM-Sentinel-MCP',
-						},
-					});
+					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}`);
 
 					if (!response.ok) {
 						return {
@@ -593,15 +544,7 @@ export async function handleNpmVersions(args: {
 	}
 }
 
-interface NpmLatestVersionResponse {
-	version: string;
-	description?: string;
-	author?: {
-		name?: string;
-	};
-	license?: string;
-	homepage?: string;
-}
+
 
 export async function handleNpmLatest(args: {
 	packages: string[];
@@ -678,12 +621,7 @@ export async function handleNpmLatest(args: {
 				}
 
 				try {
-					const response = await fetch(`${NPM_REGISTRY_URL}/${name}/${versionTag}`, {
-						headers: {
-							Accept: 'application/json',
-							'User-Agent': 'NPM-Sentinel-MCP',
-						},
-					});
+					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${versionTag}`);
 
 					if (!response.ok) {
 						let errorMsg = `Failed to fetch package version: ${response.status} ${response.statusText}`;
@@ -838,12 +776,7 @@ export async function handleNpmDeps(args: {
 				}
 
 				try {
-					const response = await fetch(`${NPM_REGISTRY_URL}/${name}/${version}`, {
-						headers: {
-							Accept: 'application/json',
-							'User-Agent': 'NPM-Sentinel-MCP',
-						},
-					});
+					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${version}`);
 
 					if (!response.ok) {
 						return {
@@ -993,12 +926,7 @@ export async function handleNpmTypes(args: {
 				}
 
 				try {
-					const response = await fetch(`${NPM_REGISTRY_URL}/${name}/${version}`, {
-						headers: {
-							Accept: 'application/json',
-							'User-Agent': 'NPM-Sentinel-MCP',
-						},
-					});
+					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${version}`);
 
 					if (!response.ok) {
 						return {
@@ -1025,12 +953,7 @@ export async function handleNpmTypes(args: {
 					};
 
 					try {
-						const typesResponse = await fetch(`${NPM_REGISTRY_URL}/${typesPackageName}/latest`, {
-							headers: {
-								Accept: 'application/json',
-								'User-Agent': 'NPM-Sentinel-MCP',
-							},
-						});
+						const typesResponse = await fetchWithRetry(`${NPM_REGISTRY_URL}/${typesPackageName}/latest`);
 						if (typesResponse.ok) {
 							const typesData = (await typesResponse.json()) as NpmPackageData;
 							typesPackageInfo = {
@@ -1153,14 +1076,8 @@ export async function handleNpmSize(args: {
 				}
 
 				try {
-					const response = await fetch(
-						`https://bundlephobia.com/api/size?package=${bundlephobiaQuery}`,
-						{
-							headers: {
-								Accept: 'application/json',
-								'User-Agent': 'NPM-Sentinel-MCP',
-							},
-						},
+					const response = await fetchWithRetry(
+						`https://bundlephobia.com/api/size?package=${bundlephobiaQuery}`
 					);
 
 					if (!response.ok) {
@@ -1259,9 +1176,7 @@ async function fetchTransitiveDependenciesFromDepsDev(
 		const encodedVersion = encodeURIComponent(version);
 		const url = `https://api.deps.dev/v3/systems/npm/packages/${encodedName}/versions/${encodedVersion}:dependencies`;
 
-		const response = await fetch(url, {
-			headers: { Accept: 'application/json', 'User-Agent': 'NPM-Sentinel-MCP' },
-		});
+		const response = await fetchWithRetry(url);
 
 		if (!response.ok) {
 			console.warn(`deps.dev API returned ${response.status} for ${pkgName}@${version}`);
@@ -1283,12 +1198,66 @@ async function fetchTransitiveDependenciesFromDepsDev(
 	}
 }
 
+export interface DepsDevProjectData {
+	starsCount: number;
+	forksCount: number;
+	openIssuesCount: number;
+	license: string;
+	description: string;
+	homepage: string;
+	scorecard?: {
+		overallScore: number;
+		checks: Array<{ name: string; score: number; reason: string }>;
+	};
+}
+
+export async function fetchRepoStatsFromDepsDev(
+	owner: string,
+	repo: string,
+	ignoreCache = false
+): Promise<DepsDevProjectData | null> {
+	const projectKey = encodeURIComponent(`github.com/${owner}/${repo}`);
+	const cacheKey = generateCacheKey('depsDevProject', owner, repo);
+	const cached = ignoreCache ? undefined : cacheGet<DepsDevProjectData>(cacheKey);
+	if (cached) return cached;
+
+	try {
+		const response = await fetchWithRetry(
+			`https://api.deps.dev/v3alpha/projects/${projectKey}`,
+			{},
+			{ maxRetries: 1 }
+		);
+		if (!response.ok) return null;
+
+		const data = (await response.json()) as any;
+		const result: DepsDevProjectData = {
+			starsCount: data.starsCount ?? 0,
+			forksCount: data.forksCount ?? 0,
+			openIssuesCount: data.openIssuesCount ?? 0,
+			license: data.license ?? 'unknown',
+			description: data.description ?? '',
+			homepage: data.homepage ?? '',
+			scorecard: data.scorecard ? {
+				overallScore: data.scorecard.overallScore,
+				checks: (data.scorecard.checks || []).map((c: any) => ({
+					name: c.name,
+					score: c.score,
+					reason: c.reason,
+				})),
+			} : undefined,
+		};
+
+		cacheSet(cacheKey, result, CACHE_TTL_VERY_LONG);
+		return result;
+	} catch {
+		return null;
+	}
+}
+
 // Helper to resolve 'latest' tag to actual version number
 async function resolveLatestVersion(packageName: string): Promise<string | null> {
 	try {
-		const response = await fetch(`${NPM_REGISTRY_URL}/${packageName}/latest`, {
-			headers: { 'User-Agent': 'NPM-Sentinel-MCP' },
-		});
+		const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${packageName}/latest`);
 		if (!response.ok) return null;
 		const data = (await response.json()) as any;
 		return data.version || null;
@@ -1309,9 +1278,7 @@ async function enrichVulnerabilityData(vulnId: string, ignoreCache = false): Pro
 	if (cached) return cached;
 
 	try {
-		const response = await fetch(`https://api.osv.dev/v1/vulns/${vulnId}`, {
-			headers: { 'User-Agent': 'NPM-Sentinel-MCP' },
-		});
+		const response = await fetchWithRetry(`https://api.osv.dev/v1/vulns/${vulnId}`);
 		if (!response.ok) return null;
 		const data = await response.json();
 		cacheSet(cacheKey, data, CACHE_TTL_LONG);
@@ -1472,7 +1439,7 @@ export async function handleNpmVulnerabilities(args: {
 
 		if (finalBatchQueries.length > 0) {
 			// Perform Batch API call to OSV for non-cached items
-			const response = await fetch('https://api.osv.dev/v1/querybatch', {
+			const response = await fetchWithRetry('https://api.osv.dev/v1/querybatch', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ queries: finalBatchQueries }),
@@ -1672,12 +1639,7 @@ export async function handleNpmTrends(args: {
 				}
 
 				try {
-					const response = await fetch(`https://api.npmjs.org/downloads/point/${period}/${name}`, {
-						headers: {
-							Accept: 'application/json',
-							'User-Agent': 'NPM-Sentinel-MCP',
-						},
-					});
+					const response = await fetchWithRetry(`https://api.npmjs.org/downloads/point/${period}/${name}`);
 
 					if (!response.ok) {
 						let errorMsg = `Failed to fetch download trends: ${response.status} ${response.statusText}`;
@@ -1857,7 +1819,7 @@ export async function handleNpmCompare(args: {
 
 				try {
 					// Fetch package version details from registry
-					const pkgResponse = await fetch(`${NPM_REGISTRY_URL}/${name}/${versionTag}`);
+					const pkgResponse = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${versionTag}`);
 					if (!pkgResponse.ok) {
 						throw new Error(
 							`Failed to fetch package info for ${name}@${versionTag}: ${pkgResponse.status} ${pkgResponse.statusText}`,
@@ -1871,8 +1833,8 @@ export async function handleNpmCompare(args: {
 					// Fetch monthly downloads
 					let monthlyDownloads: number | null = null;
 					try {
-						const downloadsResponse = await fetch(
-							`https://api.npmjs.org/downloads/point/last-month/${name}`,
+						const downloadsResponse = await fetchWithRetry(
+							`https://api.npmjs.org/downloads/point/last-month/${name}`
 						);
 						if (downloadsResponse.ok) {
 							const downloadsData = await downloadsResponse.json();
@@ -1888,7 +1850,7 @@ export async function handleNpmCompare(args: {
 					// Need to fetch the full package info to get to the 'time' field for specific version
 					let publishDate: string | null = null;
 					try {
-						const fullPkgInfoResponse = await fetch(`${NPM_REGISTRY_URL}/${name}`);
+						const fullPkgInfoResponse = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}`);
 						if (fullPkgInfoResponse.ok) {
 							const fullPkgInfo = await fullPkgInfoResponse.json();
 							if (isNpmPackageInfo(fullPkgInfo) && fullPkgInfo.time) {
@@ -1961,6 +1923,161 @@ export async function handleNpmCompare(args: {
 	}
 }
 
+export interface LocalScoreResult {
+	packageName: string;
+	version: string;
+	description: string | null;
+	analyzedAt: string;
+	downloadsLastMonth: number;
+	github: {
+		starsCount: number;
+		forksCount: number;
+		subscribersCount: number;
+		openIssuesCount: number;
+		hasGitHubData: boolean;
+	};
+	score: {
+		final: number;
+		detail: {
+			quality: number;
+			popularity: number;
+			maintenance: number;
+		};
+	};
+	scorecard?: {
+		overallScore: number;
+		checks: Array<{ name: string; score: number; reason: string }>;
+	};
+}
+
+export async function getLocalPackageMetrics(name: string, ignoreCache = false): Promise<LocalScoreResult> {
+	const cacheKey = generateCacheKey('localMetrics', name);
+	const cached = ignoreCache ? undefined : cacheGet<LocalScoreResult>(cacheKey);
+	if (cached) return cached;
+
+	// 1. Fetch full packument from registry
+	const registryResponse = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}`);
+	if (!registryResponse.ok) {
+		throw new Error(`Package ${name} not found on registry.`);
+	}
+	const packageInfo = await registryResponse.json();
+	if (!isNpmPackageInfo(packageInfo)) {
+		throw new Error(`Invalid registry data received for ${name}.`);
+	}
+
+	const latestVersion = packageInfo['dist-tags']?.latest;
+	if (!latestVersion || !packageInfo.versions?.[latestVersion]) {
+		throw new Error(`No latest version found for ${name}.`);
+	}
+
+	const versionData = packageInfo.versions[latestVersion];
+	const hasTypes = Boolean(versionData.types || versionData.typings || versionData.dependencies?.[`@types/${name}`]);
+	const hasReadme = Boolean(versionData.readme || packageInfo.readme);
+	const dependencyCount = Object.keys(versionData.dependencies || {}).length;
+
+	// 2. Fetch downloads for last month
+	let downloadsLastMonth = 0;
+	try {
+		const downloadsResponse = await fetchWithRetry(`https://api.npmjs.org/downloads/point/last-month/${name}`);
+		if (downloadsResponse.ok) {
+			const dlData = await downloadsResponse.json();
+			downloadsLastMonth = dlData.downloads || 0;
+		}
+	} catch (dlError) {
+		console.debug(`Could not fetch downloads for ${name}: ${dlError}`);
+	}
+
+	// 3. Fetch GitHub stats via deps.dev (optional, graceful degradation)
+	let github = {
+		starsCount: 0,
+		forksCount: 0,
+		subscribersCount: 0,
+		openIssuesCount: 0,
+		hasGitHubData: false,
+	};
+	let scorecard: LocalScoreResult['scorecard'];
+
+	const repoUrl = versionData.repository?.url || packageInfo.repository?.url;
+	if (repoUrl?.includes('github.com')) {
+		const githubMatch = repoUrl.match(/github\.com[:/]([^/]+)\/([^/.]+)/);
+		if (githubMatch) {
+			const [, owner, repo] = githubMatch;
+			const cleanRepo = repo.replace(/\.git$/, '');
+			try {
+				const depsDevData = await fetchRepoStatsFromDepsDev(owner, cleanRepo, ignoreCache);
+				if (depsDevData) {
+					github = {
+						starsCount: depsDevData.starsCount,
+						forksCount: depsDevData.forksCount,
+						subscribersCount: 0,
+						openIssuesCount: depsDevData.openIssuesCount,
+						hasGitHubData: true,
+					};
+					scorecard = depsDevData.scorecard;
+				}
+			} catch (ghError) {
+				console.debug(`Could not fetch deps.dev project data for ${owner}/${cleanRepo}: ${ghError}`);
+			}
+		}
+	}
+
+	// 4. Calculate publish age
+	let lastPublishDaysAgo = 365;
+	const timeObj = packageInfo.time;
+	if (timeObj?.[latestVersion]) {
+		const publishDate = new Date(timeObj[latestVersion]);
+		const diffTime = Math.abs(Date.now() - publishDate.getTime());
+		lastPublishDaysAgo = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+	}
+
+	// 5. Scoring Algorithm
+	const popularityNPM = Math.min(1, Math.log10(Math.max(1, downloadsLastMonth)) / 8);
+	let popularity = popularityNPM;
+	if (github.hasGitHubData) {
+		const popularityGH = Math.min(1, github.starsCount / 50000);
+		popularity = (popularityNPM * 0.7) + (popularityGH * 0.3);
+	}
+
+	const quality = (
+		(hasTypes ? 0.3 : 0) +
+		(hasReadme ? 0.2 : 0) +
+		Math.max(0, 0.5 - (dependencyCount * 0.005))
+	);
+
+	const maintenancePublish = lastPublishDaysAgo < 30 ? 1.0
+		: lastPublishDaysAgo < 90 ? 0.8
+		: lastPublishDaysAgo < 365 ? 0.5
+		: 0.2;
+	let maintenance = maintenancePublish;
+	if (github.hasGitHubData) {
+		const issuesScore = github.openIssuesCount < 50 ? 0.3 : github.openIssuesCount < 200 ? 0.2 : 0.1;
+		maintenance = (maintenancePublish * 0.7) + issuesScore;
+	}
+
+	const finalScore = popularity * 0.4 + quality * 0.3 + maintenance * 0.3;
+
+	const result: LocalScoreResult = {
+		packageName: name,
+		version: latestVersion,
+		description: versionData.description || null,
+		analyzedAt: new Date().toISOString(),
+		downloadsLastMonth,
+		github,
+		score: {
+			final: finalScore,
+			detail: {
+				quality,
+				popularity,
+				maintenance,
+			},
+		},
+		scorecard,
+	};
+
+	cacheSet(cacheKey, result, CACHE_TTL_LONG);
+	return result;
+}
+
 // Function to get package quality metrics
 export async function handleNpmQuality(args: {
 	packages: string[];
@@ -1977,7 +2094,7 @@ export async function handleNpmQuality(args: {
 				let name = '';
 				if (typeof pkgInput === 'string') {
 					const atIdx = pkgInput.lastIndexOf('@');
-					name = atIdx > 0 ? pkgInput.slice(0, atIdx) : pkgInput; // Version is ignored by npms.io API endpoint for the main query
+					name = atIdx > 0 ? pkgInput.slice(0, atIdx) : pkgInput;
 				} else {
 					return {
 						packageInput: JSON.stringify(pkgInput),
@@ -2026,59 +2143,14 @@ export async function handleNpmQuality(args: {
 				}
 
 				try {
-					const response = await fetch(
-						`https://api.npms.io/v2/package/${encodeURIComponent(name)}`,
-						{
-							headers: {
-								Accept: 'application/json',
-								'User-Agent': 'NPM-Sentinel-MCP',
-							},
-						},
-					);
-
-					if (!response.ok) {
-						let errorMsg = `Failed to fetch quality data: ${response.status} ${response.statusText}`;
-						if (response.status === 404) {
-							errorMsg = `Package ${name} not found on npms.io.`;
-						}
-						return {
-							packageInput: pkgInput,
-							packageName: name,
-							status: 'error' as const,
-							error: errorMsg,
-							data: null,
-							message: `Could not retrieve quality information for ${name}.`,
-						};
-					}
-
-					const rawData = await response.json();
-
-					if (!isValidNpmsResponse(rawData)) {
-						return {
-							packageInput: pkgInput,
-							packageName: name,
-							status: 'error' as const,
-							error: 'Invalid or incomplete response from npms.io API for quality data',
-							data: null,
-							message: `Received malformed quality data for ${name}.`,
-						};
-					}
-
-					const { score, collected, analyzedAt } = rawData;
-					const qualityScore = score.detail.quality;
-
+					const metrics = await getLocalPackageMetrics(name, args.ignoreCache);
 					const qualityData = {
-						analyzedAt: analyzedAt,
-						versionInScore: collected.metadata.version,
-						qualityScore: qualityScore,
-						// Detailed sub-metrics like tests, coverage, linting, types are no longer directly provided
-						// by the npms.io v2 API in the same way. The overall quality score is the primary metric.
+						analyzedAt: metrics.analyzedAt,
+						versionInScore: metrics.version,
+						qualityScore: metrics.score.detail.quality,
 					};
 
-					const ttl = !collected.metadata.version.match(/^\d+\.\d+\.\d+$/)
-						? CACHE_TTL_SHORT
-						: CACHE_TTL_LONG;
-					cacheSet(cacheKey, qualityData, ttl);
+					cacheSet(cacheKey, qualityData, CACHE_TTL_LONG);
 
 					return {
 						packageInput: pkgInput,
@@ -2086,7 +2158,7 @@ export async function handleNpmQuality(args: {
 						status: 'success' as const,
 						error: null,
 						data: qualityData,
-						message: `Successfully fetched quality score for ${name} (version analyzed: ${collected.metadata.version}).`,
+						message: `Successfully fetched quality score for ${name} (version analyzed: ${metrics.version}).`,
 					};
 				} catch (error) {
 					return {
@@ -2125,6 +2197,7 @@ export async function handleNpmQuality(args: {
 	}
 }
 
+// Function to get package maintenance metrics
 export async function handleNpmMaintenance(args: {
 	packages: string[];
 	ignoreCache?: boolean;
@@ -2189,57 +2262,14 @@ export async function handleNpmMaintenance(args: {
 				}
 
 				try {
-					const response = await fetch(
-						`https://api.npms.io/v2/package/${encodeURIComponent(name)}`,
-						{
-							headers: {
-								Accept: 'application/json',
-								'User-Agent': 'NPM-Sentinel-MCP',
-							},
-						},
-					);
-
-					if (!response.ok) {
-						let errorMsg = `Failed to fetch maintenance data: ${response.status} ${response.statusText}`;
-						if (response.status === 404) {
-							errorMsg = `Package ${name} not found on npms.io.`;
-						}
-						return {
-							packageInput: pkgInput,
-							packageName: name,
-							status: 'error' as const,
-							error: errorMsg,
-							data: null,
-							message: `Could not retrieve maintenance information for ${name}.`,
-						};
-					}
-
-					const rawData = await response.json();
-
-					if (!isValidNpmsResponse(rawData)) {
-						return {
-							packageInput: pkgInput,
-							packageName: name,
-							status: 'error' as const,
-							error: 'Invalid or incomplete response from npms.io API for maintenance data',
-							data: null,
-							message: `Received malformed maintenance data for ${name}.`,
-						};
-					}
-
-					const { score, collected, analyzedAt } = rawData;
-					const maintenanceScoreValue = score.detail.maintenance;
-
+					const metrics = await getLocalPackageMetrics(name, args.ignoreCache);
 					const maintenanceData = {
-						analyzedAt: analyzedAt,
-						versionInScore: collected.metadata.version,
-						maintenanceScore: maintenanceScoreValue,
+						analyzedAt: metrics.analyzedAt,
+						versionInScore: metrics.version,
+						maintenanceScore: metrics.score.detail.maintenance,
 					};
 
-					const ttl = !collected.metadata.version.match(/^\d+\.\d+\.\d+$/)
-						? CACHE_TTL_SHORT
-						: CACHE_TTL_LONG;
-					cacheSet(cacheKey, maintenanceData, ttl);
+					cacheSet(cacheKey, maintenanceData, CACHE_TTL_LONG);
 
 					return {
 						packageInput: pkgInput,
@@ -2247,7 +2277,7 @@ export async function handleNpmMaintenance(args: {
 						status: 'success' as const,
 						error: null,
 						data: maintenanceData,
-						message: `Successfully fetched maintenance score for ${name} (version analyzed: ${collected.metadata.version}).`,
+						message: `Successfully fetched maintenance score for ${name} (version analyzed: ${metrics.version}).`,
 					};
 				} catch (error) {
 					return {
@@ -2434,6 +2464,7 @@ export async function handleNpmMaintainers(args: {
 	}
 }
 
+// Function to get package score
 export async function handleNpmScore(args: {
 	packages: string[];
 	ignoreCache?: boolean;
@@ -2496,89 +2527,35 @@ export async function handleNpmScore(args: {
 				}
 
 				try {
-					const response = await fetch(
-						`https://api.npms.io/v2/package/${encodeURIComponent(name)}`,
-					);
-
-					if (!response.ok) {
-						let errorMsg = `Failed to fetch package score: ${response.status} ${response.statusText}`;
-						if (response.status === 404) {
-							errorMsg = `Package ${name} not found on npms.io.`;
-						}
-						return {
-							packageInput: pkgInput,
-							packageName: name,
-							status: 'error' as const,
-							error: errorMsg,
-							data: null,
-						};
-					}
-
-					const rawData = await response.json();
-
-					if (!isValidNpmsResponse(rawData)) {
-						return {
-							packageInput: pkgInput,
-							packageName: name,
-							status: 'error' as const,
-							error: 'Invalid or incomplete response from npms.io API',
-							data: null,
-						};
-					}
-
-					const { score, collected, analyzedAt } = rawData;
-					const { detail } = score;
-
-					// Calculate total downloads for the last month from the typically first entry in downloads array
-					const lastMonthDownloads =
-						collected.npm?.downloads?.find((d) => {
-							// Heuristic: find a download period that is roughly 30 days
-							const from = new Date(d.from);
-							const to = new Date(d.to);
-							const diffTime = Math.abs(to.getTime() - from.getTime());
-							const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-							return diffDays >= 28 && diffDays <= 31; // Common range for monthly data
-						})?.count ||
-						collected.npm?.downloads?.[0]?.count ||
-						0;
-
+					const metrics = await getLocalPackageMetrics(name, args.ignoreCache);
 					const scoreData = {
-						analyzedAt: analyzedAt,
-						versionInScore: collected.metadata.version,
-						score: {
-							final: score.final,
-							detail: {
-								quality: detail.quality,
-								popularity: detail.popularity,
-								maintenance: detail.maintenance,
-							},
-						},
+						analyzedAt: metrics.analyzedAt,
+						versionInScore: metrics.version,
+						score: metrics.score,
 						packageInfoFromScore: {
-							name: collected.metadata.name,
-							version: collected.metadata.version,
-							description: collected.metadata.description || null,
+							name: metrics.packageName,
+							version: metrics.version,
+							description: metrics.description,
 						},
 						npmStats: {
-							downloadsLastMonth: lastMonthDownloads,
-							starsCount: collected.npm.starsCount,
+							downloadsLastMonth: metrics.downloadsLastMonth,
+							starsCount: metrics.github.hasGitHubData ? metrics.github.starsCount : 0, // Fallback best effort
 						},
-						githubStats: collected.github
+						githubStats: metrics.github.hasGitHubData
 							? {
-									starsCount: collected.github.starsCount,
-									forksCount: collected.github.forksCount,
-									subscribersCount: collected.github.subscribersCount,
+									starsCount: metrics.github.starsCount,
+									forksCount: metrics.github.forksCount,
+									subscribersCount: metrics.github.subscribersCount,
 									issues: {
-										count: collected.github.issues.count,
-										openCount: collected.github.issues.openCount,
+										count: metrics.github.openIssuesCount, // Heuristic default count = open issues
+										openCount: metrics.github.openIssuesCount,
 									},
 								}
 							: null,
+						scorecard: metrics.scorecard,
 					};
 
-					const ttl = !collected.metadata.version.match(/^\d+\.\d+\.\d+$/)
-						? CACHE_TTL_SHORT
-						: CACHE_TTL_LONG;
-					cacheSet(cacheKey, scoreData, ttl);
+					cacheSet(cacheKey, scoreData, CACHE_TTL_LONG);
 
 					return {
 						packageInput: pkgInput,
@@ -2586,7 +2563,7 @@ export async function handleNpmScore(args: {
 						status: 'success' as const,
 						error: null,
 						data: scoreData,
-						message: `Successfully fetched score data for ${name} (version analyzed: ${collected.metadata.version}).`,
+						message: `Successfully fetched score data for ${name} (version analyzed: ${metrics.version}).`,
 					};
 				} catch (error) {
 					return {
@@ -2623,6 +2600,36 @@ export async function handleNpmScore(args: {
 			isError: true,
 		};
 	}
+}
+
+export async function fetchReadmeFromCDN(
+	packageName: string,
+	version: string,
+): Promise<string | null> {
+	const cdnUrls = [
+		`https://cdn.jsdelivr.net/npm/${packageName}@${version}/README.md`,
+		`https://unpkg.com/${packageName}@${version}/README.md`,
+	];
+
+	for (const cdnUrl of cdnUrls) {
+		try {
+			const response = await fetchWithRetry(
+				cdnUrl,
+				{ headers: { Accept: 'text/plain' } },
+				{ maxRetries: 1, skipThrottle: true }
+			);
+
+			if (response.ok) {
+				const text = await response.text();
+				if (text && text.length > 10) {
+					return text;
+				}
+			}
+		} catch {
+			// Sigue intentando con la próxima URL
+		}
+	}
+	return null;
 }
 
 export async function handleNpmPackageReadme(args: {
@@ -2703,7 +2710,7 @@ export async function handleNpmPackageReadme(args: {
 				}
 
 				try {
-					const response = await fetch(`${NPM_REGISTRY_URL}/${name}`);
+					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}`);
 					if (!response.ok) {
 						let errorMsg = `Failed to fetch package info: ${response.status} ${response.statusText}`;
 						if (response.status === 404) {
@@ -2750,12 +2757,22 @@ export async function handleNpmPackageReadme(args: {
 
 					const versionData = packageInfo.versions[versionToUse];
 					// README can be in version-specific data or at the root of packageInfo
-					const readmeContent = versionData.readme || packageInfo.readme || null;
+					let readmeContent = versionData.readme || packageInfo.readme || null;
+					let readmeSource: 'registry' | 'cdn' | null = readmeContent ? 'registry' : null;
+
+					if (!readmeContent && versionToUse) {
+						readmeContent = await fetchReadmeFromCDN(name, versionToUse);
+						if (readmeContent) {
+							readmeSource = 'cdn';
+						}
+					}
+
 					const hasReadme = !!readmeContent;
 
 					const readmeResultData = {
 						readme: readmeContent,
 						hasReadme: hasReadme,
+						readmeSource: readmeSource,
 						versionFetched: versionToUse, // Store the actually fetched version
 					};
 
@@ -2768,7 +2785,7 @@ export async function handleNpmPackageReadme(args: {
 						versionFetched: versionToUse,
 						status: 'success' as const,
 						error: null,
-						data: { readme: readmeContent, hasReadme: hasReadme }, // Return only readme and hasReadme in data field for consistency
+						data: { readme: readmeContent, hasReadme: hasReadme, readmeSource: readmeSource }, // Return only readme and hasReadme in data field for consistency
 						message: `Successfully fetched README for ${name}@${versionToUse}.`,
 					};
 				} catch (error) {
@@ -2835,8 +2852,8 @@ export async function handleNpmSearch(args: {
 			};
 		}
 
-		const response = await fetch(
-			`${NPM_REGISTRY_URL}/-/v1/search?text=${encodeURIComponent(query)}&size=${limit}`,
+		const response = await fetchWithRetry(
+			`${NPM_REGISTRY_URL}/-/v1/search?text=${encodeURIComponent(query)}&size=${limit}`
 		);
 		if (!response.ok) {
 			throw new Error(`Failed to search packages: ${response.status} ${response.statusText}`);
@@ -2994,7 +3011,7 @@ export async function handleNpmLicenseCompatibility(args: {
 				}
 
 				try {
-					const response = await fetch(`${NPM_REGISTRY_URL}/${name}/${versionTag}`);
+					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${versionTag}`);
 					if (!response.ok) {
 						let errorMsg = `Failed to fetch package info: ${response.status} ${response.statusText}`;
 						if (response.status === 404) {
@@ -3130,18 +3147,6 @@ export async function handleNpmLicenseCompatibility(args: {
 	}
 }
 
-interface GitHubRepoStats {
-	stargazers_count: number;
-	forks_count: number;
-	open_issues_count: number;
-	watchers_count: number;
-	updated_at: string;
-	created_at: string;
-	has_wiki: boolean;
-	default_branch: string;
-	topics: string[];
-}
-
 // Repository statistics analyzer
 export async function handleNpmRepoStats(args: {
 	packages: string[];
@@ -3208,7 +3213,7 @@ export async function handleNpmRepoStats(args: {
 				}
 
 				try {
-					const npmResponse = await fetch(`${NPM_REGISTRY_URL}/${name}/latest`);
+					const npmResponse = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/latest`);
 					if (!npmResponse.ok) {
 						const errorData = {
 							packageInput: pkgInput,
@@ -3261,31 +3266,22 @@ export async function handleNpmRepoStats(args: {
 						cacheSet(cacheKey, resultNotGitHub, CACHE_TTL_LONG);
 						return resultNotGitHub;
 					}
-
 					const [, owner, repo] = githubMatch;
-					const githubRepoApiUrl = `https://api.github.com/repos/${owner}/${repo.replace(/\.git$/, '')}`;
+					const cleanRepo = repo.replace(/\.git$/, '');
 
-					const githubResponse = await fetch(githubRepoApiUrl, {
-						headers: {
-							Accept: 'application/vnd.github.v3+json',
-							'User-Agent': 'NPM-Sentinel-MCP',
-						},
-					});
+					const depsDevData = await fetchRepoStatsFromDepsDev(owner, cleanRepo, args.ignoreCache);
 
-					if (!githubResponse.ok) {
+					if (!depsDevData) {
 						const errorData = {
 							packageInput: pkgInput,
 							packageName: name,
 							status: 'error' as const,
-							error: `Failed to fetch GitHub repo stats for ${owner}/${repo}: ${githubResponse.status} ${githubResponse.statusText}`,
-							data: { githubRepoUrl: githubRepoApiUrl },
-							message: `Could not retrieve GitHub repository statistics from ${githubRepoApiUrl}.`,
+							error: `Failed to fetch project stats for github.com/${owner}/${cleanRepo} from deps.dev`,
+							data: { repositoryUrl: repoUrl },
+							message: `Could not retrieve repository statistics from deps.dev.`,
 						};
-						// Do not cache GitHub API call failures for now
 						return errorData;
 					}
-
-					const githubData = (await githubResponse.json()) as GitHubRepoStats;
 
 					const successResult = {
 						packageInput: pkgInput,
@@ -3293,18 +3289,19 @@ export async function handleNpmRepoStats(args: {
 						status: 'success' as const,
 						error: null,
 						data: {
-							githubRepoUrl: `https://github.com/${owner}/${repo.replace(/\.git$/, '')}`,
-							stars: githubData.stargazers_count,
-							forks: githubData.forks_count,
-							openIssues: githubData.open_issues_count,
-							watchers: githubData.watchers_count,
-							createdAt: githubData.created_at,
-							updatedAt: githubData.updated_at,
-							defaultBranch: githubData.default_branch,
-							hasWiki: githubData.has_wiki,
-							topics: githubData.topics || [],
+							githubRepoUrl: `https://github.com/${owner}/${cleanRepo}`,
+							stars: depsDevData.starsCount,
+							forks: depsDevData.forksCount,
+							openIssues: depsDevData.openIssuesCount,
+							watchers: 0,
+							createdAt: null,
+							updatedAt: null,
+							defaultBranch: null,
+							hasWiki: null,
+							topics: [],
+							scorecard: depsDevData.scorecard,
 						},
-						message: 'GitHub repository statistics fetched successfully.',
+						message: 'Repository statistics fetched successfully from deps.dev.',
 					};
 					cacheSet(cacheKey, successResult, CACHE_TTL_LONG);
 					return successResult;
@@ -3344,24 +3341,6 @@ export async function handleNpmRepoStats(args: {
 			isError: true,
 		};
 	}
-}
-
-interface NpmDependencies {
-	dependencies?: Record<string, string>;
-	devDependencies?: Record<string, string>;
-	peerDependencies?: Record<string, string>;
-}
-
-interface DeprecatedDependency {
-	name: string;
-	version: string;
-	message: string;
-}
-
-interface GithubRelease {
-	tag_name?: string;
-	name?: string;
-	published_at?: string;
 }
 
 interface NpmSearchResponse {
@@ -3460,7 +3439,7 @@ export async function handleNpmDeprecated(args: {
 				// console.debug(`[handleNpmDeprecated] Cache miss for ${cacheKey}`);
 
 				try {
-					const mainPkgResponse = await fetch(`${NPM_REGISTRY_URL}/${name}`);
+					const mainPkgResponse = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}`);
 					if (!mainPkgResponse.ok) {
 						return {
 							package: initialPackageNameForOutput,
@@ -3519,8 +3498,8 @@ export async function handleNpmDeprecated(args: {
 
 							try {
 								// console.debug(`[handleNpmDeprecated] Checking dependency: ${depName}@${depSemVer}`);
-								const depInfoResponse = await fetch(
-									`${NPM_REGISTRY_URL}/${encodeURIComponent(depName)}`,
+								const depInfoResponse = await fetchWithRetry(
+									`${NPM_REGISTRY_URL}/${encodeURIComponent(depName)}`
 								);
 
 								if (!depInfoResponse.ok) {
@@ -3722,7 +3701,7 @@ export async function handleNpmChangelogAnalysis(args: {
 				}
 
 				try {
-					const npmResponse = await fetch(`${NPM_REGISTRY_URL}/${name}`);
+					const npmResponse = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}`);
 					if (!npmResponse.ok) {
 						const errorResult = {
 							packageInput: pkgInput,
@@ -3798,42 +3777,63 @@ export async function handleNpmChangelogAnalysis(args: {
 					let changelogSourceUrl: string | null = null;
 					let hasChangelogFile = false;
 
-					for (const file of changelogFiles) {
-						try {
-							const rawChangelogUrl = `https://raw.githubusercontent.com/${owner}/${repoNameForUrl}/master/${file}`;
-							const response = await fetch(rawChangelogUrl);
-							if (response.ok) {
-								changelogContent = await response.text();
-								changelogSourceUrl = rawChangelogUrl;
-								hasChangelogFile = true;
-								break;
+					for (const branch of ['main', 'master']) {
+						for (const file of changelogFiles) {
+							try {
+								const rawChangelogUrl = `https://raw.githubusercontent.com/${owner}/${repoNameForUrl}/${branch}/${file}`;
+								const response = await fetchWithRetry(rawChangelogUrl, {}, { maxRetries: 0 });
+								if (response.ok) {
+									changelogContent = await response.text();
+									changelogSourceUrl = rawChangelogUrl;
+									hasChangelogFile = true;
+									break;
+								}
+							} catch {
+								// Sigue intentando
 							}
-						} catch (error) {
-							console.debug(`Error fetching changelog file ${file} for ${name}: ${error}`);
 						}
+						if (hasChangelogFile) break;
 					}
 
 					let githubReleases: any[] = [];
 					try {
-						const githubApiResponse = await fetch(
+						const githubApiResponse = await fetchWithRetry(
 							`https://api.github.com/repos/${owner}/${repoNameForUrl}/releases?per_page=5`,
 							{
 								headers: {
 									Accept: 'application/vnd.github.v3+json',
-									'User-Agent': 'NPM-Sentinel-MCP',
 								},
 							},
+							{ maxRetries: 0 }
 						);
 						if (githubApiResponse.ok) {
-							const releasesData = (await githubApiResponse.json()) as GithubRelease[];
+							const releasesData = (await githubApiResponse.json()) as any[];
 							githubReleases = releasesData.map((r) => ({
 								tag_name: r.tag_name || null,
 								name: r.name || null,
 								published_at: r.published_at || null,
+								source: 'github-api',
 							}));
 						}
 					} catch (error) {
 						console.debug(`Error fetching GitHub releases for ${name}: ${error}`);
+					}
+
+					// Fallback to NPM Registry time/publish history if GitHub releases couldn't be fetched
+					const publishTime = npmData.time;
+					if (githubReleases.length === 0 && publishTime) {
+						const timeKeys = Object.keys(publishTime).filter(
+							(k) => k !== 'modified' && k !== 'created'
+						);
+						const sortedVersions = timeKeys.sort((a, b) => {
+							return new Date(publishTime[b]).getTime() - new Date(publishTime[a]).getTime();
+						});
+						githubReleases = sortedVersions.slice(0, 5).map((v) => ({
+							tag_name: `v${v}`,
+							name: `Release ${v} (NPM Publish)`,
+							published_at: publishTime[v],
+							source: 'npm-registry',
+						}));
 					}
 
 					const versions = Object.keys(npmData.versions || {});
@@ -3854,7 +3854,7 @@ export async function handleNpmChangelogAnalysis(args: {
 								: `Changelog analysis for ${name}.`;
 
 					const resultToCache = {
-						packageInput: pkgInput, // This might differ on subsequent cache hits, so store the original reference for this specific cache entry
+						packageInput: pkgInput,
 						packageName: name,
 						versionQueried: versionQueried,
 						status: status as 'success' | 'no_changelog_found',
@@ -3925,13 +3925,10 @@ export async function handleNpmAlternatives(args: {
 		const processedResults = await Promise.all(
 			packagesToProcess.map(async (pkgInput) => {
 				let originalPackageName = '';
-				let versionQueried: string | undefined;
-
 				if (typeof pkgInput === 'string') {
 					const atIdx = pkgInput.lastIndexOf('@');
 					if (atIdx > 0) {
 						originalPackageName = pkgInput.slice(0, atIdx);
-						versionQueried = pkgInput.slice(atIdx + 1);
 					} else {
 						originalPackageName = pkgInput;
 					}
@@ -3983,10 +3980,10 @@ export async function handleNpmAlternatives(args: {
 				}
 
 				try {
-					const searchResponse = await fetch(
+					const searchResponse = await fetchWithRetry(
 						`${NPM_REGISTRY_URL}/-/v1/search?text=keywords:${encodeURIComponent(
 							originalPackageName,
-						)}&size=10`,
+						)}&size=10`
 					);
 					if (!searchResponse.ok) {
 						const errorResult = {
@@ -4005,8 +4002,8 @@ export async function handleNpmAlternatives(args: {
 
 					let originalPackageDownloads = 0;
 					try {
-						const dlResponse = await fetch(
-							`https://api.npmjs.org/downloads/point/last-month/${originalPackageName}`,
+						const dlResponse = await fetchWithRetry(
+							`https://api.npmjs.org/downloads/point/last-month/${originalPackageName}`
 						);
 						if (dlResponse.ok) {
 							originalPackageDownloads =
@@ -4052,8 +4049,8 @@ export async function handleNpmAlternatives(args: {
 							.map(async (alt) => {
 								let altDownloads = 0;
 								try {
-									const altDlResponse = await fetch(
-										`https://api.npmjs.org/downloads/point/last-month/${alt.package.name}`,
+									const altDlResponse = await fetchWithRetry(
+										`https://api.npmjs.org/downloads/point/last-month/${alt.package.name}`
 									);
 									if (altDlResponse.ok) {
 										altDownloads = ((await altDlResponse.json()) as DownloadCount).downloads || 0;
@@ -4147,7 +4144,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 	try {
 		__filename = fileURLToPath(import.meta.url);
 		__dirname = path.dirname(__filename);
-	} catch (error) {
+	} catch {
 		// Fallback for CJS environment (Smithery HTTP build)
 		__filename = process.argv[1] || '.';
 		__dirname = path.dirname(__filename);
@@ -4709,7 +4706,7 @@ function isNpmPackageVersionData(data: unknown): data is z.infer<typeof NpmPacka
 			);
 		}
 		return result.success;
-	} catch (e) {
+	} catch {
 		// This catch block might not be strictly necessary with safeParse but kept for safety
 		// console.error("isNpmPackageVersionData validation failed unexpectedly:", e);
 		return false;

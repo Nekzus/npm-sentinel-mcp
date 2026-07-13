@@ -326,7 +326,7 @@ The server also provides the following informational resources accessible via MC
 #### npmScore
 - Get package quality score
 - Input: `packages` (string[])
-- Returns: Comprehensive quality metrics
+- Returns: Comprehensive quality metrics, scoring details, and OpenSSF Scorecard.
 
 #### npmPackageReadme
 - Get package README
@@ -348,7 +348,7 @@ The server also provides the following informational resources accessible via MC
 #### npmRepoStats
 - Get repository statistics
 - Input: `packages` (string[])
-- Returns: GitHub/repository metrics
+- Returns: GitHub/repository metrics (stars, forks, open issues) along with OpenSSF Scorecard checks and scores via deps.dev.
 
 #### npmDeprecated
 - Check for deprecation
