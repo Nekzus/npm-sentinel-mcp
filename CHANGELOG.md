@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.19.0-alpha.2](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.1...v1.19.0-alpha.2) (2026-07-12)
+
+
+### Bug Fixes
+
+* **build:** asegurar compilacion de typescript en build script para entornos con --ignore-scripts ([8ec483c](https://github.com/Nekzus/npm-sentinel-mcp/commit/8ec483cf8a335e7fe01bc4abd6b5eba27da4505d))
+* **smithery:** actualizar @smithery/cli a v3.19.0 para resolver error de keytar ([d4434b3](https://github.com/Nekzus/npm-sentinel-mcp/commit/d4434b34b235b1db24ad4059bf326cfc56a81aed))
+
 # [1.19.0-alpha.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.18.1...v1.19.0-alpha.1) (2026-07-12)
 
 
