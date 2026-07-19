@@ -1261,7 +1261,12 @@ export async function fetchRepoStatsFromDepsDev(
 						checks: (data.scorecard.checks || []).map((c: any) => ({
 							name: c.name,
 							score: c.score,
-							reason: c.reason,
+							reason:
+								c.reason &&
+								(c.reason.toLowerCase().includes('token missing') ||
+									c.reason.toLowerCase().includes('permissions'))
+									? 'Check requires elevated repository access'
+									: c.reason || 'No details provided',
 						})),
 					}
 				: undefined,
@@ -1505,10 +1510,21 @@ export async function handleNpmVulnerabilities(args: {
 					const richData = await enrichVulnerabilityData(vuln.id, args.ignoreCache);
 					const finalVuln = richData || vuln; // Fallback to basic if fetch fails
 
-					const sev =
-						typeof finalVuln.severity === 'object'
-							? finalVuln.severity.type || 'Unknown'
-							: finalVuln.severity || 'Unknown';
+					let sev = 'Unknown';
+					if (typeof finalVuln.database_specific?.severity === 'string') {
+						sev = finalVuln.database_specific.severity;
+					} else if (Array.isArray(finalVuln.severity) && finalVuln.severity.length > 0) {
+						const first = finalVuln.severity[0];
+						if (typeof first === 'string') {
+							sev = first;
+						} else if (first && typeof first === 'object') {
+							sev = first.score || first.type || 'Unknown';
+						}
+					} else if (typeof finalVuln.severity === 'string') {
+						sev = finalVuln.severity;
+					} else if (typeof finalVuln.ecosystem_specific?.severity === 'string') {
+						sev = finalVuln.ecosystem_specific.severity;
+					}
 					const refs = finalVuln.references ? finalVuln.references.map((r: any) => r.url) : [];
 
 					const vulnerabilityDetails: any = {
@@ -3316,6 +3332,20 @@ export async function handleNpmRepoStats(args: {
 						return errorData;
 					}
 
+					let ghRepoMeta: any = {};
+					try {
+						const ghResponse = await fetchWithRetry(
+							`https://api.github.com/repos/${owner}/${cleanRepo}`,
+							{ headers: { Accept: 'application/vnd.github.v3+json' } },
+							{ maxRetries: 0 },
+						);
+						if (ghResponse.ok) {
+							ghRepoMeta = await ghResponse.json();
+						}
+					} catch {
+						// Optional GitHub REST API fallback
+					}
+
 					const successResult = {
 						packageInput: pkgInput,
 						packageName: name,
@@ -3323,18 +3353,18 @@ export async function handleNpmRepoStats(args: {
 						error: null,
 						data: {
 							githubRepoUrl: `https://github.com/${owner}/${cleanRepo}`,
-							stars: depsDevData.starsCount,
-							forks: depsDevData.forksCount,
-							openIssues: depsDevData.openIssuesCount,
-							watchers: 0,
-							createdAt: null,
-							updatedAt: null,
-							defaultBranch: null,
-							hasWiki: null,
-							topics: [],
+							stars: depsDevData.starsCount || ghRepoMeta.stargazers_count || 0,
+							forks: depsDevData.forksCount || ghRepoMeta.forks_count || 0,
+							openIssues: depsDevData.openIssuesCount || ghRepoMeta.open_issues_count || 0,
+							watchers: ghRepoMeta.subscribers_count || ghRepoMeta.watchers_count || 0,
+							createdAt: ghRepoMeta.created_at || null,
+							updatedAt: ghRepoMeta.pushed_at || ghRepoMeta.updated_at || null,
+							defaultBranch: ghRepoMeta.default_branch || null,
+							hasWiki: typeof ghRepoMeta.has_wiki === 'boolean' ? ghRepoMeta.has_wiki : null,
+							topics: Array.isArray(ghRepoMeta.topics) ? ghRepoMeta.topics : [],
 							scorecard: depsDevData.scorecard,
 						},
-						message: 'Repository statistics fetched successfully from deps.dev.',
+						message: 'Repository statistics fetched successfully from deps.dev and GitHub API.',
 					};
 					cacheSet(cacheKey, successResult, CACHE_TTL_LONG);
 					return successResult;
