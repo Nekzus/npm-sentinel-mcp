@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.19.0-alpha.9](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.8...v1.19.0-alpha.9) (2026-07-19)
+
+
+### Bug Fixes
+
+* **ci:** restore NPM_TOKEN and registry-url in publish workflow ([e5ae865](https://github.com/Nekzus/npm-sentinel-mcp/commit/e5ae865fcf7910132cf25cbf35f28c19f1f57580))
+
 # [1.19.0-alpha.8](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.7...v1.19.0-alpha.8) (2026-07-19)
 
 
