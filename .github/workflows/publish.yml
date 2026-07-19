@@ -16,7 +16,7 @@ jobs:
 
         strategy:
             matrix:
-                node-version: [22.x, 24.x]
+                node-version: [22.x, lts/*]
                 os: [ubuntu-latest]
 
         steps:
@@ -62,10 +62,10 @@ jobs:
               uses: pnpm/action-setup@v4
               with:
                   version: 11.10.0
-            - name: Use Node.js 22.x
+            - name: Use Node.js lts/*
               uses: actions/setup-node@v6
               with:
-                  node-version: '22.x'
+                  node-version: 'lts/*'
                   cache: 'pnpm'
             
             - run: pnpm install --frozen-lockfile
