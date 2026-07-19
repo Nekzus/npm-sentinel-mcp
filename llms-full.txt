@@ -1,7 +1,7 @@
 # NPM Sentinel MCP Server - Full Protocol & Technical Documentation
 
 ## Protocol Specification
-Version: MCP v2.0.0-beta.4 (@modelcontextprotocol/server & @modelcontextprotocol/core)
+Version: MCP v2 (@modelcontextprotocol/server & @modelcontextprotocol/core)
 Transport: stdio / Streamable HTTP (SSE)
 Capabilities: resources, prompts, tools, logging, structuredOutput
 

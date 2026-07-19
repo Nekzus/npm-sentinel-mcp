@@ -13,7 +13,7 @@
 
 </div>
 
-A powerful **Model Context Protocol (MCP v2)** server built on `@modelcontextprotocol/server` and `@modelcontextprotocol/core` (`v2.0.0-beta.4`) that revolutionizes NPM package analysis through AI. Built to integrate seamlessly with Claude, Anthropic AI, and any MCP v2 compatible client, it provides real-time intelligence on package security, dependencies, and performance.
+A powerful **Model Context Protocol (MCP v2)** server built on `@modelcontextprotocol/server` and `@modelcontextprotocol/core` (v2) that revolutionizes NPM package analysis through AI. Built to integrate seamlessly with Claude, Anthropic AI, and any MCP v2 compatible client, it provides real-time intelligence on package security, dependencies, and performance.
 
 This server features **Modular ESM Architecture (`src/`)**, **Dual Output Protocol Returns (`content` + `structuredContent`)**, **Zod Output Schemas (`outputSchema`)**, **Embedded SVG Data URI Icons**, and **Real-Time Context Logging**.
 
