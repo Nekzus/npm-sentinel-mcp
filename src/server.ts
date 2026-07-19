@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/server';
 import type { z } from 'zod';
-import { configSchema, getPackageRootAndVersion, setNpmRegistryUrl } from './config.js';
+import { type configSchema, getPackageRootAndVersion, setNpmRegistryUrl } from './config.js';
 import { registerAllPrompts } from './prompts/index.js';
 import { registerAllResources } from './resources/index.js';
 import { registerAllTools } from './tools/index.js';
