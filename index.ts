@@ -4193,6 +4193,39 @@ export default function createServer({ config }: { config: z.infer<typeof config
 	const README_PATH = path.join(packageRoot, 'README.md');
 	const LLMS_FULL_TEXT_PATH = path.join(packageRoot, 'llms-full.txt');
 
+	// Icon definitions (MCP v2 Data URIs)
+	const NPM_REGISTRY_ICON = [
+		{
+			src: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%23cb3837" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 12v10"/></svg>',
+			mimeType: 'image/svg+xml',
+			sizes: ['any'],
+		},
+	];
+
+	const NPM_METRICS_ICON = [
+		{
+			src: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%23007acc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>',
+			mimeType: 'image/svg+xml',
+			sizes: ['any'],
+		},
+	];
+
+	const NPM_SECURITY_ICON = [
+		{
+			src: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%2328a745" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+			mimeType: 'image/svg+xml',
+			sizes: ['any'],
+		},
+	];
+
+	const DOCUMENT_ICON = [
+		{
+			src: 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%236c757d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>',
+			mimeType: 'image/svg+xml',
+			sizes: ['any'],
+		},
+	];
+
 	// Register README.md resource
 	server.registerResource(
 		'serverReadme',
@@ -4200,6 +4233,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 		{
 			description: 'Main documentation and usage guide for this NPM Info Server.',
 			mimeType: 'text/markdown',
+			icons: DOCUMENT_ICON,
 		},
 		async (uri: URL): Promise<{ contents: { uri: string; text: string; mimeType: string }[] }> => {
 			try {
@@ -4232,6 +4266,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 			description:
 				'The llms-full.txt content providing a comprehensive overview of the Model Context Protocol.',
 			mimeType: 'text/plain',
+			icons: DOCUMENT_ICON,
 		},
 		async (uri: URL): Promise<{ contents: { uri: string; text: string; mimeType: string }[] }> => {
 			try {
@@ -4264,6 +4299,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 			argsSchema: z.object({
 				package: z.string().describe('Name of the npm package to analyze'),
 			}),
+			icons: NPM_SECURITY_ICON,
 		},
 		({ package: pkgName }) => ({
 			messages: [
@@ -4341,6 +4377,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
+			icons: NPM_REGISTRY_ICON,
 			annotations: {
 				title: 'Get All Package Versions',
 				readOnlyHint: true,
@@ -4348,7 +4385,8 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				idempotentHint: true,
 			},
 		},
-		async (args: { packages: string[] }) => {
+		async (args: { packages: string[] }, ctx: any) => {
+			await ctx?.mcpReq?.log?.('info', `Executing npmVersions for ${args.packages.join(', ')}`);
 			return await withStructuredOutput(handleNpmVersions(args));
 		},
 	);
@@ -4362,6 +4400,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
+			icons: NPM_REGISTRY_ICON,
 			annotations: {
 				title: 'Get Latest Package Information',
 				readOnlyHint: true,
@@ -4369,7 +4408,8 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				idempotentHint: true, // Result for 'latest' tag can change, but call itself is idempotent
 			},
 		},
-		async (args: { packages: string[] }) => {
+		async (args: { packages: string[] }, ctx: any) => {
+			await ctx?.mcpReq?.log?.('info', `Executing npmLatest for ${args.packages.join(', ')}`);
 			return await withStructuredOutput(handleNpmLatest(args));
 		},
 	);
@@ -4383,6 +4423,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
+			icons: NPM_REGISTRY_ICON,
 			annotations: {
 				title: 'Get Package Dependencies',
 				readOnlyHint: true,
@@ -4390,7 +4431,8 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				idempotentHint: true,
 			},
 		},
-		async (args: { packages: string[] }) => {
+		async (args: { packages: string[] }, ctx: any) => {
+			await ctx?.mcpReq?.log?.('info', `Executing npmDeps for ${args.packages.join(', ')}`);
 			return await withStructuredOutput(handleNpmDeps(args));
 		},
 	);
@@ -4404,6 +4446,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
+			icons: NPM_REGISTRY_ICON,
 			annotations: {
 				title: 'Check TypeScript Type Availability',
 				readOnlyHint: true,
@@ -4411,7 +4454,8 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				idempotentHint: true,
 			},
 		},
-		async (args: { packages: string[] }) => {
+		async (args: { packages: string[] }, ctx: any) => {
+			await ctx?.mcpReq?.log?.('info', `Executing npmTypes for ${args.packages.join(', ')}`);
 			return await withStructuredOutput(handleNpmTypes(args));
 		},
 	);
@@ -4425,6 +4469,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
+			icons: NPM_METRICS_ICON,
 			annotations: {
 				title: 'Get Package Size (Bundlephobia)',
 				readOnlyHint: true,
@@ -4432,7 +4477,8 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				idempotentHint: true,
 			},
 		},
-		async (args: { packages: string[] }) => {
+		async (args: { packages: string[] }, ctx: any) => {
+			await ctx?.mcpReq?.log?.('info', `Executing npmSize for ${args.packages.join(', ')}`);
 			return await withStructuredOutput(handleNpmSize(args));
 		},
 	);
@@ -4448,6 +4494,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
+			icons: NPM_SECURITY_ICON,
 			annotations: {
 				title: 'Check Package Vulnerabilities (OSV.dev)',
 				readOnlyHint: true,
@@ -4455,7 +4502,11 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				idempotentHint: false, // Vulnerability data can change frequently
 			},
 		},
-		async (args: { packages: string[] }) => {
+		async (args: { packages: string[] }, ctx: any) => {
+			await ctx?.mcpReq?.log?.(
+				'info',
+				`Executing npmVulnerabilities for ${args.packages.join(', ')}`,
+			);
 			return await withStructuredOutput(handleNpmVulnerabilities(args));
 		},
 	);
@@ -4474,6 +4525,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
+			icons: NPM_METRICS_ICON,
 			annotations: {
 				title: 'Get NPM Package Download Trends',
 				readOnlyHint: true,
@@ -4481,7 +4533,11 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				idempotentHint: true, // Trends for a fixed past period are idempotent
 			},
 		},
-		async (args: { packages: string[]; period?: 'last-week' | 'last-month' | 'last-year' }) => {
+		async (
+			args: { packages: string[]; period?: 'last-week' | 'last-month' | 'last-year' },
+			ctx: any,
+		) => {
+			await ctx?.mcpReq?.log?.('info', `Executing npmTrends for ${args.packages.join(', ')}`);
 			return await withStructuredOutput(handleNpmTrends(args));
 		},
 	);
@@ -4495,6 +4551,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: CompareResultOutputSchema,
+			icons: NPM_METRICS_ICON,
 			annotations: {
 				title: 'Compare NPM Packages',
 				readOnlyHint: true,
@@ -4502,7 +4559,8 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				idempotentHint: true,
 			},
 		},
-		async (args: { packages: string[] }) => {
+		async (args: { packages: string[] }, ctx: any) => {
+			await ctx?.mcpReq?.log?.('info', `Executing npmCompare for ${args.packages.join(', ')}`);
 			return await withStructuredOutput(handleNpmCompare(args));
 		},
 	);
@@ -4516,6 +4574,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
+			icons: NPM_METRICS_ICON,
 			annotations: {
 				title: 'Get NPM Package Maintainers',
 				readOnlyHint: true,
@@ -4523,7 +4582,8 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				idempotentHint: true,
 			},
 		},
-		async (args: { packages: string[] }) => {
+		async (args: { packages: string[] }, ctx: any) => {
+			await ctx?.mcpReq?.log?.('info', `Executing npmMaintainers for ${args.packages.join(', ')}`);
 			return await withStructuredOutput(handleNpmMaintainers(args));
 		},
 	);
@@ -4538,6 +4598,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
+			icons: NPM_METRICS_ICON,
 			annotations: {
 				title: 'Get NPM Package Score (NPMS.io)',
 				readOnlyHint: true,
@@ -4545,7 +4606,8 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				idempotentHint: true, // Score for a version is stable, for 'latest' can change
 			},
 		},
-		async (args: { packages: string[] }) => {
+		async (args: { packages: string[] }, ctx: any) => {
+			await ctx?.mcpReq?.log?.('info', `Executing npmScore for ${args.packages.join(', ')}`);
 			return await withStructuredOutput(handleNpmScore(args));
 		},
 	);
@@ -4559,6 +4621,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
+			icons: NPM_REGISTRY_ICON,
 			annotations: {
 				title: 'Get NPM Package README',
 				readOnlyHint: true,
@@ -4566,7 +4629,11 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				idempotentHint: true,
 			},
 		},
-		async (args: { packages: string[] }) => {
+		async (args: { packages: string[] }, ctx: any) => {
+			await ctx?.mcpReq?.log?.(
+				'info',
+				`Executing npmPackageReadme for ${args.packages.join(', ')}`,
+			);
 			return await withStructuredOutput(handleNpmPackageReadme(args));
 		},
 	);
@@ -4586,6 +4653,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: SearchResultOutputSchema,
+			icons: NPM_REGISTRY_ICON,
 			annotations: {
 				title: 'Search NPM Packages',
 				readOnlyHint: true,
@@ -4593,7 +4661,8 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				idempotentHint: false, // Search results can change
 			},
 		},
-		async (args: { query: string; limit?: number }) => {
+		async (args: { query: string; limit?: number }, ctx: any) => {
+			await ctx?.mcpReq?.log?.('info', `Executing npmSearch for query: "${args.query}"`);
 			return await withStructuredOutput(handleNpmSearch(args));
 		},
 	);
@@ -4610,6 +4679,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: LicenseCompatibilityResultOutputSchema,
+			icons: NPM_REGISTRY_ICON,
 			annotations: {
 				title: 'Check NPM License Compatibility',
 				readOnlyHint: true,
@@ -4617,7 +4687,11 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				idempotentHint: true,
 			},
 		},
-		async (args: { packages: string[] }) => {
+		async (args: { packages: string[] }, ctx: any) => {
+			await ctx?.mcpReq?.log?.(
+				'info',
+				`Executing npmLicenseCompatibility for ${args.packages.join(', ')}`,
+			);
 			return await withStructuredOutput(handleNpmLicenseCompatibility(args));
 		},
 	);
@@ -4631,6 +4705,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
+			icons: NPM_SECURITY_ICON,
 			annotations: {
 				title: 'Get NPM Package Repository Stats (GitHub)',
 				readOnlyHint: true,
@@ -4638,7 +4713,8 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				idempotentHint: true, // Stats for a repo at a point in time, though they change over time
 			},
 		},
-		async (args: { packages: string[] }) => {
+		async (args: { packages: string[] }, ctx: any) => {
+			await ctx?.mcpReq?.log?.('info', `Executing npmRepoStats for ${args.packages.join(', ')}`);
 			return await withStructuredOutput(handleNpmRepoStats(args));
 		},
 	);
@@ -4652,6 +4728,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
+			icons: NPM_SECURITY_ICON,
 			annotations: {
 				title: 'Check NPM Package Deprecation Status',
 				readOnlyHint: true,
@@ -4659,7 +4736,8 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				idempotentHint: true, // Deprecation status is generally stable for a version
 			},
 		},
-		async (args: { packages: string[] }) => {
+		async (args: { packages: string[] }, ctx: any) => {
+			await ctx?.mcpReq?.log?.('info', `Executing npmDeprecated for ${args.packages.join(', ')}`);
 			return await withStructuredOutput(handleNpmDeprecated(args));
 		},
 	);
@@ -4673,6 +4751,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
+			icons: NPM_SECURITY_ICON,
 			annotations: {
 				title: 'Analyze NPM Package Changelog (GitHub)',
 				readOnlyHint: true,
@@ -4680,7 +4759,11 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				idempotentHint: true,
 			},
 		},
-		async (args: { packages: string[] }) => {
+		async (args: { packages: string[] }, ctx: any) => {
+			await ctx?.mcpReq?.log?.(
+				'info',
+				`Executing npmChangelogAnalysis for ${args.packages.join(', ')}`,
+			);
 			return await withStructuredOutput(handleNpmChangelogAnalysis(args));
 		},
 	);
@@ -4694,6 +4777,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
+			icons: NPM_SECURITY_ICON,
 			annotations: {
 				title: 'Find NPM Package Alternatives',
 				readOnlyHint: true,
@@ -4701,7 +4785,8 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				idempotentHint: false, // Search-based, results can change
 			},
 		},
-		async (args: { packages: string[] }) => {
+		async (args: { packages: string[] }, ctx: any) => {
+			await ctx?.mcpReq?.log?.('info', `Executing npmAlternatives for ${args.packages.join(', ')}`);
 			return await withStructuredOutput(handleNpmAlternatives(args));
 		},
 	);
@@ -4715,6 +4800,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
+			icons: NPM_METRICS_ICON,
 			annotations: {
 				title: 'Analyze NPM Package Quality (NPMS.io)',
 				readOnlyHint: true,
@@ -4722,7 +4808,8 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				idempotentHint: true, // Score for a version is stable, for 'latest' can change
 			},
 		},
-		async (args: { packages: string[] }) => {
+		async (args: { packages: string[] }, ctx: any) => {
+			await ctx?.mcpReq?.log?.('info', `Executing npmQuality for ${args.packages.join(', ')}`);
 			return await withStructuredOutput(handleNpmQuality(args));
 		},
 	);
@@ -4736,6 +4823,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
+			icons: NPM_METRICS_ICON,
 			annotations: {
 				title: 'Analyze NPM Package Maintenance (NPMS.io)',
 				readOnlyHint: true,
@@ -4743,7 +4831,8 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				idempotentHint: true, // Score for a version is stable, for 'latest' can change
 			},
 		},
-		async (args: { packages: string[] }) => {
+		async (args: { packages: string[] }, ctx: any) => {
+			await ctx?.mcpReq?.log?.('info', `Executing npmMaintenance for ${args.packages.join(', ')}`);
 			return await withStructuredOutput(handleNpmMaintenance(args));
 		},
 	);
