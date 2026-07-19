@@ -3,10 +3,8 @@
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
-import { McpServer } from '@modelcontextprotocol/server';
 import type { CallToolResult } from '@modelcontextprotocol/server';
+import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import fetch from 'node-fetch';
 import { z } from 'zod';
 
@@ -2756,7 +2754,7 @@ export async function handleNpmPackageReadme(args: {
 					const versionToUse =
 						versionTag === 'latest' ? packageInfo['dist-tags']?.latest : versionTag;
 
-					if (!versionToUse || !packageInfo.versions || !packageInfo.versions[versionToUse]) {
+					if (!versionToUse || !packageInfo.versions?.[versionToUse]) {
 						return {
 							packageInput: pkgInput,
 							packageName: name,
