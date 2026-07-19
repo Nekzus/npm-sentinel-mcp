@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.19.0-alpha.7](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.6...v1.19.0-alpha.7) (2026-07-19)
+
+
+### Features
+
+* **mcp:** migrate server to MCP SDK v2.0.0-beta.4 ([d1faaa1](https://github.com/Nekzus/npm-sentinel-mcp/commit/d1faaa1190cbbdee05e5f5a1f9cf076583395be9))
+
 # [1.19.0-alpha.6](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.5...v1.19.0-alpha.6) (2026-07-13)
 
 
