@@ -52,5 +52,7 @@ memory.json
 # MCP Registry
 .mcpregistry*
 
-# Docs
+# Temporary build artifacts & scratch
+*.tgz
+scratch/
 npm_sentinel.md
