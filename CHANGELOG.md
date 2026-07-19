@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.19.0-alpha.8](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.7...v1.19.0-alpha.8) (2026-07-19)
+
+
+### Bug Fixes
+
+* **ci:** configure npm OIDC publishing by removing static NPM_TOKEN env var ([4db99e7](https://github.com/Nekzus/npm-sentinel-mcp/commit/4db99e79ad4296a255a547681d145f49dd9f8265))
+* **ci:** configure npm registry-url and NODE_AUTH_TOKEN for semantic-release publish ([ece8745](https://github.com/Nekzus/npm-sentinel-mcp/commit/ece8745de2b6c4795b14b0a64b384f78cc9fb02d))
+
 # [1.19.0-alpha.7](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.6...v1.19.0-alpha.7) (2026-07-19)
 
 
