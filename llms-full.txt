@@ -1,646 +1,478 @@
-# NPM Sentinel MCP Server - Full Documentation
+# NPM Sentinel MCP Server - Full Protocol & Technical Documentation
 
 ## Protocol Specification
-Version: 2025-05-11
-Transport: stdio
-Features: resources, tools, error handling
+Version: MCP v2 (@modelcontextprotocol/server & @modelcontextprotocol/core)
+Transport: stdio / Streamable HTTP (SSE)
+Capabilities: resources, prompts, tools, logging, structuredOutput
 
-## Architecture
+## Modular Architecture (`src/`)
 ```mermaid
 flowchart TD
-    Client[MCP Client] <-->|MCP Protocol| Server[NPM Sentinel Server]
-    Server -->|Fetch| NPM[NPM Registry]
-    Server -->|Analysis| Security[Security DB]
-    Server -->|Metrics| Stats[Download Stats]
+    Client[MCP v2 Client] <-->|MCP JSON-RPC| Transport[Stdio / HTTP Transport]
+    Transport <--> Server[src/server.ts createServer]
     
-    subgraph Resources
-        NPM
-        Security
-        Stats
+    subgraph Modular Server Core
+        Server --> ToolsReg[src/tools/index.ts]
+        Server --> ResReg[src/resources/index.ts]
+        Server --> PromptReg[src/prompts/index.ts]
+        Server --> Config[src/config.ts]
+        Server --> Cache[src/cache.ts FIFO Cache]
     end
     
-    subgraph Tools
-        Analysis[Package Analysis]
-        TypeScript[TS Support]
-        Performance[Performance]
-        Trends[Trend Analysis]
+    subgraph Handlers Layer
+        ToolsReg --> Handlers[src/handlers/index.ts]
+        Handlers --> Registry[NPM Registry API]
+        Handlers --> DepsDev[Google deps.dev / OSV.dev]
+        Handlers --> NPMS[npms.io API]
+        Handlers --> GitHub[GitHub API / Scorecard]
     end
 ```
 
-## Resources
+## Features & Capabilities
 
-### npm://registry
-Content-Type: application/json
-Methods: GET, SUBSCRIBE
-Update Frequency: Real-time
-Rate Limits: Follows npm registry limits
-Description: Package metadata and version information interface
+### 1. Dual Output Protocol (`structuredContent` + `content`)
+Every tool handler call processes inputs through Zod validation (`inputSchema` and `outputSchema`) and wraps responses using `withStructuredOutput`. The client receives both:
+- `content`: Human-readable stringified JSON formatted text item.
+- `structuredContent`: Deserialized native JSON object matching the tool's `outputSchema`.
 
-### npm://security
-Content-Type: application/json
-Methods: GET
-Update Frequency: Daily
-Severity Levels: Low, Medium, High, Critical
-Description: Vulnerability and security analysis interface
+### 2. Embedded Vector SVG Data URI Icons
+All registered tools, resources, and prompts expose pre-rendered SVG Data URIs (`data:image/svg+xml`) in their `icons` array for rich presentation in modern MCP UI clients.
 
-### npm://metrics
-Content-Type: application/json
-Methods: GET, SUBSCRIBE
-Update Frequency: Real-time
-Metrics Types: Downloads, Stars, Issues, Updates
-Description: Package analytics and statistics interface
+### 3. Context Diagnostics Logging
+Handlers issue real-time diagnostic logs (`info`) using `ctx.mcpReq.log` during execution.
 
-## Tool Specifications
+---
 
-// Note: For all tools below, the response payload, typically as described by its `XYZResponse` interface 
-// (or a textual summary if the response is simpler), is JSON stringified and placed within the `text` field 
-// of the standard MCP content object: {"type": "text", "text": "...", "isError": boolean}.
+## Resources Specification
 
-#### npmVersions
-```typescript
-interface NpmVersionsInput {
-  packages: string[];
-}
+### `doc://server/readme`
+- **Content-Type**: `text/markdown`
+- **Description**: Main NPM Sentinel MCP server README documentation.
+- **Icon**: SVG Document Data URI.
 
-interface VersionInfo {
-  version: string;
-  releaseDate: string;
-  deprecated?: boolean;
-  description?: string;
-}
+### `doc://mcp/specification`
+- **Content-Type**: `text/plain`
+- **Description**: Complete Model Context Protocol technical specification (`llms-full.txt`).
+- **Icon**: SVG Document Data URI.
 
-interface NpmVersionsResponse {
-  [packageName: string]: VersionInfo[];
+---
+
+## Prompts Specification
+
+### `analyze-package`
+- **Description**: Generates an interactive prompt payload for deep AI analysis of an NPM package including security, performance, dependencies, and health metrics.
+- **Arguments**:
+  - `package` (string, required): Name of the NPM package to analyze.
+- **Icon**: SVG Security Data URI.
+
+---
+
+## Tool Specifications (19 Tools)
+
+All tools accept an optional `ignoreCache: true` parameter and return standardized responses.
+
+### Standard Error Format (e.g. Empty Array `packages: []` or Invalid Input)
+```json
+{
+  "queryPackages": [],
+  "results": [],
+  "status": "error",
+  "error": "No package names provided in request",
+  "message": "The packages parameter must contain at least one package name."
 }
 ```
 
-#### npmLatest
+---
+
+#### 1. `npmLatest`
 ```typescript
 interface NpmLatestInput {
   packages: string[];
+  ignoreCache?: boolean;
 }
 
-interface LatestInfo {
-  version: string;
-  releaseDate: string;
-  changelog?: string;
-}
-
-interface NpmLatestResponse {
-  [packageName: string]: LatestInfo;
+interface LatestVersionResult {
+  packageInput: string;
+  packageName: string;
+  versionQueried: string;
+  status: 'success' | 'error';
+  data?: {
+    version: string;
+    description: string;
+    license: string;
+    homepage: string;
+    repository: any;
+    dependencies: Record<string, string>;
+    integrity: string;
+    tarball: string;
+    distTags: Record<string, string>;
+  };
 }
 ```
 
-#### npmDeps
+#### 2. `npmVersions`
+```typescript
+interface NpmVersionsInput {
+  packages: string[];
+  ignoreCache?: boolean;
+}
+
+interface VersionsResult {
+  packageInput: string;
+  packageName: string;
+  status: 'success' | 'error';
+  data?: {
+    allVersions: string[];
+    tags: Record<string, string>;
+    latestVersionTag: string;
+  };
+}
+```
+
+#### 3. `npmDeps`
 ```typescript
 interface NpmDepsInput {
   packages: string[];
+  ignoreCache?: boolean;
 }
 
-interface DependencyNode {
-  name: string;
-  version: string;
-  dependencies?: { [dependencyName: string]: string };
-}
-
-interface NpmDepsResponse {
-  [packageName: string]: {
-    dependencyTree?: DependencyNode;
-    analysisSummary?: string;
+interface NpmDepsResult {
+  packageInput: string;
+  packageName: string;
+  status: 'success' | 'error';
+  data?: {
+    directDependencies: Record<string, string>;
+    devDependencies: Record<string, string>;
+    peerDependencies: Record<string, string>;
+    transitiveCount: number;
+    transitiveDependenciesList: string[];
   };
 }
 ```
 
-#### npmTypes
+#### 4. `npmTypes`
 ```typescript
 interface NpmTypesInput {
   packages: string[];
+  ignoreCache?: boolean;
 }
 
-interface TypeSupport {
-  hasTypes: boolean;
-  bundled: boolean;
-  definitelyTyped: boolean;
-  typeVersion?: string;
-}
-
-interface NpmTypesResponse {
-  [packageName: string]: TypeSupport;
-}
-```
-
-#### npmSize
-```typescript
-interface NpmSizeInput {
-  packages: string[];
-}
-
-interface SizeMetrics {
-  size: number; 
-  gzip: number; 
-  dependenciesCount: number;
-  treeshakeable?: boolean; 
-  assetSizes?: { assetName: string; size: number }[];
-}
-
-interface NpmSizeResponse {
-  [packageName: string]: SizeMetrics;
-}
-```
-
-#### npmVulnerabilities
-```typescript
-interface NpmVulnerabilitiesInput {
-  packages: string[];
-}
-
-interface Vulnerability {
-  severity: 'low' | 'medium' | 'high' | 'critical' | 'unknown';
-  title: string;
-  description: string;
-  affectedVersions: string;
-  recommendation?: string;
-  cvssScore?: number;
-  url?: string;
-}
-
-interface NpmVulnerabilitiesResponse {
-  [packageName: string]: Vulnerability[];
-}
-```
-
-#### npmTrends
-```typescript
-interface NpmTrendsInput {
-  packages: string[];
-  period: 'last-day' | 'last-week' | 'last-month' | 'last-year';
-}
-
-interface TrendDataPoint {
-  date: string;
-  downloads: number;
-}
-
-interface TrendMetrics {
-  period: string;
-  downloads: TrendDataPoint[];
-  growth?: number;
-  popularityScore?: number;
-}
-
-interface NpmTrendsResponse {
-  [packageName: string]: TrendMetrics;
-}
-```
-
-#### npmCompare
-```typescript
-interface NpmCompareInput {
-  packages: string[];
-}
-
-interface ComparisonAspects {
-  latestVersion?: string;
-  size?: SizeMetrics;
-  vulnerabilitiesCount?: number;
-  averageDownloads?: number;
-  qualityScore?: number;
-}
-
-interface NpmCompareResponse {
-  [packageName: string]: ComparisonAspects;
-  comparisonSummary?: string;
-}
-```
-
-#### npmMaintainers
-```typescript
-interface NpmMaintainersInput {
-  packages: string[];
-}
-
-interface Maintainer {
-  name: string;
-  email?: string;
-  githubUsername?: string;
-}
-
-interface NpmMaintainersResponse {
-  [packageName: string]: Maintainer[];
-}
-```
-
-#### npmScore
-```typescript
-interface NpmScoreInput {
-  packages: string[];
-}
-
-interface ScoreDetails {
-  quality: number;
-  popularity: number;
-  maintenance: number;
-  final: number;
-}
-
-interface NpmScoreResponse {
-  queryPackages: string[];
-  results: Array<{
-    packageInput: string;
-    packageName: string;
-    status: 'success' | 'error' | 'success_cache';
-    error: string | null;
-    data: {
-      analyzedAt: string;
-      versionInScore: string;
-      score: {
-        final: number;
-        detail: {
-          quality: number;
-          popularity: number;
-          maintenance: number;
-        };
-      };
-      packageInfoFromScore: {
-        name: string;
-        version: string;
-        description: string | null;
-      };
-      npmStats: {
-        downloadsLastMonth: number;
-        starsCount: number;
-      };
-      githubStats: {
-        starsCount: number;
-        forksCount: number;
-        subscribersCount: number;
-        issues: {
-          count: number;
-          openCount: number;
-        };
-      } | null;
-      scorecard?: {
-        overallScore: number;
-        checks: Array<{ name: string; score: number; reason: string }>;
-      };
-    };
-    message: string;
-  }>;
-  message: string;
-}
-```
-
-#### npmPackageReadme
-```typescript
-interface NpmPackageReadmeInput {
-  packages: string[];
-}
-
-interface NpmPackageReadmeResponse {
-  [packageName: string]: {
-    content: string;
-    format: 'markdown' | 'text';
-    error?: string;
+interface NpmTypesResult {
+  packageInput: string;
+  packageName: string;
+  status: 'success' | 'error';
+  data?: {
+    hasNativeTypes: boolean;
+    definitelyTypedPackage: string | null;
+    hasDefinitelyTyped: boolean;
+    tsStatus: 'native' | 'definitely-typed' | 'none';
   };
 }
 ```
 
-#### npmSearch
+#### 5. `npmSize`
+```typescript
+interface NpmSizeInput {
+  packages: string[];
+  ignoreCache?: boolean;
+}
+
+interface NpmSizeResult {
+  packageInput: string;
+  packageName: string;
+  status: 'success' | 'error';
+  data?: {
+    unpackedSize: number;
+    fileCount: number;
+    sizeFormatted: string;
+  };
+}
+```
+
+#### 6. `npmVulnerabilities`
+```typescript
+interface NpmVulnerabilitiesInput {
+  packages: string[];
+  ignoreCache?: boolean;
+}
+
+interface VulnerabilityAdvisory {
+  id: string;
+  summary: string;
+  details: string;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  aliases: string[];
+}
+
+interface NpmVulnerabilitiesResult {
+  packageInput: string;
+  packageName: string;
+  status: 'success' | 'error';
+  data?: {
+    vulnerabilityCount: number;
+    scannedPackagesCount: number;
+    advisories: VulnerabilityAdvisory[];
+  };
+}
+```
+
+#### 7. `npmTrends`
+```typescript
+interface NpmTrendsInput {
+  packages: string[];
+  period?: 'last-week' | 'last-month' | 'last-year';
+  ignoreCache?: boolean;
+}
+
+interface NpmTrendsResult {
+  packageInput: string;
+  packageName: string;
+  status: 'success' | 'error';
+  data?: {
+    period: string;
+    totalDownloads: number;
+    downloads: Array<{ day: string; downloads: number }>;
+  };
+}
+```
+
+#### 8. `npmCompare`
+```typescript
+interface NpmCompareInput {
+  packages: string[];
+  ignoreCache?: boolean;
+}
+
+interface NpmCompareResult {
+  packagesCompared: string[];
+  metrics: Array<{
+    name: string;
+    version: string;
+    monthlyDownloads: number;
+    score: number;
+    license: string;
+    hasTypes: boolean;
+  }>;
+}
+```
+
+#### 9. `npmMaintainers`
+```typescript
+interface NpmMaintainersInput {
+  packages: string[];
+  ignoreCache?: boolean;
+}
+
+interface NpmMaintainersResult {
+  packageInput: string;
+  packageName: string;
+  status: 'success' | 'error';
+  data?: {
+    maintainers: Array<{ name: string; email?: string; url?: string }>;
+  };
+}
+```
+
+#### 10. `npmScore`
+```typescript
+interface NpmScoreInput {
+  packages: string[];
+  ignoreCache?: boolean;
+}
+
+interface NpmScoreResult {
+  packageInput: string;
+  packageName: string;
+  status: 'success' | 'error';
+  data?: {
+    finalScore: number;
+    quality: number;
+    popularity: number;
+    maintenance: number;
+    scorecard?: any;
+  };
+}
+```
+
+#### 11. `npmPackageReadme`
+```typescript
+interface NpmPackageReadmeInput {
+  packages: string[];
+  ignoreCache?: boolean;
+}
+
+interface NpmPackageReadmeResult {
+  packageInput: string;
+  packageName: string;
+  status: 'success' | 'error';
+  data?: {
+    readme: string;
+  };
+}
+```
+
+#### 12. `npmSearch`
 ```typescript
 interface NpmSearchInput {
   query: string;
   limit?: number;
 }
 
-interface SearchResultPackage {
-  name: string;
-  version: string;
-  description?: string;
-  keywords?: string[];
-  score?: ScoreDetails;
-}
-
-interface NpmSearchResponse {
-  query: string;
-  results: SearchResultPackage[];
-  totalResults?: number;
-}
-```
-
-#### npmLicenseCompatibility
-```typescript
-interface NpmLicenseCompatibilityInput {
-  packages: string[];
-  projectLicense?: string;
-}
-
-interface LicenseInfo {
-  spdxId: string;
-  name: string;
-  isCompatible?: boolean;
-  issues?: string[];
-}
-
-interface NpmLicenseCompatibilityResponse {
-  [packageName: string]: LicenseInfo;
-  compatibilitySummary?: string;
-}
-```
-
-#### npmRepoStats
-```typescript
-interface NpmRepoStatsInput {
-  packages: string[];
-}
-
-interface RepoStats {
-  githubRepoUrl: string;
-  stars: number;
-  forks: number;
-  openIssues: number;
-  watchers: number;
-  createdAt: string | null;
-  updatedAt: string | null;
-  defaultBranch: string | null;
-  hasWiki: boolean | null;
-  topics: string[];
-  scorecard?: {
-    overallScore: number;
-    checks: Array<{ name: string; score: number; reason: string }>;
-  };
-}
-
-interface NpmRepoStatsResponse {
-  queryPackages: string[];
+interface NpmSearchResult {
+  total: number;
   results: Array<{
-    packageInput: string;
-    packageName: string;
-    status: 'success' | 'error' | 'success_cache';
-    error: string | null;
-    data: RepoStats;
-    message: string;
+    name: string;
+    version: string;
+    description: string;
+    score: number;
+    keywords: string[];
   }>;
 }
 ```
 
-#### npmDeprecated
+#### 13. `npmLicenseCompatibility`
 ```typescript
-interface NpmDeprecatedInput {
+interface NpmLicenseCompatibilityInput {
   packages: string[];
+  ignoreCache?: boolean;
 }
 
-interface DeprecationInfo {
-  isDeprecated: boolean;
-  message?: string;
-  alternative?: string;
-}
-
-interface NpmDeprecatedResponse {
-  [packageName: string]: DeprecationInfo;
+interface NpmLicenseCompatibilityResult {
+  packagesAnalysed: Array<{ name: string; license: string }>;
+  isCompatible: boolean;
+  compatibilityDetails: string;
 }
 ```
 
-#### npmChangelogAnalysis
+#### 14. `npmRepoStats`
 ```typescript
-interface NpmChangelogAnalysisInput {
+interface NpmRepoStatsInput {
   packages: string[];
-  targetVersion?: string;
-  sinceVersion?: string;
+  ignoreCache?: boolean;
 }
 
-interface ChangelogEntry {
-  version: string;
-  date?: string;
-  summary?: string;
-  changes?: { type: 'added' | 'fixed' | 'changed' | 'removed'; description: string }[];
-}
-
-interface NpmChangelogAnalysisResponse {
-  [packageName: string]: {
-    changelogUrl?: string;
-    entries?: ChangelogEntry[];
-    analysisSummary?: string;
-  };
-}
-```
-
-#### npmAlternatives
-```typescript
-interface NpmAlternativesInput {
-  packages: string[];
-}
-
-interface AlternativePackageInfo {
-  name: string;
-  reason?: string;
-  score?: ScoreDetails;
-}
-
-interface NpmAlternativesResponse {
-  [packageName: string]: {
-    alternatives: AlternativePackageInfo[];
-  };
-}
-```
-
-#### npmQuality
-```typescript
-interface NpmQualityInput {
-  packages: string[];
-}
-
-interface QualityMetrics {
-  codeComplexity?: number;
-  testCoverage?: number;
-  documentationScore?: number;
-  communityEngagement?: number;
-  npmsQualityScore?: number;
-  npmsPopularityScore?: number;
-  npmsMaintenanceScore?: number;
-}
-
-interface NpmQualityResponse {
-  [packageName: string]: QualityMetrics;
-}
-```
-
-#### npmMaintenance
-```typescript
-interface NpmMaintenanceInput {
-  packages: string[];
-}
-
-interface MaintenanceMetrics {
-  lastPublishDate?: string;
-  commitFrequency?: string;
-  openIssuesRatio?: number;
-  timeSinceLastCommit?: string;
-  npmsMaintenanceScore?: number;
-}
-
-interface NpmMaintenanceResponse {
-  [packageName: string]: MaintenanceMetrics;
-}
-```
-
-## Error Handling
-
-### Standard Error Format
-// When an error occurs, the standard MCP response 'content' object will have 'isError: true'.
-// The 'text' field of that content object will contain a JSON stringified MCPError object, as defined below.
-```typescript
-interface MCPError {
-  error: {
-    code: number;
-    message: string;
-    data?: {
-      details: string;
-      packageName?: string;
-      context?: any;
+interface NpmRepoStatsResult {
+  packageInput: string;
+  packageName: string;
+  status: 'success' | 'error';
+  data?: {
+    stars: number;
+    forks: number;
+    openIssues: number;
+    scorecard?: {
+      overallScore: number;
+      checks: Array<{ name: string; score: number }>;
     };
   };
 }
 ```
 
-### Error Codes
-1000: Invalid package name (Rejected by security validation filter due to restricted characters or format)
-1001: Package not found
-1002: Version not found
-1003: Rate limit exceeded
-1004: Network error
-1005: Analysis failed
-2000: Internal server error
-
-## Security Considerations
-
-### Data Protection
-- All data is processed locally
-- No sensitive information is stored
-- Secure communication channels
-
-### Input Validation
-- Strict Regex-based allowlist for package names
-- Prevents Path Traversal (`../`)
-- Prevents Command Injection (`&`, `;`, `|`)
-- Prevents SSRF attacks
-
-### Rate Limiting
-- Implements fair usage policies
-- Respects NPM registry limits
-- Prevents abuse
-
-### Authentication
-- Supports npm token authentication
-- Validates package access
-- Manages credentials securely
-
-## Integration Guide
-
-### Docker Configuration
-The server can be run in a Docker container with directory mounting to `/projects`. This allows for secure access to files while maintaining isolation.
-
-#### Build
-```bash
-# Build the Docker image
-docker build -t nekzus/npm-sentinel-mcp .
-```
-
-#### Basic Usage
-```json
-{
-  "mcpServers": {
-    "npm-sentinel-mcp": {
-      "command": "docker",
-      "args": [
-        "run",
-        "-i",
-        "--rm",
-        "-w", "/projects",
-        "--mount", "type=bind,src=${PWD},dst=/projects",
-        "nekzus/npm-sentinel-mcp",
-        "node",
-        "dist/index.js"
-      ]
-    }
-  }
-}
-```
-
-#### Multi-Directory Configuration
-```json
-{
-  "mcpServers": {
-    "npm-sentinel-mcp": {
-      "command": "docker",
-      "args": [
-        "run",
-        "-i",
-        "--rm",
-        "-w", "/projects",
-        "--mount", "type=bind,src=/path/to/workspace,dst=/projects/workspace",
-        "--mount", "type=bind,src=/path/to/other/dir,dst=/projects/other/dir,ro",
-        "nekzus/npm-sentinel-mcp",
-        "node",
-        "dist/index.js"
-      ]
-    }
-  }
-}
-```
-
-#### Mount Guidelines
-- Mount all directories under `/projects`
-- Use absolute paths for source directories
-- Add `,ro` flag for read-only access
-- Working directory is set to `/projects`
-- Container runs in interactive mode with auto-removal
-
-### Standard Configuration
-```json
-{
-  "mcpServers": {
-    "npm-sentinel-mcp": {
-      "transport": "stdio",
-      "command": "npx",
-      "args": ["-y", "@nekzus/mcp-server"]
-    }
-  }
-}
-```
-
-### Basic Usage
+#### 15. `npmDeprecated`
 ```typescript
-// Initialize client
-const client = await MCPClient.connect("npm-sentinel-mcp");
+interface NpmDeprecatedInput {
+  packages: string[];
+  ignoreCache?: boolean;
+}
 
-// Analyze package
-const result = await client.invoke("npmVersions", {
-  packages: ["react"]
-});
-
-// Subscribe to updates
-const unsubscribe = await client.subscribe("npm://registry", {
-  package: "react",
-  onUpdate: (data) => console.log(data)
-});
+interface NpmDeprecatedResult {
+  packageInput: string;
+  packageName: string;
+  status: 'success' | 'error';
+  data?: {
+    isDeprecated: boolean;
+    deprecationReason: string | null;
+  };
+}
 ```
 
-## Best Practices
+#### 16. `npmChangelogAnalysis`
+```typescript
+interface NpmChangelogAnalysisInput {
+  packages: string[];
+  ignoreCache?: boolean;
+}
 
-### Resource Usage
-1. Subscribe to resources for real-time updates
-2. Implement caching for frequently accessed data
-3. Use batch operations when possible
-4. Handle rate limits gracefully
+interface NpmChangelogAnalysisResult {
+  packageInput: string;
+  packageName: string;
+  status: 'success' | 'error';
+  data?: {
+    hasChangelog: boolean;
+    releases: Array<{ tag_name: string; name: string; published_at: string; source: string }>;
+  };
+}
+```
 
-### Error Handling
-1. Implement proper error recovery
-2. Provide meaningful error messages
-3. Log errors for debugging
-4. Handle timeout scenarios
+#### 17. `npmAlternatives`
+```typescript
+interface NpmAlternativesInput {
+  packages: string[];
+  ignoreCache?: boolean;
+}
 
-### Performance
-1. Use connection pooling
-2. Implement request queuing
-3. Cache responses
-4. Handle concurrent requests 
+/**
+ * Filter Algorithm:
+ * 1. Extracts functional domain keywords (excluding brand keywords).
+ * 2. Queries registry by domain keywords.
+ * 3. Applies strict candidate filter (excludes same package, @types/, ecosystem plugins prefixed with name).
+ * 4. Returns top 5 distinct alternative packages.
+ */
+interface NpmAlternativesResult {
+  packageInput: string;
+  packageName: string;
+  status: 'success' | 'no_alternatives_found' | 'error';
+  data?: {
+    originalPackageStats: { name: string; monthlyDownloads: number; keywords: string[] };
+    alternatives: Array<{
+      name: string;
+      description: string | null;
+      version: string;
+      monthlyDownloads: number;
+      score: number;
+      repositoryUrl: string | null;
+      keywords: string[];
+    }>;
+  };
+}
+```
+
+#### 18. `npmQuality`
+```typescript
+interface NpmQualityInput {
+  packages: string[];
+  ignoreCache?: boolean;
+}
+
+interface NpmQualityResult {
+  packageInput: string;
+  packageName: string;
+  status: 'success' | 'error';
+  data?: {
+    qualityScore: number;
+  };
+}
+```
+
+#### 19. `npmMaintenance`
+```typescript
+interface NpmMaintenanceInput {
+  packages: string[];
+  ignoreCache?: boolean;
+}
+
+interface NpmMaintenanceResult {
+  packageInput: string;
+  packageName: string;
+  status: 'success' | 'error';
+  data?: {
+    maintenanceScore: number;
+  };
+}
+```
+
+---
+
+## Technical Support & License
+
+- **License**: MIT
+- **Repository**: https://github.com/Nekzus/npm-sentinel-mcp

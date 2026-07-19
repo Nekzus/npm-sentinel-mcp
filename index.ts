@@ -3,18 +3,20 @@
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
-import { McpServer } from '@modelcontextprotocol/server';
 import type { CallToolResult } from '@modelcontextprotocol/server';
+import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import fetch from 'node-fetch';
 import { z } from 'zod';
+import createServer from './src/server.js';
 
 // Cache configuration
-let NPM_REGISTRY_URL = (process.env.NPM_REGISTRY_URL || 'https://registry.npmjs.org').replace(
-	/\/$/,
-	'',
-);
+export let NPM_REGISTRY_URL = (
+	process.env.NPM_REGISTRY_URL || 'https://registry.npmjs.org'
+).replace(/\/$/, '');
+
+export function setNpmRegistryUrl(url: string): void {
+	NPM_REGISTRY_URL = url.replace(/\/$/, '');
+}
 
 // Cache configuration
 const CACHE_TTL_MEDIUM = 60 * 60 * 1000; // 1 hour
@@ -398,6 +400,24 @@ function isValidNpmPackageName(name: string): boolean {
 	);
 }
 
+export function createEmptyArrayErrorResponse(toolName: string): CallToolResult {
+	const errorResponse = JSON.stringify(
+		{
+			queryPackages: [],
+			results: [],
+			status: 'error',
+			error: 'No package names provided in request',
+			message: `The packages parameter for ${toolName} must contain at least one package name.`,
+		},
+		null,
+		2,
+	);
+	return {
+		content: [{ type: 'text', text: errorResponse }],
+		isError: true,
+	};
+}
+
 export async function handleNpmVersions(args: {
 	packages: string[];
 	ignoreCache?: boolean;
@@ -405,7 +425,7 @@ export async function handleNpmVersions(args: {
 	try {
 		const packagesToProcess = args.packages || [];
 		if (packagesToProcess.length === 0) {
-			throw new Error('No package names provided');
+			return createEmptyArrayErrorResponse('npmVersions');
 		}
 
 		const processedResults = await Promise.all(
@@ -549,7 +569,7 @@ export async function handleNpmLatest(args: {
 	try {
 		const packagesToProcess = args.packages || [];
 		if (packagesToProcess.length === 0) {
-			throw new Error('No package names provided');
+			return createEmptyArrayErrorResponse('npmLatest');
 		}
 
 		const processedResults = await Promise.all(
@@ -2756,7 +2776,7 @@ export async function handleNpmPackageReadme(args: {
 					const versionToUse =
 						versionTag === 'latest' ? packageInfo['dist-tags']?.latest : versionTag;
 
-					if (!versionToUse || !packageInfo.versions || !packageInfo.versions[versionToUse]) {
+					if (!versionToUse || !packageInfo.versions?.[versionToUse]) {
 						return {
 							packageInput: pkgInput,
 							packageName: name,
@@ -3925,6 +3945,44 @@ export async function handleNpmChangelogAnalysis(args: {
 	}
 }
 
+function isAlternativeCandidate(
+	candidateName: string,
+	candidateDesc: string,
+	originalName: string,
+): boolean {
+	const lowerCandidate = candidateName.toLowerCase();
+	const lowerOriginal = originalName.toLowerCase();
+	const lowerDesc = (candidateDesc || '').toLowerCase();
+
+	if (lowerCandidate === lowerOriginal) return false;
+	if (lowerCandidate.startsWith('@types/')) return false;
+
+	if (
+		lowerCandidate.startsWith(`${lowerOriginal}-`) ||
+		lowerCandidate.startsWith(`${lowerOriginal}_`) ||
+		lowerCandidate.startsWith(`${lowerOriginal}.`) ||
+		lowerCandidate.endsWith(`-${lowerOriginal}`) ||
+		lowerCandidate.endsWith(`_${lowerOriginal}`) ||
+		lowerCandidate.includes(lowerOriginal)
+	) {
+		return false;
+	}
+
+	if (
+		lowerDesc.includes(`middleware for ${lowerOriginal}`) ||
+		lowerDesc.includes(`plugin for ${lowerOriginal}`) ||
+		lowerDesc.includes(`adapter for ${lowerOriginal}`) ||
+		lowerDesc.includes(`wrapper for ${lowerOriginal}`) ||
+		lowerDesc.includes(`extension for ${lowerOriginal}`) ||
+		lowerDesc.includes(`${lowerOriginal} middleware`) ||
+		lowerDesc.includes(`${lowerOriginal} plugin`)
+	) {
+		return false;
+	}
+
+	return true;
+}
+
 export async function handleNpmAlternatives(args: {
 	packages: string[];
 	ignoreCache?: boolean;
@@ -3932,7 +3990,7 @@ export async function handleNpmAlternatives(args: {
 	try {
 		const packagesToProcess = args.packages || [];
 		if (packagesToProcess.length === 0) {
-			throw new Error('No package names provided to find alternatives.');
+			return createEmptyArrayErrorResponse('npmAlternatives');
 		}
 
 		const processedResults = await Promise.all(
@@ -3979,41 +4037,41 @@ export async function handleNpmAlternatives(args: {
 				}
 
 				const cacheKey = generateCacheKey('handleNpmAlternatives', originalPackageName);
-				const cachedResult = args.ignoreCache ? undefined : cacheGet<any>(cacheKey); // Expects the full result object
+				const cachedResult = args.ignoreCache ? undefined : cacheGet<any>(cacheKey);
 
 				if (cachedResult) {
 					return {
 						...cachedResult,
-						packageInput: pkgInput, // current input context
-						packageName: originalPackageName, // current name context
-						// versionQueried is part of cachedResult.data or similar if stored, or add if needed
+						packageInput: pkgInput,
+						packageName: originalPackageName,
 						status: `${cachedResult.status}_cache` as const,
 						message: `${cachedResult.message} (from cache)`,
 					};
 				}
 
 				try {
-					const searchResponse = await fetchWithRetry(
-						`${NPM_REGISTRY_URL}/-/v1/search?text=keywords:${encodeURIComponent(
-							originalPackageName,
-						)}&size=10`,
-					);
-					if (!searchResponse.ok) {
-						const errorResult = {
-							packageInput: pkgInput,
-							packageName: originalPackageName,
-							status: 'error' as const,
-							error: `Failed to search for alternatives: ${searchResponse.status} ${searchResponse.statusText}`,
-							data: null,
-							message: 'Could not perform search for alternatives.',
-						};
-						return errorResult; // Do not cache API errors for search
+					let originalPackageKeywords: string[] = [];
+					let originalPackageDownloads = 0;
+
+					try {
+						const initSearchResponse = await fetchWithRetry(
+							`${NPM_REGISTRY_URL}/-/v1/search?text=keywords:${encodeURIComponent(
+								originalPackageName,
+							)}&size=5`,
+						);
+						if (initSearchResponse.ok) {
+							const initSearchData = (await initSearchResponse.json()) as NpmSearchResponse;
+							const match = (initSearchData.objects || []).find(
+								(p) => p.package.name === originalPackageName,
+							);
+							if (match?.package?.keywords) {
+								originalPackageKeywords = match.package.keywords;
+							}
+						}
+					} catch {
+						// Optional keyword retrieval failure
 					}
 
-					const searchData = (await searchResponse.json()) as NpmSearchResponse;
-					const alternativePackagesRaw = searchData.objects || [];
-
-					let originalPackageDownloads = 0;
 					try {
 						const dlResponse = await fetchWithRetry(
 							`https://api.npmjs.org/downloads/point/last-month/${originalPackageName}`,
@@ -4028,62 +4086,135 @@ export async function handleNpmAlternatives(args: {
 						);
 					}
 
-					const originalPackageKeywords =
-						alternativePackagesRaw.find((p) => p.package.name === originalPackageName)?.package
-							.keywords || [];
-
 					const originalPackageStats = {
 						name: originalPackageName,
 						monthlyDownloads: originalPackageDownloads,
 						keywords: originalPackageKeywords,
 					};
 
-					if (
-						alternativePackagesRaw.length === 0 ||
-						(alternativePackagesRaw.length === 1 &&
-							alternativePackagesRaw[0].package.name === originalPackageName)
-					) {
+					const genericKeywords = originalPackageKeywords.filter(
+						(kw) =>
+							kw.toLowerCase() !== originalPackageName.toLowerCase() &&
+							!kw.toLowerCase().includes(originalPackageName.toLowerCase()) &&
+							kw.length > 2,
+					);
+
+					const domainKeywords = genericKeywords.filter(
+						(kw) =>
+							![
+								'mobile',
+								'ionic',
+								'component',
+								'components',
+								'ui',
+								'css',
+								'react',
+								'vue',
+								'angular',
+								'stencil',
+								'storybook',
+								'icon',
+								'icons',
+							].includes(kw.toLowerCase()),
+					);
+
+					const selectedKeywords = domainKeywords.length > 0 ? domainKeywords : genericKeywords;
+
+					let searchQuery = originalPackageName;
+					if (selectedKeywords.length >= 2) {
+						searchQuery = selectedKeywords.slice(0, 3).join(' ');
+					} else if (selectedKeywords.length === 1) {
+						searchQuery = selectedKeywords[0];
+					}
+
+					const searchResponse = await fetchWithRetry(
+						`${NPM_REGISTRY_URL}/-/v1/search?text=${encodeURIComponent(searchQuery)}&size=30`,
+					);
+
+					if (!searchResponse.ok) {
+						const errorResult = {
+							packageInput: pkgInput,
+							packageName: originalPackageName,
+							status: 'error' as const,
+							error: `Failed to search for alternatives: ${searchResponse.status} ${searchResponse.statusText}`,
+							data: null,
+							message: 'Could not perform search for alternatives.',
+						};
+						return errorResult;
+					}
+
+					const searchData = (await searchResponse.json()) as NpmSearchResponse;
+					const alternativePackagesRaw = searchData.objects || [];
+
+					let validAlternativesRaw = alternativePackagesRaw.filter((alt) =>
+						isAlternativeCandidate(
+							alt.package.name,
+							alt.package.description || '',
+							originalPackageName,
+						),
+					);
+
+					if (validAlternativesRaw.length === 0 && searchQuery !== originalPackageName) {
+						try {
+							const fallbackResponse = await fetchWithRetry(
+								`${NPM_REGISTRY_URL}/-/v1/search?text=${encodeURIComponent(
+									originalPackageName,
+								)}&size=30`,
+							);
+							if (fallbackResponse.ok) {
+								const fallbackData = (await fallbackResponse.json()) as NpmSearchResponse;
+								validAlternativesRaw = (fallbackData.objects || []).filter((alt) =>
+									isAlternativeCandidate(
+										alt.package.name,
+										alt.package.description || '',
+										originalPackageName,
+									),
+								);
+							}
+						} catch {
+							// Fallback failure
+						}
+					}
+
+					if (validAlternativesRaw.length === 0) {
 						const resultNoAlternatives = {
 							packageInput: pkgInput,
 							packageName: originalPackageName,
 							status: 'no_alternatives_found' as const,
 							error: null,
 							data: { originalPackageStats, alternatives: [] },
-							message: `No significant alternatives found for ${originalPackageName} based on keyword search.`,
+							message: `No significant alternatives found for ${originalPackageName} based on search.`,
 						};
 						cacheSet(cacheKey, resultNoAlternatives, CACHE_TTL_MEDIUM);
 						return resultNoAlternatives;
 					}
 
 					const alternativesData = await Promise.all(
-						alternativePackagesRaw
-							.filter((alt) => alt.package.name !== originalPackageName)
-							.slice(0, 5)
-							.map(async (alt) => {
-								let altDownloads = 0;
-								try {
-									const altDlResponse = await fetchWithRetry(
-										`https://api.npmjs.org/downloads/point/last-month/${alt.package.name}`,
-									);
-									if (altDlResponse.ok) {
-										altDownloads = ((await altDlResponse.json()) as DownloadCount).downloads || 0;
-									}
-								} catch (e) {
-									console.debug(
-										`Failed to fetch downloads for alternative ${alt.package.name}: ${e}`,
-									);
+						validAlternativesRaw.slice(0, 5).map(async (alt) => {
+							let altDownloads = 0;
+							try {
+								const altDlResponse = await fetchWithRetry(
+									`https://api.npmjs.org/downloads/point/last-month/${alt.package.name}`,
+								);
+								if (altDlResponse.ok) {
+									altDownloads = ((await altDlResponse.json()) as DownloadCount).downloads || 0;
 								}
+							} catch (e) {
+								console.debug(
+									`Failed to fetch downloads for alternative ${alt.package.name}: ${e}`,
+								);
+							}
 
-								return {
-									name: alt.package.name,
-									description: alt.package.description || null,
-									version: alt.package.version,
-									monthlyDownloads: altDownloads,
-									score: alt.score.final,
-									repositoryUrl: alt.package.links?.repository || null,
-									keywords: alt.package.keywords || [],
-								};
-							}),
+							return {
+								name: alt.package.name,
+								description: alt.package.description || null,
+								version: alt.package.version,
+								monthlyDownloads: altDownloads,
+								score: alt.score.final,
+								repositoryUrl: alt.package.links?.repository || null,
+								keywords: alt.package.keywords || [],
+							};
+						}),
 					);
 
 					const successResult = {
@@ -4136,548 +4267,8 @@ export async function handleNpmAlternatives(args: {
 		};
 	}
 }
-
-// Get __dirname in an ES module environment
-// Define session configuration schema
-export const configSchema = z.object({
-	NPM_REGISTRY_URL: z.string().optional().describe('URL of the NPM registry to use'),
-});
-
-// Create server function for Smithery CLI
-export default function createServer({ config }: { config: z.infer<typeof configSchema> }) {
-	// Apply config overrides
-	if (config.NPM_REGISTRY_URL) {
-		NPM_REGISTRY_URL = config.NPM_REGISTRY_URL.replace(/\/$/, '');
-	}
-
-	// Handle both ESM and CJS environments
-	let __filename: string;
-	let __dirname: string;
-
-	try {
-		__filename = fileURLToPath(import.meta.url);
-		__dirname = path.dirname(__filename);
-	} catch {
-		// Fallback for CJS environment (Smithery HTTP build)
-		__filename = process.argv[1] || '.';
-		__dirname = path.dirname(__filename);
-	}
-
-	// Determine package root
-	let packageRoot = __dirname;
-	if (fs.existsSync(path.join(__dirname, 'package.json'))) {
-		packageRoot = __dirname;
-	} else if (fs.existsSync(path.join(__dirname, '..', 'package.json'))) {
-		packageRoot = path.join(__dirname, '..');
-	}
-
-	// Read version from package.json
-	let serverVersion = '1.0.0';
-	try {
-		const packageJsonPath = path.join(packageRoot, 'package.json');
-		if (fs.existsSync(packageJsonPath)) {
-			const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
-			serverVersion = packageJson.version;
-		}
-	} catch (error) {
-		console.error('Error reading package.json version:', error);
-	}
-
-	// Create server instance
-	const server = new McpServer({
-		name: 'npm-sentinel-mcp',
-		version: serverVersion,
-	});
-
-	// Update paths to be relative to the package
-	const README_PATH = path.join(packageRoot, 'README.md');
-	const LLMS_FULL_TEXT_PATH = path.join(packageRoot, 'llms-full.txt');
-
-	// Register README.md resource
-	server.registerResource(
-		'serverReadme',
-		'doc://server/readme',
-		{
-			description: 'Main documentation and usage guide for this NPM Info Server.',
-			mimeType: 'text/markdown',
-		},
-		async (uri: URL): Promise<{ contents: { uri: string; text: string; mimeType: string }[] }> => {
-			try {
-				const readmeContent = fs.readFileSync(README_PATH, 'utf-8');
-				return {
-					contents: [
-						{
-							uri: uri.href,
-							text: readmeContent,
-							mimeType: 'text/markdown',
-						},
-					],
-				};
-			} catch (error: any) {
-				console.error(`Error reading README.md for resource ${uri.href}:`, error.message);
-				throw {
-					code: -32002,
-					message: `Resource not found or unreadable: ${uri.href}`,
-					data: { uri: uri.href, cause: error.message },
-				};
-			}
-		},
-	);
-
-	// Register llms-full.txt resource (MCP Specification)
-	server.registerResource(
-		'mcpSpecification',
-		'doc://mcp/specification',
-		{
-			description:
-				'The llms-full.txt content providing a comprehensive overview of the Model Context Protocol.',
-			mimeType: 'text/plain',
-		},
-		async (uri: URL): Promise<{ contents: { uri: string; text: string; mimeType: string }[] }> => {
-			try {
-				const specContent = fs.readFileSync(LLMS_FULL_TEXT_PATH, 'utf-8');
-				return {
-					contents: [
-						{
-							uri: uri.href,
-							text: specContent,
-							mimeType: 'text/plain',
-						},
-					],
-				};
-			} catch (error: any) {
-				console.error(`Error reading llms-full.txt for resource ${uri.href}:`, error.message);
-				throw {
-					code: -32002,
-					message: `Resource not found or unreadable: ${uri.href}`,
-					data: { uri: uri.href, cause: error.message },
-				};
-			}
-		},
-	);
-
-	// Register prompts
-	server.registerPrompt(
-		'analyze-package',
-		{
-			description: 'Analyze an NPM package for security and quality',
-			argsSchema: z.object({
-				package: z.string().describe('Name of the npm package to analyze'),
-			}),
-		},
-		({ package: pkgName }) => ({
-			messages: [
-				{
-					role: 'user',
-					content: {
-						type: 'text',
-						text: `Please analyze the npm package "${pkgName}". Check for vulnerabilities, maintenance status, and recent issues. Use the available tools to gather information.`,
-					},
-				},
-			],
-		}),
-	);
-
-	// Add NPM tools - Ensuring each tool registration is complete and correct
-	server.registerTool(
-		'npmVersions',
-		{
-			description: 'Get all available versions of an NPM package',
-			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to get versions for'),
-				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			}),
-			annotations: {
-				title: 'Get All Package Versions',
-				readOnlyHint: true,
-				openWorldHint: true,
-				idempotentHint: true,
-			},
-		},
-		async (args: { packages: string[] }) => {
-			return await handleNpmVersions(args);
-		},
-	);
-
-	server.registerTool(
-		'npmLatest',
-		{
-			description: 'Get the latest version and changelog of an NPM package',
-			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to get latest versions for'),
-				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			}),
-			annotations: {
-				title: 'Get Latest Package Information',
-				readOnlyHint: true,
-				openWorldHint: true,
-				idempotentHint: true, // Result for 'latest' tag can change, but call itself is idempotent
-			},
-		},
-		async (args: { packages: string[] }) => {
-			return await handleNpmLatest(args);
-		},
-	);
-
-	server.registerTool(
-		'npmDeps',
-		{
-			description: 'Analyze dependencies and devDependencies of an NPM package',
-			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to analyze dependencies for'),
-				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			}),
-			annotations: {
-				title: 'Get Package Dependencies',
-				readOnlyHint: true,
-				openWorldHint: true,
-				idempotentHint: true,
-			},
-		},
-		async (args: { packages: string[] }) => {
-			return await handleNpmDeps(args);
-		},
-	);
-
-	server.registerTool(
-		'npmTypes',
-		{
-			description: 'Check TypeScript types availability and version for a package',
-			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to check types for'),
-				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			}),
-			annotations: {
-				title: 'Check TypeScript Type Availability',
-				readOnlyHint: true,
-				openWorldHint: true,
-				idempotentHint: true,
-			},
-		},
-		async (args: { packages: string[] }) => {
-			return await handleNpmTypes(args);
-		},
-	);
-
-	server.registerTool(
-		'npmSize',
-		{
-			description: 'Get package size information including dependencies and bundle size',
-			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to get size information for'),
-				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			}),
-			annotations: {
-				title: 'Get Package Size (Bundlephobia)',
-				readOnlyHint: true,
-				openWorldHint: true,
-				idempotentHint: true,
-			},
-		},
-		async (args: { packages: string[] }) => {
-			return await handleNpmSize(args);
-		},
-	);
-
-	server.registerTool(
-		'npmVulnerabilities',
-		{
-			description: 'Check for known vulnerabilities in packages',
-			inputSchema: z.object({
-				packages: z
-					.array(z.string())
-					.describe('List of package names to check for vulnerabilities'),
-				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			}),
-			annotations: {
-				title: 'Check Package Vulnerabilities (OSV.dev)',
-				readOnlyHint: true,
-				openWorldHint: true,
-				idempotentHint: false, // Vulnerability data can change frequently
-			},
-		},
-		async (args: { packages: string[] }) => {
-			return await handleNpmVulnerabilities(args);
-		},
-	);
-
-	server.registerTool(
-		'npmTrends',
-		{
-			description: 'Get download trends and popularity metrics for packages',
-			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to get trends for'),
-				period: z
-					.enum(['last-week', 'last-month', 'last-year'])
-					.describe('Time period for trends. Options: "last-week", "last-month", "last-year"')
-					.optional()
-					.default('last-month'),
-				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			}),
-			annotations: {
-				title: 'Get NPM Package Download Trends',
-				readOnlyHint: true,
-				openWorldHint: true,
-				idempotentHint: true, // Trends for a fixed past period are idempotent
-			},
-		},
-		async (args: { packages: string[]; period?: 'last-week' | 'last-month' | 'last-year' }) => {
-			return await handleNpmTrends(args);
-		},
-	);
-
-	server.registerTool(
-		'npmCompare',
-		{
-			description: 'Compare multiple NPM packages based on various metrics',
-			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to compare'),
-				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			}),
-			annotations: {
-				title: 'Compare NPM Packages',
-				readOnlyHint: true,
-				openWorldHint: true,
-				idempotentHint: true,
-			},
-		},
-		async (args: { packages: string[] }) => {
-			return await handleNpmCompare(args);
-		},
-	);
-
-	server.registerTool(
-		'npmMaintainers',
-		{
-			description: 'Get maintainers information for NPM packages',
-			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to get maintainers for'),
-				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			}),
-			annotations: {
-				title: 'Get NPM Package Maintainers',
-				readOnlyHint: true,
-				openWorldHint: true,
-				idempotentHint: true,
-			},
-		},
-		async (args: { packages: string[] }) => {
-			return await handleNpmMaintainers(args);
-		},
-	);
-
-	server.registerTool(
-		'npmScore',
-		{
-			description:
-				'Get consolidated package score based on quality, maintenance, and popularity metrics',
-			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to get scores for'),
-				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			}),
-			annotations: {
-				title: 'Get NPM Package Score (NPMS.io)',
-				readOnlyHint: true,
-				openWorldHint: true,
-				idempotentHint: true, // Score for a version is stable, for 'latest' can change
-			},
-		},
-		async (args: { packages: string[] }) => {
-			return await handleNpmScore(args);
-		},
-	);
-
-	server.registerTool(
-		'npmPackageReadme',
-		{
-			description: 'Get the README content for NPM packages',
-			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to get READMEs for'),
-				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			}),
-			annotations: {
-				title: 'Get NPM Package README',
-				readOnlyHint: true,
-				openWorldHint: true,
-				idempotentHint: true,
-			},
-		},
-		async (args: { packages: string[] }) => {
-			return await handleNpmPackageReadme(args);
-		},
-	);
-
-	server.registerTool(
-		'npmSearch',
-		{
-			description: 'Search for NPM packages with optional limit',
-			inputSchema: z.object({
-				query: z.string().describe('Search query for packages'),
-				limit: z
-					.number()
-					.min(1)
-					.max(50)
-					.optional()
-					.describe('Maximum number of results to return (default: 10)'),
-				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			}),
-			annotations: {
-				title: 'Search NPM Packages',
-				readOnlyHint: true,
-				openWorldHint: true,
-				idempotentHint: false, // Search results can change
-			},
-		},
-		async (args: { query: string; limit?: number }) => {
-			return await handleNpmSearch(args);
-		},
-	);
-
-	server.registerTool(
-		'npmLicenseCompatibility',
-		{
-			description: 'Check license compatibility between multiple packages',
-			inputSchema: z.object({
-				packages: z
-					.array(z.string())
-					.min(1)
-					.describe('List of package names to check for license compatibility'),
-				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			}),
-			annotations: {
-				title: 'Check NPM License Compatibility',
-				readOnlyHint: true,
-				openWorldHint: true,
-				idempotentHint: true,
-			},
-		},
-		async (args: { packages: string[] }) => {
-			return await handleNpmLicenseCompatibility(args);
-		},
-	);
-
-	server.registerTool(
-		'npmRepoStats',
-		{
-			description: 'Get repository statistics for NPM packages',
-			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to get repository stats for'),
-				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			}),
-			annotations: {
-				title: 'Get NPM Package Repository Stats (GitHub)',
-				readOnlyHint: true,
-				openWorldHint: true,
-				idempotentHint: true, // Stats for a repo at a point in time, though they change over time
-			},
-		},
-		async (args: { packages: string[] }) => {
-			return await handleNpmRepoStats(args);
-		},
-	);
-
-	server.registerTool(
-		'npmDeprecated',
-		{
-			description: 'Check if packages are deprecated',
-			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to check for deprecation'),
-				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			}),
-			annotations: {
-				title: 'Check NPM Package Deprecation Status',
-				readOnlyHint: true,
-				openWorldHint: true,
-				idempotentHint: true, // Deprecation status is generally stable for a version
-			},
-		},
-		async (args: { packages: string[] }) => {
-			return await handleNpmDeprecated(args);
-		},
-	);
-
-	server.registerTool(
-		'npmChangelogAnalysis',
-		{
-			description: 'Analyze changelog and release history of packages',
-			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to analyze changelogs for'),
-				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			}),
-			annotations: {
-				title: 'Analyze NPM Package Changelog (GitHub)',
-				readOnlyHint: true,
-				openWorldHint: true,
-				idempotentHint: true,
-			},
-		},
-		async (args: { packages: string[] }) => {
-			return await handleNpmChangelogAnalysis(args);
-		},
-	);
-
-	server.registerTool(
-		'npmAlternatives',
-		{
-			description: 'Find alternative packages with similar functionality',
-			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to find alternatives for'),
-				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			}),
-			annotations: {
-				title: 'Find NPM Package Alternatives',
-				readOnlyHint: true,
-				openWorldHint: true,
-				idempotentHint: false, // Search-based, results can change
-			},
-		},
-		async (args: { packages: string[] }) => {
-			return await handleNpmAlternatives(args);
-		},
-	);
-
-	server.registerTool(
-		'npmQuality',
-		{
-			description: 'Analyze package quality metrics',
-			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to analyze'),
-				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			}),
-			annotations: {
-				title: 'Analyze NPM Package Quality (NPMS.io)',
-				readOnlyHint: true,
-				openWorldHint: true,
-				idempotentHint: true, // Score for a version is stable, for 'latest' can change
-			},
-		},
-		async (args: { packages: string[] }) => {
-			return await handleNpmQuality(args);
-		},
-	);
-
-	server.registerTool(
-		'npmMaintenance',
-		{
-			description: 'Analyze package maintenance metrics',
-			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to analyze'),
-				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			}),
-			annotations: {
-				title: 'Analyze NPM Package Maintenance (NPMS.io)',
-				readOnlyHint: true,
-				openWorldHint: true,
-				idempotentHint: true, // Score for a version is stable, for 'latest' can change
-			},
-		},
-		async (args: { packages: string[] }) => {
-			return await handleNpmMaintenance(args);
-		},
-	);
-
-	return server.server;
-}
+export { createServer };
+export default createServer;
 
 // STDIO compatibility for backward compatibility
 async function main() {

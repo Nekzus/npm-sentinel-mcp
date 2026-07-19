@@ -13,35 +13,29 @@
 
 </div>
 
-A powerful Model Context Protocol (MCP) server that revolutionizes NPM package analysis through AI. Built to integrate with Claude and Anthropic AI, it provides real-time intelligence on package security, dependencies, and performance. This MCP server delivers instant insights and smart analysis to safeguard and optimize your npm ecosystem, making package management decisions faster and safer for modern development workflows.
+A powerful **Model Context Protocol (MCP v2)** server built on `@modelcontextprotocol/server` and `@modelcontextprotocol/core` (v2) that revolutionizes NPM package analysis through AI. Built to integrate seamlessly with Claude, Anthropic AI, and any MCP v2 compatible client, it provides real-time intelligence on package security, dependencies, and performance.
 
-## Features
+This server features **Modular ESM Architecture (`src/`)**, **Dual Output Protocol Returns (`content` + `structuredContent`)**, **Zod Output Schemas (`outputSchema`)**, **Embedded SVG Data URI Icons**, and **Real-Time Context Logging**.
 
-- **Version analysis and tracking**
-- **Dependency analysis and mapping**
-- **Advanced Security Scanning**: Recursive dependency checks, ecosystem awareness (e.g., React), and accurate version resolution.
-- **Strict Input Validation**: Protection against Path Traversal, SSRF, and Command Injection via rigorous input sanitization.
-- **Package quality metrics**
-- **Download trends and statistics**
-- **TypeScript support verification**
-- **Package size analysis**
-- **Maintenance metrics**
-- **Real-time package comparisons**
-- **Standardized error handling and MCP response formats**
-- **Efficient caching for improved performance and API rate limit management**
-- **Rigorous schema validation and type safety using Zod**
+## Key Features
 
-Note: The server provides AI-assisted analysis through MCP integration.
+- **MCP v2 Native Protocol**: Fully upgraded to MCP v2 with `outputSchema` Zod validation, dual `structuredContent` returning, and diagnostic context logging (`ctx.mcpReq.log`).
+- **Self-Contained Vector Icons**: Pre-configured SVG Data URIs (`data:image/svg+xml`) embedded across all 19 tools, resources, and prompts for enhanced client UI presentation.
+- **Advanced Security Scanning**: Recursive dependency checks powered by Google's `deps.dev` and OSV.dev, ecosystem awareness, and accurate version resolution.
+- **Smart Alternatives Filtering (`npmAlternatives`)**: Intelligent search based on functional domain keywords with strict ecosystem plugin/extension filtering (e.g., excludes `express-rate-limit` when searching for alternatives to `express`).
+- **Strict Input Validation**: Protection against Path Traversal, SSRF, and Command Injection via rigorous input sanitization (`isValidNpmPackageName`).
+- **Dependency & Transitive Mapping**: Complete dependency tree analysis mapping through `deps.dev`.
+- **Package Quality & Maintenance Metrics**: Real-time scoring using OpenSSF Scorecard, GitHub repository metrics, and npms.io.
+- **Download Trends & Performance**: Real-time download statistics and bundle size analysis.
+- **Efficient Caching System**: Automated cache invalidation on workspace lockfile changes (`pnpm-lock.yaml`, `package-lock.json`, `yarn.lock`) with manual bypass (`ignoreCache: true`).
 
 ## Caching and Invalidation
 
-To ensure data accuracy while maintaining performance, the server implements robust caching strategies:
-- **Automatic Invalidation**: The cache is automatically invalidated whenever `pnpm-lock.yaml`, `package-lock.json`, or `yarn.lock` changes in your workspace. This ensures you always get fresh data after installing or updating dependencies.
-- **Force Refresh**: All tools accept an optional `ignoreCache: true` parameter to bypass the cache and force a fresh lookup from the registry.
+To ensure data accuracy while maintaining high performance:
+- **Automatic Invalidation**: The cache is automatically invalidated whenever `pnpm-lock.yaml`, `package-lock.json`, or `yarn.lock` changes in your workspace.
+- **Force Refresh**: All tools accept an optional `ignoreCache: true` parameter to bypass the cache and force a fresh lookup from the NPM registry.
 
 ### Example Usage (JSON-RPC)
-
-When calling a tool, simply include `ignoreCache: true` in the arguments:
 
 ```json
 {
@@ -53,38 +47,43 @@ When calling a tool, simply include `ignoreCache: true` in the arguments:
 }
 ```
 
-## Installation
+## Installation & Transports
 
-### Migration to HTTP Streamable
+### STDIO & Streamable HTTP Transports
 
-This MCP server now supports both STDIO and HTTP streamable transport. Your existing STDIO configuration will continue to work without changes.
+This MCP server supports both **STDIO** (standard input/output) and **Streamable HTTP / SSE** transports out of the box.
 
-**New capabilities:**
-- HTTP streamable transport via Smithery.ai
-- Enhanced scalability and performance
-- Interactive testing playground
+- **STDIO Mode**: Default transport for local execution via `npx` or Docker.
+- **Streamable HTTP / SSE Mode**: Decoupled `createServer({ config })` factory exported from `dist/index.js` and `dist/src/server.js` for mounting on Express, Hono, Cloudflare Workers, or Smithery.ai.
 
-**Development commands:**
+**Development Commands:**
 ```bash
-# Compile TypeScript
+# Install dependencies
+pnpm install
+
+# Compile TypeScript to dist/
 pnpm run build
 
 # Start STDIO server
 pnpm run start
 
-# Development server with playground
+# Development server with Smithery CLI playground
 pnpm run dev
+
+# Run unit and integration test suite (212+ tests)
+pnpm test -- --run
+
+# Run full E2E tarball verification
+node __tests__/full-e2e-pack-validation.js
 ```
 
-### Install in VS Code
+### Install in VS Code / Cursor
 
-[<img alt="Install in VS Code (npx)" src="https://img.shields.io/badge/VS_Code-VS_Code?style=flat-square&label=Install%20NPM%20Sentinel%20MCP&color=0098FF">](https://insiders.vscode.dev/redirect?url=vscode%3Amcp%2Finstall%3F%257B%2522name%2522%253A%2522npm-sentinel%2522%252C%2522config%2522%253A%257B%2522command%2522%253A%2522npx%2522%252C%2522args%2522%253A%255B%2522-y%2522%252C%2522%2540nekzus%252Fmcp-server%2540latest%2522%255D%257D%257D)
-[<img alt="Install in VS Code Insiders (npx)" src="https://img.shields.io/badge/VS_Code_Insiders-VS_Code_Insiders?style=flat-square&label=Install%20NPM%20Sentinel%20MCP&color=24bfa5">](https://insiders.vscode.dev/redirect?url=vscode-insiders%3Amcp%2Finstall%3F%257B%2522name%2522%253A%2522npm-sentinel%2522%252C%2522config%2522%253A%257B%2522command%2522%253A%2522npx%2522%252C%2522args%2522%253A%255B%2522-y%2522%252C%2522%2540nekzus%252Fmcp-server%2540latest%2522%255D%257D%257D)
-
-Add this to your VS Code MCP config file. See [VS Code MCP docs](https://code.visualstudio.com/docs/copilot/chat/mcp-servers) for more info.
+Add this to your VS Code / Cursor MCP configuration:
 
 ```json
 {
+  "inputs": [],
   "servers": {
     "npm-sentinel": {
       "type": "stdio",
@@ -95,17 +94,28 @@ Add this to your VS Code MCP config file. See [VS Code MCP docs](https://code.vi
 }
 ```
 
-### Smithery.ai Deployment (HTTP Streamable)
+### Install in Claude Desktop
 
-This MCP server now supports HTTP streamable transport through Smithery.ai for enhanced scalability and performance. You can deploy it directly on Smithery.ai:
-**Benefits of HTTP deployment:**
-- **Scalable**: Handles multiple concurrent connections
-- **Streamable**: Real-time streaming responses
-- **Managed**: Automatic deployment and monitoring
-- **Backward Compatible**: Still supports STDIO for local development
-- **Interactive Testing**: Built-in playground for testing tools
+Add this to your `claude_desktop_config.json`:
 
-**Configuration for Smithery.ai:**
+```json
+{
+  "mcpServers": {
+    "npm-sentinel": {
+      "command": "npx",
+      "args": ["-y", "@nekzus/mcp-server@latest"]
+    }
+  }
+}
+```
+
+**Configuration File Locations:**
+- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Linux: `~/.config/Claude/claude_desktop_config.json`
+
+### Smithery.ai Deployment
+
 ```json
 {
   "mcpServers": {
@@ -117,284 +127,153 @@ This MCP server now supports HTTP streamable transport through Smithery.ai for e
 }
 ```
 
-### Configuration
+### Docker Usage
 
-The server supports the following configuration options:
+```bash
+# Build Docker image
+docker build -t nekzus/npm-sentinel-mcp .
 
-| Environment Variable | CLI Argument | Default | Description |
-| -------------------- | ------------ | ------- | ----------- |
+# Run with local volume mount
+docker run -i --rm -w /projects -v ${PWD}:/projects nekzus/npm-sentinel-mcp node dist/index.js
+```
+
+## Configuration
+
+The server supports the following configuration parameters:
+
+| Environment Variable | Config Object Property | Default | Description |
+| -------------------- | ---------------------- | ------- | ----------- |
 | `NPM_REGISTRY_URL` | `config.NPM_REGISTRY_URL` | `https://registry.npmjs.org` | URL of the NPM registry to use for all requests |
 
-#### HTTP Deployment (Smithery/Docker)
+---
 
-When deploying via Smithery or Docker, you can configure these options in your configuration file:
+## MCP Server Capabilities (v2 API)
 
-```json
-{
-  "mcpServers": {
-    "npm-sentinel": {
-      "type": "http",
-      "url": "https://smithery.ai/server/@Nekzus/npm-sentinel-mcp",
-      "config": {
-        "NPM_REGISTRY_URL": "https://registry.npmjs.org"
-      }
-    }
-  }
-}
-```
-### Docker
+All tool responses conform to the MCP v2 dual output format, providing both human-readable text in `content` and parsed JSON objects in `structuredContent`:
 
-#### Build
-```bash
-# Build the Docker image
-docker build -t nekzus/npm-sentinel-mcp .
-```
-
-#### Usage
-
-You can run the MCP server using Docker with directory mounting to `/projects`:
-
-```json
-{
-  "mcpServers": {
-    "npm-sentinel-mcp": {
-      "command": "docker",
-      "args": [
-        "run",
-        "-i",
-        "--rm",
-        "-w", "/projects",
-        "--mount", "type=bind,src=${PWD},dst=/projects",
-        "nekzus/npm-sentinel-mcp",
-        "node",
-        "dist/index.js"
-      ]
-    }
-  }
-}
-```
-
-For multiple directories:
-
-```json
-{
-  "mcpServers": {
-    "npm-sentinel-mcp": {
-      "command": "docker",
-      "args": [
-        "run",
-        "-i",
-        "--rm",
-        "-w", "/projects",
-        "--mount", "type=bind,src=/path/to/workspace,dst=/projects/workspace",
-        "--mount", "type=bind,src=/path/to/other/dir,dst=/projects/other/dir,ro",
-        "nekzus/npm-sentinel-mcp",
-        "node",
-        "dist/index.js"
-      ]
-    }
-  }
-}
-```
-
-Note: All mounted directories must be under `/projects` for proper access.
-
-### Usage with Claude Desktop
-
-Add this to your `claude_desktop_config.json`:
-
-```json
-{
-  "mcpServers": {
-    "npmsentinel": {
-      "command": "npx",
-      "args": ["-y", "@nekzus/mcp-server@latest"]
-    }
-  }
-}
-```
-
-Configuration file locations:
-- Windows: `%APPDATA%\Claude\claude_desktop_config.json`
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Linux: (Claude for Desktop does not officially support Linux at this time)
-
-### NPX
-
-<!-- [![Install MCP Server](https://cursor.com/deeplink/mcp-install-dark.png)](cursor://anysphere.cursor-deeplink/mcp/install?name=npm-sentinel-mcp&config=eyJjb21tYW5kIjoibnB4IiwiYXJncyI6WyIteSIsIkBuZWt6dXMvbWNwLXNlcnZlckBsYXRlc3QiXX0=) -->
-
-```json
-{
-  "mcpServers": {
-    "npm-sentinel-mcp": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@nekzus/mcp-server@latest"
-      ]
-    }
-  }
-}
-```
-
-## API
-
-The server exposes its tools via the Model Context Protocol. All tools adhere to a standardized response format:
 ```json
 {
   "content": [
     {
       "type": "text",
-      "text": "string",
-      "isError": boolean // Optional
+      "text": "{\n  \"queryPackages\": [\"express\"],\n  \"results\": [...]\n}"
     }
-    // ... more content items if necessary
-  ]
+  ],
+  "structuredContent": {
+    "queryPackages": ["express"],
+    "results": [...]
+  }
 }
 ```
 
-### Resources
-
-- `npm://registry`: NPM Registry interface
-- `npm://security`: Security analysis interface
-- `npm://metrics`: Package metrics interface
-
 ### Server Resources
 
-The server also provides the following informational resources accessible via MCP `GetResource` requests:
+Accessible via MCP `readResource` requests:
 
-- `doc://server/readme`:
-  - **Description**: Retrieves the main `README.md` file content for this NPM Sentinel MCP server.
+- `doc://server/readme`
+  - **Description**: Main documentation file for NPM Sentinel MCP server.
   - **MIME Type**: `text/markdown`
-- `doc://mcp/specification`:
-  - **Description**: Retrieves the `llms-full.txt` content, providing the comprehensive Model Context Protocol specification.
+  - **Icon**: Embedded Document SVG Data URI.
+- `doc://mcp/specification`
+  - **Description**: Complete Model Context Protocol specification file (`llms-full.txt`).
   - **MIME Type**: `text/plain`
+  - **Icon**: Embedded Document SVG Data URI.
 
-### Tools
+### Server Prompts
 
-#### npmVersions
-- Get all versions of a package
-- Input: `packages` (string[])
-- Returns: Version history with release dates
+Accessible via MCP `getPrompt` requests:
 
-#### npmLatest
-- Get latest version information
-- Input: `packages` (string[])
-- Returns: Latest version details and changelog
+- `analyze-package`
+  - **Description**: Generates a comprehensive prompt template for AI analysis of an NPM package including security, performance, dependencies, and health metrics.
+  - **Arguments**: `package` (string, required)
+  - **Icon**: Embedded Security SVG Data URI.
 
-#### npmDeps
-- Analyze package dependencies
-- Input: `packages` (string[])
-- Returns: Complete dependency tree analysis including direct dependencies and full transitive graph (count and explicit flatten list) mapping through deps.dev.
+---
 
-#### npmTypes
-- Check TypeScript support
-- Input: `packages` (string[])
-- Returns: TypeScript compatibility status
+### Tools Catalog (19 Tools)
 
-#### npmSize
-- Analyze package size
-- Input: `packages` (string[])
-- Returns: Bundle size and import cost analysis
+All 19 tools define `inputSchema`, `outputSchema`, `annotations` (`title`, `readOnlyHint`), and `icons`:
 
-#### npmVulnerabilities
-- Scan for security vulnerabilities
-- Features: 
-  - **Instant Transitive Scanning**: Powered by Google's `deps.dev` API to resolve massive dependency trees (e.g. Next.js, Astro) in a single request, bypassing deep recursion limitations.
-  - **Ecosystem Awareness**: Automatically scans related packages efficiently.
-  - **Rich Reports**: Includes CVE IDs and full summaries from OSV.dev.
-- Input: `packages` (string[])
-- Returns: Detailed security advisories, CVEs, and severity ratings
+#### 1. `npmLatest`
+- Get latest version information, release dates, SRI integrity hashes, and dist-tags.
+- **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
-#### npmTrends
-- Get download trends
-- Input:
-  - `packages` (string[])
-  - `period` ("last-week" | "last-month" | "last-year")
-- Returns: Download statistics over time
+#### 2. `npmVersions`
+- Get full version history with release dates and deprecation statuses.
+- **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
-#### npmCompare
-- Compare multiple packages
-- Input: `packages` (string[])
-- Returns: Detailed comparison metrics
+#### 3. `npmDeps`
+- Complete dependency tree analysis including direct dependencies and full transitive graph mapping via `deps.dev`.
+- **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
-#### npmMaintainers
-- Get package maintainers
-- Input: `packages` (string[])
-- Returns: Maintainer information and activity
+#### 4. `npmTypes`
+- Verify TypeScript support (native `index.d.ts` declaration files vs `@types/*` DefinitelyTyped packages).
+- **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
-#### npmScore
-- Get package quality score
-- Input: `packages` (string[])
-- Returns: Comprehensive quality metrics, scoring details, and OpenSSF Scorecard.
+#### 5. `npmSize`
+- Package bundle size, minified size, and gzip impact analysis.
+- **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
-#### npmPackageReadme
-- Get package README
-- Input: `packages` (string[])
-- Returns: Formatted README content
+#### 6. `npmVulnerabilities`
+- Instant transitive vulnerability scanning powered by Google's `deps.dev` and OSV.dev advisories.
+- **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
-#### npmSearch
-- Search for packages
-- Input:
-  - `query` (string)
-  - `limit` (number, optional)
-- Returns: Matching packages with metadata
+#### 7. `npmTrends`
+- Historical download statistics over customizable time ranges (`last-week`, `last-month`, `last-year`).
+- **Input**: `packages` (`string[]`), `period` (`"last-week"` \| `"last-month"` \| `"last-year"`), `ignoreCache` (`boolean`, optional)
 
-#### npmLicenseCompatibility
-- Check license compatibility
-- Input: `packages` (string[])
-- Returns: License analysis and compatibility info
+#### 8. `npmCompare`
+- Side-by-side metric comparison across multiple packages.
+- **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
-#### npmRepoStats
-- Get repository statistics
-- Input: `packages` (string[])
-- Returns: GitHub/repository metrics (stars, forks, open issues) along with OpenSSF Scorecard checks and scores via deps.dev.
+#### 9. `npmMaintainers`
+- List of package maintainers, public emails, and publishing activity.
+- **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
-#### npmDeprecated
-- Check for deprecation
-- Input: `packages` (string[])
-- Returns: Deprecation status and alternatives
+#### 10. `npmScore`
+- Consolidated score combining quality, popularity, maintenance, and OpenSSF Scorecard.
+- **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
-#### npmChangelogAnalysis
-- Analyze package changelogs
-- Input: `packages` (string[])
-- Returns: Changelog summaries and impact analysis
+#### 11. `npmPackageReadme`
+- Retrieve full formatted raw README markdown content from NPM registry / CDN.
+- **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
-#### npmAlternatives
-- Find package alternatives
-- Input: `packages` (string[])
-- Returns: Similar packages with comparisons
+#### 12. `npmSearch`
+- Search NPM registry packages by query with rich metadata (scores, publisher, keywords).
+- **Input**: `query` (`string`), `limit` (`number`, optional)
 
-#### npmQuality
-- Assess package quality
-- Input: `packages` (string[])
-- Returns: Quality metrics and scores
+#### 13. `npmLicenseCompatibility`
+- Analyze license compatibility across multiple packages (MIT, Apache-2.0, GPL, etc.).
+- **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
-#### npmMaintenance
-- Check maintenance status
-- Input: `packages` (string[])
-- Returns: Maintenance activity metrics
+#### 14. `npmRepoStats`
+- Repository statistics (GitHub stars, forks, open issues) combined with OpenSSF Scorecard checks.
+- **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
-## Build
+#### 15. `npmDeprecated`
+- Detect deprecation status on package and recursive sub-dependencies.
+- **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
-```bash
-# Install dependencies
-pnpm install
+#### 16. `npmChangelogAnalysis`
+- Extract release notes and GitHub release history.
+- **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
-# Build TypeScript
-pnpm run build
+#### 17. `npmAlternatives`
+- Smart functional alternative suggestions filtering out ecosystem plugins (e.g. excludes `express-rate-limit` for `express`).
+- **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
-# Start the STDIO server
-pnpm run start
+#### 18. `npmQuality`
+- Package code quality score (0–1).
+- **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
-# Development server
-pnpm run dev
-```
+#### 19. `npmMaintenance`
+- Package maintenance activity score (0–1).
+- **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
+
+---
 
 ## License
 
-This MCP server is licensed under the MIT License. This means you are free to use, modify, and distribute the software, subject to the terms and conditions of the MIT License. For more details, please see the LICENSE file in the project repository.
-
----
+This MCP server is licensed under the MIT License. See [LICENSE](LICENSE) for details.
 
 MIT © [nekzus](https://github.com/nekzus)

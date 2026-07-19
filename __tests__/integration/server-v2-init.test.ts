@@ -201,6 +201,63 @@ describe('Tool inputSchema (Standard Schema via z.object)', () => {
 	});
 });
 
+describe('Tool outputSchema & structuredContent (MCP v2 Feature)', () => {
+	test('every tool should expose a valid outputSchema with type object', async () => {
+		const { tools } = await client.listTools();
+		for (const tool of tools) {
+			expect(tool.outputSchema).toBeDefined();
+			expect(tool.outputSchema?.type).toBe('object');
+		}
+	});
+
+	test('calling a tool should populate structuredContent alongside content', async () => {
+		const res = await client.callTool({
+			name: 'npmLatest',
+			arguments: { packages: ['express'] },
+		});
+		expect(res.content).toBeDefined();
+		expect(res.content.length).toBeGreaterThan(0);
+		expect(res.structuredContent).toBeDefined();
+		expect(typeof res.structuredContent).toBe('object');
+
+		const structured = res.structuredContent as Record<string, unknown>;
+		expect(structured.results).toBeDefined();
+		expect(Array.isArray(structured.results)).toBe(true);
+	});
+});
+
+describe('MCP v2 Icons Metadata (Data URIs)', () => {
+	test('every tool should expose icons metadata with Data URIs', async () => {
+		const { tools } = await client.listTools();
+		for (const tool of tools) {
+			expect(tool.icons).toBeDefined();
+			expect(Array.isArray(tool.icons)).toBe(true);
+			expect(tool.icons!.length).toBeGreaterThan(0);
+			expect(tool.icons![0].src).toContain('data:image/svg+xml');
+			expect(tool.icons![0].mimeType).toBe('image/svg+xml');
+		}
+	});
+
+	test('every resource should expose icons metadata', async () => {
+		const { resources } = await client.listResources();
+		for (const resource of resources) {
+			expect(resource.icons).toBeDefined();
+			expect(Array.isArray(resource.icons)).toBe(true);
+			expect(resource.icons!.length).toBeGreaterThan(0);
+			expect(resource.icons![0].mimeType).toBe('image/svg+xml');
+		}
+	});
+
+	test('analyze-package prompt should expose icons metadata', async () => {
+		const { prompts } = await client.listPrompts();
+		const prompt = prompts.find((p) => p.name === 'analyze-package');
+		expect(prompt).toBeDefined();
+		expect(prompt!.icons).toBeDefined();
+		expect(Array.isArray(prompt!.icons)).toBe(true);
+		expect(prompt!.icons![0].mimeType).toBe('image/svg+xml');
+	});
+});
+
 describe('Tool Annotations (v2 metadata hints)', () => {
 	test('every tool should expose annotations', async () => {
 		const { tools } = await client.listTools();
