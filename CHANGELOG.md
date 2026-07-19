@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.19.0-alpha.11](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.10...v1.19.0-alpha.11) (2026-07-19)
+
+
+### Bug Fixes
+
+* **audit:** resolve npmVulnerabilities summary output schema and improve npmAlternatives recommendation engine ([bb215cb](https://github.com/Nekzus/npm-sentinel-mcp/commit/bb215cbecd7df37c840a66188b499a94180b5241))
+
 # [1.19.0-alpha.10](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.9...v1.19.0-alpha.10) (2026-07-19)
 
 
