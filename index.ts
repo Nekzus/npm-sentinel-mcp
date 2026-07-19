@@ -400,6 +400,24 @@ function isValidNpmPackageName(name: string): boolean {
 	);
 }
 
+export function createEmptyArrayErrorResponse(toolName: string): CallToolResult {
+	const errorResponse = JSON.stringify(
+		{
+			queryPackages: [],
+			results: [],
+			status: 'error',
+			error: 'No package names provided in request',
+			message: `The packages parameter for ${toolName} must contain at least one package name.`,
+		},
+		null,
+		2,
+	);
+	return {
+		content: [{ type: 'text', text: errorResponse }],
+		isError: true,
+	};
+}
+
 export async function handleNpmVersions(args: {
 	packages: string[];
 	ignoreCache?: boolean;
@@ -407,7 +425,7 @@ export async function handleNpmVersions(args: {
 	try {
 		const packagesToProcess = args.packages || [];
 		if (packagesToProcess.length === 0) {
-			throw new Error('No package names provided');
+			return createEmptyArrayErrorResponse('npmVersions');
 		}
 
 		const processedResults = await Promise.all(
@@ -551,7 +569,7 @@ export async function handleNpmLatest(args: {
 	try {
 		const packagesToProcess = args.packages || [];
 		if (packagesToProcess.length === 0) {
-			throw new Error('No package names provided');
+			return createEmptyArrayErrorResponse('npmLatest');
 		}
 
 		const processedResults = await Promise.all(
@@ -3927,6 +3945,44 @@ export async function handleNpmChangelogAnalysis(args: {
 	}
 }
 
+function isAlternativeCandidate(
+	candidateName: string,
+	candidateDesc: string,
+	originalName: string,
+): boolean {
+	const lowerCandidate = candidateName.toLowerCase();
+	const lowerOriginal = originalName.toLowerCase();
+	const lowerDesc = (candidateDesc || '').toLowerCase();
+
+	if (lowerCandidate === lowerOriginal) return false;
+	if (lowerCandidate.startsWith('@types/')) return false;
+
+	if (
+		lowerCandidate.startsWith(`${lowerOriginal}-`) ||
+		lowerCandidate.startsWith(`${lowerOriginal}_`) ||
+		lowerCandidate.startsWith(`${lowerOriginal}.`) ||
+		lowerCandidate.endsWith(`-${lowerOriginal}`) ||
+		lowerCandidate.endsWith(`_${lowerOriginal}`) ||
+		lowerCandidate.includes(lowerOriginal)
+	) {
+		return false;
+	}
+
+	if (
+		lowerDesc.includes(`middleware for ${lowerOriginal}`) ||
+		lowerDesc.includes(`plugin for ${lowerOriginal}`) ||
+		lowerDesc.includes(`adapter for ${lowerOriginal}`) ||
+		lowerDesc.includes(`wrapper for ${lowerOriginal}`) ||
+		lowerDesc.includes(`extension for ${lowerOriginal}`) ||
+		lowerDesc.includes(`${lowerOriginal} middleware`) ||
+		lowerDesc.includes(`${lowerOriginal} plugin`)
+	) {
+		return false;
+	}
+
+	return true;
+}
+
 export async function handleNpmAlternatives(args: {
 	packages: string[];
 	ignoreCache?: boolean;
@@ -3934,7 +3990,7 @@ export async function handleNpmAlternatives(args: {
 	try {
 		const packagesToProcess = args.packages || [];
 		if (packagesToProcess.length === 0) {
-			throw new Error('No package names provided to find alternatives.');
+			return createEmptyArrayErrorResponse('npmAlternatives');
 		}
 
 		const processedResults = await Promise.all(
@@ -3981,41 +4037,41 @@ export async function handleNpmAlternatives(args: {
 				}
 
 				const cacheKey = generateCacheKey('handleNpmAlternatives', originalPackageName);
-				const cachedResult = args.ignoreCache ? undefined : cacheGet<any>(cacheKey); // Expects the full result object
+				const cachedResult = args.ignoreCache ? undefined : cacheGet<any>(cacheKey);
 
 				if (cachedResult) {
 					return {
 						...cachedResult,
-						packageInput: pkgInput, // current input context
-						packageName: originalPackageName, // current name context
-						// versionQueried is part of cachedResult.data or similar if stored, or add if needed
+						packageInput: pkgInput,
+						packageName: originalPackageName,
 						status: `${cachedResult.status}_cache` as const,
 						message: `${cachedResult.message} (from cache)`,
 					};
 				}
 
 				try {
-					const searchResponse = await fetchWithRetry(
-						`${NPM_REGISTRY_URL}/-/v1/search?text=keywords:${encodeURIComponent(
-							originalPackageName,
-						)}&size=10`,
-					);
-					if (!searchResponse.ok) {
-						const errorResult = {
-							packageInput: pkgInput,
-							packageName: originalPackageName,
-							status: 'error' as const,
-							error: `Failed to search for alternatives: ${searchResponse.status} ${searchResponse.statusText}`,
-							data: null,
-							message: 'Could not perform search for alternatives.',
-						};
-						return errorResult; // Do not cache API errors for search
+					let originalPackageKeywords: string[] = [];
+					let originalPackageDownloads = 0;
+
+					try {
+						const initSearchResponse = await fetchWithRetry(
+							`${NPM_REGISTRY_URL}/-/v1/search?text=keywords:${encodeURIComponent(
+								originalPackageName,
+							)}&size=5`,
+						);
+						if (initSearchResponse.ok) {
+							const initSearchData = (await initSearchResponse.json()) as NpmSearchResponse;
+							const match = (initSearchData.objects || []).find(
+								(p) => p.package.name === originalPackageName,
+							);
+							if (match && match.package.keywords) {
+								originalPackageKeywords = match.package.keywords;
+							}
+						}
+					} catch {
+						// Optional keyword retrieval failure
 					}
 
-					const searchData = (await searchResponse.json()) as NpmSearchResponse;
-					const alternativePackagesRaw = searchData.objects || [];
-
-					let originalPackageDownloads = 0;
 					try {
 						const dlResponse = await fetchWithRetry(
 							`https://api.npmjs.org/downloads/point/last-month/${originalPackageName}`,
@@ -4030,62 +4086,135 @@ export async function handleNpmAlternatives(args: {
 						);
 					}
 
-					const originalPackageKeywords =
-						alternativePackagesRaw.find((p) => p.package.name === originalPackageName)?.package
-							.keywords || [];
-
 					const originalPackageStats = {
 						name: originalPackageName,
 						monthlyDownloads: originalPackageDownloads,
 						keywords: originalPackageKeywords,
 					};
 
-					if (
-						alternativePackagesRaw.length === 0 ||
-						(alternativePackagesRaw.length === 1 &&
-							alternativePackagesRaw[0].package.name === originalPackageName)
-					) {
+					const genericKeywords = originalPackageKeywords.filter(
+						(kw) =>
+							kw.toLowerCase() !== originalPackageName.toLowerCase() &&
+							!kw.toLowerCase().includes(originalPackageName.toLowerCase()) &&
+							kw.length > 2,
+					);
+
+					const domainKeywords = genericKeywords.filter(
+						(kw) =>
+							![
+								'mobile',
+								'ionic',
+								'component',
+								'components',
+								'ui',
+								'css',
+								'react',
+								'vue',
+								'angular',
+								'stencil',
+								'storybook',
+								'icon',
+								'icons',
+							].includes(kw.toLowerCase()),
+					);
+
+					const selectedKeywords = domainKeywords.length > 0 ? domainKeywords : genericKeywords;
+
+					let searchQuery = originalPackageName;
+					if (selectedKeywords.length >= 2) {
+						searchQuery = selectedKeywords.slice(0, 3).join(' ');
+					} else if (selectedKeywords.length === 1) {
+						searchQuery = selectedKeywords[0];
+					}
+
+					const searchResponse = await fetchWithRetry(
+						`${NPM_REGISTRY_URL}/-/v1/search?text=${encodeURIComponent(searchQuery)}&size=30`,
+					);
+
+					if (!searchResponse.ok) {
+						const errorResult = {
+							packageInput: pkgInput,
+							packageName: originalPackageName,
+							status: 'error' as const,
+							error: `Failed to search for alternatives: ${searchResponse.status} ${searchResponse.statusText}`,
+							data: null,
+							message: 'Could not perform search for alternatives.',
+						};
+						return errorResult;
+					}
+
+					const searchData = (await searchResponse.json()) as NpmSearchResponse;
+					const alternativePackagesRaw = searchData.objects || [];
+
+					let validAlternativesRaw = alternativePackagesRaw.filter((alt) =>
+						isAlternativeCandidate(
+							alt.package.name,
+							alt.package.description || '',
+							originalPackageName,
+						),
+					);
+
+					if (validAlternativesRaw.length === 0 && searchQuery !== originalPackageName) {
+						try {
+							const fallbackResponse = await fetchWithRetry(
+								`${NPM_REGISTRY_URL}/-/v1/search?text=${encodeURIComponent(
+									originalPackageName,
+								)}&size=30`,
+							);
+							if (fallbackResponse.ok) {
+								const fallbackData = (await fallbackResponse.json()) as NpmSearchResponse;
+								validAlternativesRaw = (fallbackData.objects || []).filter((alt) =>
+									isAlternativeCandidate(
+										alt.package.name,
+										alt.package.description || '',
+										originalPackageName,
+									),
+								);
+							}
+						} catch {
+							// Fallback failure
+						}
+					}
+
+					if (validAlternativesRaw.length === 0) {
 						const resultNoAlternatives = {
 							packageInput: pkgInput,
 							packageName: originalPackageName,
 							status: 'no_alternatives_found' as const,
 							error: null,
 							data: { originalPackageStats, alternatives: [] },
-							message: `No significant alternatives found for ${originalPackageName} based on keyword search.`,
+							message: `No significant alternatives found for ${originalPackageName} based on search.`,
 						};
 						cacheSet(cacheKey, resultNoAlternatives, CACHE_TTL_MEDIUM);
 						return resultNoAlternatives;
 					}
 
 					const alternativesData = await Promise.all(
-						alternativePackagesRaw
-							.filter((alt) => alt.package.name !== originalPackageName)
-							.slice(0, 5)
-							.map(async (alt) => {
-								let altDownloads = 0;
-								try {
-									const altDlResponse = await fetchWithRetry(
-										`https://api.npmjs.org/downloads/point/last-month/${alt.package.name}`,
-									);
-									if (altDlResponse.ok) {
-										altDownloads = ((await altDlResponse.json()) as DownloadCount).downloads || 0;
-									}
-								} catch (e) {
-									console.debug(
-										`Failed to fetch downloads for alternative ${alt.package.name}: ${e}`,
-									);
+						validAlternativesRaw.slice(0, 5).map(async (alt) => {
+							let altDownloads = 0;
+							try {
+								const altDlResponse = await fetchWithRetry(
+									`https://api.npmjs.org/downloads/point/last-month/${alt.package.name}`,
+								);
+								if (altDlResponse.ok) {
+									altDownloads = ((await altDlResponse.json()) as DownloadCount).downloads || 0;
 								}
+							} catch (e) {
+								console.debug(
+									`Failed to fetch downloads for alternative ${alt.package.name}: ${e}`,
+								);
+							}
 
-								return {
-									name: alt.package.name,
-									description: alt.package.description || null,
-									version: alt.package.version,
-									monthlyDownloads: altDownloads,
-									score: alt.score.final,
-									repositoryUrl: alt.package.links?.repository || null,
-									keywords: alt.package.keywords || [],
-								};
-							}),
+							return {
+								name: alt.package.name,
+								description: alt.package.description || null,
+								version: alt.package.version,
+								monthlyDownloads: altDownloads,
+								score: alt.score.final,
+								repositoryUrl: alt.package.links?.repository || null,
+								keywords: alt.package.keywords || [],
+							};
+						}),
 					);
 
 					const successResult = {
