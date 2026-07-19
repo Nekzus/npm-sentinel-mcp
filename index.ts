@@ -7,12 +7,16 @@ import type { CallToolResult } from '@modelcontextprotocol/server';
 import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import fetch from 'node-fetch';
 import { z } from 'zod';
+import createServer from './src/server.js';
 
 // Cache configuration
-let NPM_REGISTRY_URL = (process.env.NPM_REGISTRY_URL || 'https://registry.npmjs.org').replace(
-	/\/$/,
-	'',
-);
+export let NPM_REGISTRY_URL = (
+	process.env.NPM_REGISTRY_URL || 'https://registry.npmjs.org'
+).replace(/\/$/, '');
+
+export function setNpmRegistryUrl(url: string): void {
+	NPM_REGISTRY_URL = url.replace(/\/$/, '');
+}
 
 // Cache configuration
 const CACHE_TTL_MEDIUM = 60 * 60 * 1000; // 1 hour
@@ -4134,8 +4138,6 @@ export async function handleNpmAlternatives(args: {
 		};
 	}
 }
-import createServer from './src/server.js';
-
 export { createServer };
 export default createServer;
 
