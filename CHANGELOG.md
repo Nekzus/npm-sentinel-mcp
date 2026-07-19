@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.19.0-alpha.12](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.11...v1.19.0-alpha.12) (2026-07-19)
+
+
+### Features
+
+* **audit:** enrich npmRepoStats with live GitHub metadata, extract OSV severity levels, and sanitize Scorecard reasons ([c164afa](https://github.com/Nekzus/npm-sentinel-mcp/commit/c164afa78de20a74f94a8f0ea4ac86c374ae129b))
+
 # [1.19.0-alpha.11](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.10...v1.19.0-alpha.11) (2026-07-19)
 
 
