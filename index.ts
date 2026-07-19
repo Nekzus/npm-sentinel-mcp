@@ -4278,6 +4278,59 @@ export default function createServer({ config }: { config: z.infer<typeof config
 		}),
 	);
 
+	// Helper schemas for structured outputs (MCP v2)
+	const BatchResultOutputSchema = z
+		.object({
+			results: z.array(z.record(z.string(), z.unknown())).optional(),
+			summary: z.record(z.string(), z.unknown()).optional(),
+			message: z.string().optional(),
+		})
+		.passthrough();
+
+	const SearchResultOutputSchema = z
+		.object({
+			query: z.string().optional(),
+			limitUsed: z.number().optional(),
+			totalResults: z.number().optional(),
+			resultsCount: z.number().optional(),
+			results: z.array(z.record(z.string(), z.unknown())).optional(),
+			message: z.string().optional(),
+		})
+		.passthrough();
+
+	const CompareResultOutputSchema = z
+		.object({
+			queryPackages: z.array(z.string()).optional(),
+			results: z.array(z.record(z.string(), z.unknown())).optional(),
+			message: z.string().optional(),
+		})
+		.passthrough();
+
+	const LicenseCompatibilityResultOutputSchema = z
+		.object({
+			packagesAnalyzed: z.array(z.string()).optional(),
+			compatibility: z.record(z.string(), z.unknown()).optional(),
+			licenseDetails: z.array(z.record(z.string(), z.unknown())).optional(),
+		})
+		.passthrough();
+
+	async function withStructuredOutput(
+		handlerPromise: Promise<CallToolResult>,
+	): Promise<CallToolResult> {
+		const res = await handlerPromise;
+		try {
+			const text = (res.content[0] as { type: string; text?: string })?.text;
+			if (text && (text.startsWith('{') || text.startsWith('['))) {
+				const parsed = JSON.parse(text);
+				return {
+					...res,
+					structuredContent: parsed,
+				};
+			}
+		} catch {}
+		return res;
+	}
+
 	// Add NPM tools - Ensuring each tool registration is complete and correct
 	server.registerTool(
 		'npmVersions',
@@ -4287,6 +4340,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				packages: z.array(z.string()).describe('List of package names to get versions for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
+			outputSchema: BatchResultOutputSchema,
 			annotations: {
 				title: 'Get All Package Versions',
 				readOnlyHint: true,
@@ -4295,7 +4349,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 			},
 		},
 		async (args: { packages: string[] }) => {
-			return await handleNpmVersions(args);
+			return await withStructuredOutput(handleNpmVersions(args));
 		},
 	);
 
@@ -4307,6 +4361,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				packages: z.array(z.string()).describe('List of package names to get latest versions for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
+			outputSchema: BatchResultOutputSchema,
 			annotations: {
 				title: 'Get Latest Package Information',
 				readOnlyHint: true,
@@ -4315,7 +4370,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 			},
 		},
 		async (args: { packages: string[] }) => {
-			return await handleNpmLatest(args);
+			return await withStructuredOutput(handleNpmLatest(args));
 		},
 	);
 
@@ -4327,6 +4382,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				packages: z.array(z.string()).describe('List of package names to analyze dependencies for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
+			outputSchema: BatchResultOutputSchema,
 			annotations: {
 				title: 'Get Package Dependencies',
 				readOnlyHint: true,
@@ -4335,7 +4391,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 			},
 		},
 		async (args: { packages: string[] }) => {
-			return await handleNpmDeps(args);
+			return await withStructuredOutput(handleNpmDeps(args));
 		},
 	);
 
@@ -4347,6 +4403,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				packages: z.array(z.string()).describe('List of package names to check types for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
+			outputSchema: BatchResultOutputSchema,
 			annotations: {
 				title: 'Check TypeScript Type Availability',
 				readOnlyHint: true,
@@ -4355,7 +4412,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 			},
 		},
 		async (args: { packages: string[] }) => {
-			return await handleNpmTypes(args);
+			return await withStructuredOutput(handleNpmTypes(args));
 		},
 	);
 
@@ -4367,6 +4424,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				packages: z.array(z.string()).describe('List of package names to get size information for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
+			outputSchema: BatchResultOutputSchema,
 			annotations: {
 				title: 'Get Package Size (Bundlephobia)',
 				readOnlyHint: true,
@@ -4375,7 +4433,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 			},
 		},
 		async (args: { packages: string[] }) => {
-			return await handleNpmSize(args);
+			return await withStructuredOutput(handleNpmSize(args));
 		},
 	);
 
@@ -4389,6 +4447,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 					.describe('List of package names to check for vulnerabilities'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
+			outputSchema: BatchResultOutputSchema,
 			annotations: {
 				title: 'Check Package Vulnerabilities (OSV.dev)',
 				readOnlyHint: true,
@@ -4397,7 +4456,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 			},
 		},
 		async (args: { packages: string[] }) => {
-			return await handleNpmVulnerabilities(args);
+			return await withStructuredOutput(handleNpmVulnerabilities(args));
 		},
 	);
 
@@ -4414,6 +4473,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 					.default('last-month'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
+			outputSchema: BatchResultOutputSchema,
 			annotations: {
 				title: 'Get NPM Package Download Trends',
 				readOnlyHint: true,
@@ -4422,7 +4482,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 			},
 		},
 		async (args: { packages: string[]; period?: 'last-week' | 'last-month' | 'last-year' }) => {
-			return await handleNpmTrends(args);
+			return await withStructuredOutput(handleNpmTrends(args));
 		},
 	);
 
@@ -4434,6 +4494,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				packages: z.array(z.string()).describe('List of package names to compare'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
+			outputSchema: CompareResultOutputSchema,
 			annotations: {
 				title: 'Compare NPM Packages',
 				readOnlyHint: true,
@@ -4442,7 +4503,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 			},
 		},
 		async (args: { packages: string[] }) => {
-			return await handleNpmCompare(args);
+			return await withStructuredOutput(handleNpmCompare(args));
 		},
 	);
 
@@ -4454,6 +4515,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				packages: z.array(z.string()).describe('List of package names to get maintainers for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
+			outputSchema: BatchResultOutputSchema,
 			annotations: {
 				title: 'Get NPM Package Maintainers',
 				readOnlyHint: true,
@@ -4462,7 +4524,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 			},
 		},
 		async (args: { packages: string[] }) => {
-			return await handleNpmMaintainers(args);
+			return await withStructuredOutput(handleNpmMaintainers(args));
 		},
 	);
 
@@ -4475,6 +4537,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				packages: z.array(z.string()).describe('List of package names to get scores for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
+			outputSchema: BatchResultOutputSchema,
 			annotations: {
 				title: 'Get NPM Package Score (NPMS.io)',
 				readOnlyHint: true,
@@ -4483,7 +4546,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 			},
 		},
 		async (args: { packages: string[] }) => {
-			return await handleNpmScore(args);
+			return await withStructuredOutput(handleNpmScore(args));
 		},
 	);
 
@@ -4495,6 +4558,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				packages: z.array(z.string()).describe('List of package names to get READMEs for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
+			outputSchema: BatchResultOutputSchema,
 			annotations: {
 				title: 'Get NPM Package README',
 				readOnlyHint: true,
@@ -4503,7 +4567,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 			},
 		},
 		async (args: { packages: string[] }) => {
-			return await handleNpmPackageReadme(args);
+			return await withStructuredOutput(handleNpmPackageReadme(args));
 		},
 	);
 
@@ -4521,6 +4585,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 					.describe('Maximum number of results to return (default: 10)'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
+			outputSchema: SearchResultOutputSchema,
 			annotations: {
 				title: 'Search NPM Packages',
 				readOnlyHint: true,
@@ -4529,7 +4594,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 			},
 		},
 		async (args: { query: string; limit?: number }) => {
-			return await handleNpmSearch(args);
+			return await withStructuredOutput(handleNpmSearch(args));
 		},
 	);
 
@@ -4544,6 +4609,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 					.describe('List of package names to check for license compatibility'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
+			outputSchema: LicenseCompatibilityResultOutputSchema,
 			annotations: {
 				title: 'Check NPM License Compatibility',
 				readOnlyHint: true,
@@ -4552,7 +4618,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 			},
 		},
 		async (args: { packages: string[] }) => {
-			return await handleNpmLicenseCompatibility(args);
+			return await withStructuredOutput(handleNpmLicenseCompatibility(args));
 		},
 	);
 
@@ -4564,6 +4630,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				packages: z.array(z.string()).describe('List of package names to get repository stats for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
+			outputSchema: BatchResultOutputSchema,
 			annotations: {
 				title: 'Get NPM Package Repository Stats (GitHub)',
 				readOnlyHint: true,
@@ -4572,7 +4639,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 			},
 		},
 		async (args: { packages: string[] }) => {
-			return await handleNpmRepoStats(args);
+			return await withStructuredOutput(handleNpmRepoStats(args));
 		},
 	);
 
@@ -4584,6 +4651,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				packages: z.array(z.string()).describe('List of package names to check for deprecation'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
+			outputSchema: BatchResultOutputSchema,
 			annotations: {
 				title: 'Check NPM Package Deprecation Status',
 				readOnlyHint: true,
@@ -4592,7 +4660,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 			},
 		},
 		async (args: { packages: string[] }) => {
-			return await handleNpmDeprecated(args);
+			return await withStructuredOutput(handleNpmDeprecated(args));
 		},
 	);
 
@@ -4604,6 +4672,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				packages: z.array(z.string()).describe('List of package names to analyze changelogs for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
+			outputSchema: BatchResultOutputSchema,
 			annotations: {
 				title: 'Analyze NPM Package Changelog (GitHub)',
 				readOnlyHint: true,
@@ -4612,7 +4681,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 			},
 		},
 		async (args: { packages: string[] }) => {
-			return await handleNpmChangelogAnalysis(args);
+			return await withStructuredOutput(handleNpmChangelogAnalysis(args));
 		},
 	);
 
@@ -4624,6 +4693,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				packages: z.array(z.string()).describe('List of package names to find alternatives for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
+			outputSchema: BatchResultOutputSchema,
 			annotations: {
 				title: 'Find NPM Package Alternatives',
 				readOnlyHint: true,
@@ -4632,7 +4702,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 			},
 		},
 		async (args: { packages: string[] }) => {
-			return await handleNpmAlternatives(args);
+			return await withStructuredOutput(handleNpmAlternatives(args));
 		},
 	);
 
@@ -4644,6 +4714,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				packages: z.array(z.string()).describe('List of package names to analyze'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
+			outputSchema: BatchResultOutputSchema,
 			annotations: {
 				title: 'Analyze NPM Package Quality (NPMS.io)',
 				readOnlyHint: true,
@@ -4652,7 +4723,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 			},
 		},
 		async (args: { packages: string[] }) => {
-			return await handleNpmQuality(args);
+			return await withStructuredOutput(handleNpmQuality(args));
 		},
 	);
 
@@ -4664,6 +4735,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 				packages: z.array(z.string()).describe('List of package names to analyze'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
+			outputSchema: BatchResultOutputSchema,
 			annotations: {
 				title: 'Analyze NPM Package Maintenance (NPMS.io)',
 				readOnlyHint: true,
@@ -4672,7 +4744,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 			},
 		},
 		async (args: { packages: string[] }) => {
-			return await handleNpmMaintenance(args);
+			return await withStructuredOutput(handleNpmMaintenance(args));
 		},
 	);
 

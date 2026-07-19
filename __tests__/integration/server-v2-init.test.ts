@@ -201,6 +201,31 @@ describe('Tool inputSchema (Standard Schema via z.object)', () => {
 	});
 });
 
+describe('Tool outputSchema & structuredContent (MCP v2 Feature)', () => {
+	test('every tool should expose a valid outputSchema with type object', async () => {
+		const { tools } = await client.listTools();
+		for (const tool of tools) {
+			expect(tool.outputSchema).toBeDefined();
+			expect(tool.outputSchema?.type).toBe('object');
+		}
+	});
+
+	test('calling a tool should populate structuredContent alongside content', async () => {
+		const res = await client.callTool({
+			name: 'npmLatest',
+			arguments: { packages: ['express'] },
+		});
+		expect(res.content).toBeDefined();
+		expect(res.content.length).toBeGreaterThan(0);
+		expect(res.structuredContent).toBeDefined();
+		expect(typeof res.structuredContent).toBe('object');
+
+		const structured = res.structuredContent as Record<string, unknown>;
+		expect(structured.results).toBeDefined();
+		expect(Array.isArray(structured.results)).toBe(true);
+	});
+});
+
 describe('Tool Annotations (v2 metadata hints)', () => {
 	test('every tool should expose annotations', async () => {
 		const { tools } = await client.listTools();
