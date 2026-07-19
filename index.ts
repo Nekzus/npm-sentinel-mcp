@@ -4064,7 +4064,7 @@ export async function handleNpmAlternatives(args: {
 							const match = (initSearchData.objects || []).find(
 								(p) => p.package.name === originalPackageName,
 							);
-							if (match && match.package.keywords) {
+							if (match?.package?.keywords) {
 								originalPackageKeywords = match.package.keywords;
 							}
 						}
