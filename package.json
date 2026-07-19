@@ -81,7 +81,8 @@
   },
   "homepage": "https://github.com/Nekzus/npm-sentinel-mcp#readme",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@modelcontextprotocol/core": "^2.0.0-beta.4",
+    "@modelcontextprotocol/server": "^2.0.0-beta.4",
     "@smithery/sdk": "4.3.0",
     "node-fetch": "3.3.2",
     "zod": "^4.4.3"
@@ -95,6 +96,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.3",
+    "@modelcontextprotocol/client": "2.0.0-beta.4",
     "@semantic-release/changelog": "6.0.3",
     "@semantic-release/git": "10.0.1",
     "@semantic-release/github": "12.0.9",
@@ -124,6 +126,6 @@
     "registry": "https://registry.npmjs.org/"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20"
   }
 }

@@ -142,11 +142,11 @@ describe('npm metrics handlers with Local Scoring', () => {
 			const result = await handleNpmScore({ packages: ['express'], ignoreCache: true });
 			validateToolResponse(result);
 			const parsed = JSON.parse((result.content[0] as any).text as string);
-			
+
 			expect(parsed.queryPackages).toEqual(['express']);
 			expect(parsed.results[0].packageInput).toBe('express');
 			expect(parsed.results[0].status).toBe('success');
-			
+
 			// Verificar estructura de score local
 			expect(parsed.results[0].data.score.final).toBeGreaterThan(0);
 			expect(parsed.results[0].data.score.detail.quality).toBeGreaterThan(0);
@@ -156,14 +156,19 @@ describe('npm metrics handlers with Local Scoring', () => {
 		});
 
 		test('should handle invalid package name', async () => {
-			const result = await handleNpmScore({ packages: ['invalid-package-name'], ignoreCache: true });
+			const result = await handleNpmScore({
+				packages: ['invalid-package-name'],
+				ignoreCache: true,
+			});
 			validateToolResponse(result);
 			const parsed = JSON.parse((result.content[0] as any).text as string);
-			
+
 			expect(parsed.queryPackages).toEqual(['invalid-package-name']);
 			expect(parsed.results[0].packageInput).toBe('invalid-package-name');
 			expect(parsed.results[0].status).toBe('error');
-			expect(parsed.results[0].error).toContain('Package invalid-package-name not found on registry.');
+			expect(parsed.results[0].error).toContain(
+				'Package invalid-package-name not found on registry.',
+			);
 		});
 	});
 
@@ -172,7 +177,7 @@ describe('npm metrics handlers with Local Scoring', () => {
 			const result = await handleNpmQuality({ packages: ['express'], ignoreCache: true });
 			validateToolResponse(result);
 			const parsed = JSON.parse((result.content[0] as any).text as string);
-			
+
 			expect(parsed.queryPackages).toEqual(['express']);
 			expect(parsed.results[0].status).toBe('success');
 			expect(parsed.results[0].data.qualityScore).toBeGreaterThan(0);
@@ -180,13 +185,18 @@ describe('npm metrics handlers with Local Scoring', () => {
 		});
 
 		test('should handle invalid package name', async () => {
-			const result = await handleNpmQuality({ packages: ['invalid-package-name'], ignoreCache: true });
+			const result = await handleNpmQuality({
+				packages: ['invalid-package-name'],
+				ignoreCache: true,
+			});
 			validateToolResponse(result);
 			const parsed = JSON.parse((result.content[0] as any).text as string);
-			
+
 			expect(parsed.queryPackages).toEqual(['invalid-package-name']);
 			expect(parsed.results[0].status).toBe('error');
-			expect(parsed.results[0].error).toContain('Package invalid-package-name not found on registry.');
+			expect(parsed.results[0].error).toContain(
+				'Package invalid-package-name not found on registry.',
+			);
 		});
 	});
 
@@ -195,20 +205,25 @@ describe('npm metrics handlers with Local Scoring', () => {
 			const result = await handleNpmMaintenance({ packages: ['express'], ignoreCache: true });
 			validateToolResponse(result);
 			const parsed = JSON.parse((result.content[0] as any).text as string);
-			
+
 			expect(parsed.queryPackages).toEqual(['express']);
 			expect(parsed.results[0].status).toBe('success');
 			expect(parsed.results[0].data.maintenanceScore).toBeGreaterThan(0);
 		});
 
 		test('should handle invalid package name', async () => {
-			const result = await handleNpmMaintenance({ packages: ['invalid-package-name'], ignoreCache: true });
+			const result = await handleNpmMaintenance({
+				packages: ['invalid-package-name'],
+				ignoreCache: true,
+			});
 			validateToolResponse(result);
 			const parsed = JSON.parse((result.content[0] as any).text as string);
-			
+
 			expect(parsed.queryPackages).toEqual(['invalid-package-name']);
 			expect(parsed.results[0].status).toBe('error');
-			expect(parsed.results[0].error).toContain('Package invalid-package-name not found on registry.');
+			expect(parsed.results[0].error).toContain(
+				'Package invalid-package-name not found on registry.',
+			);
 		});
 	});
 
@@ -217,7 +232,7 @@ describe('npm metrics handlers with Local Scoring', () => {
 			const result = await handleNpmSize({ packages: ['express'], ignoreCache: true });
 			validateToolResponse(result);
 			const parsed = JSON.parse((result.content[0] as any).text as string);
-			
+
 			expect(parsed.results[0].package).toBe('express');
 			expect(parsed.results[0].status).toBe('success');
 			expect(parsed.results[0].data.sizeInKb).toBe(48.83); // 50000 / 1024
@@ -230,7 +245,7 @@ describe('npm metrics handlers with Local Scoring', () => {
 			const result = await handleNpmDeps({ packages: ['express'], ignoreCache: true });
 			validateToolResponse(result);
 			const parsed = JSON.parse((result.content[0] as any).text as string);
-			
+
 			expect(parsed.results[0].package).toBe('express@4.18.2');
 			expect(parsed.results[0].status).toBe('success');
 		});
@@ -241,7 +256,7 @@ describe('npm metrics handlers with Local Scoring', () => {
 			const result = await handleNpmRepoStats({ packages: ['express'], ignoreCache: true });
 			validateToolResponse(result);
 			const parsed = JSON.parse((result.content[0] as any).text as string);
-			
+
 			expect(parsed.results[0].status).toBe('success');
 			expect(parsed.results[0].data).toHaveProperty('githubRepoUrl');
 		});

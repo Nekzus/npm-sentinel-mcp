@@ -1,4 +1,4 @@
-import type { CallToolResult, TextContent } from '@modelcontextprotocol/sdk/types.js';
+import type { CallToolResult, TextContent } from '@modelcontextprotocol/server';
 import { expect, vi } from 'vitest';
 
 export function extractTextFromResponse(response: CallToolResult): string {

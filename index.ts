@@ -4,9 +4,9 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
+import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
+import { McpServer } from '@modelcontextprotocol/server';
+import type { CallToolResult } from '@modelcontextprotocol/server';
 import fetch from 'node-fetch';
 import { z } from 'zod';
 
@@ -151,7 +151,7 @@ export async function fetchWithRetry(
 						const retryAfter = response.headers.get('retry-after');
 						const waitMs = retryAfter
 							? parseInt(retryAfter, 10) * 1000
-							: HTTP_INITIAL_BACKOFF_MS * (2 ** attempt);
+							: HTTP_INITIAL_BACKOFF_MS * 2 ** attempt;
 						await new Promise((resolve) => setTimeout(resolve, waitMs));
 						continue;
 					}
@@ -159,7 +159,7 @@ export async function fetchWithRetry(
 				return response;
 			} catch (err) {
 				if (attempt < maxRetries) {
-					const waitMs = HTTP_INITIAL_BACKOFF_MS * (2 ** attempt);
+					const waitMs = HTTP_INITIAL_BACKOFF_MS * 2 ** attempt;
 					await new Promise((resolve) => setTimeout(resolve, waitMs));
 					continue;
 				}
@@ -326,8 +326,6 @@ export type NpmPackageInfo = z.infer<typeof NpmPackageInfoSchema>;
 export type NpmPackageData = z.infer<typeof NpmPackageDataSchema>;
 export type BundlephobiaData = z.infer<typeof BundlephobiaDataSchema>;
 export type NpmDownloadsData = z.infer<typeof NpmDownloadsDataSchema>;
-
-
 
 // Type guards for API responses
 function isNpmPackageInfo(data: unknown): data is NpmPackageInfo {
@@ -543,8 +541,6 @@ export async function handleNpmVersions(args: {
 		};
 	}
 }
-
-
 
 export async function handleNpmLatest(args: {
 	packages: string[];
@@ -953,7 +949,9 @@ export async function handleNpmTypes(args: {
 					};
 
 					try {
-						const typesResponse = await fetchWithRetry(`${NPM_REGISTRY_URL}/${typesPackageName}/latest`);
+						const typesResponse = await fetchWithRetry(
+							`${NPM_REGISTRY_URL}/${typesPackageName}/latest`,
+						);
 						if (typesResponse.ok) {
 							const typesData = (await typesResponse.json()) as NpmPackageData;
 							typesPackageInfo = {
@@ -1077,7 +1075,7 @@ export async function handleNpmSize(args: {
 
 				try {
 					const response = await fetchWithRetry(
-						`https://bundlephobia.com/api/size?package=${bundlephobiaQuery}`
+						`https://bundlephobia.com/api/size?package=${bundlephobiaQuery}`,
 					);
 
 					if (!response.ok) {
@@ -1214,7 +1212,7 @@ export interface DepsDevProjectData {
 export async function fetchRepoStatsFromDepsDev(
 	owner: string,
 	repo: string,
-	ignoreCache = false
+	ignoreCache = false,
 ): Promise<DepsDevProjectData | null> {
 	const projectKey = encodeURIComponent(`github.com/${owner}/${repo}`);
 	const cacheKey = generateCacheKey('depsDevProject', owner, repo);
@@ -1225,7 +1223,7 @@ export async function fetchRepoStatsFromDepsDev(
 		const response = await fetchWithRetry(
 			`https://api.deps.dev/v3alpha/projects/${projectKey}`,
 			{},
-			{ maxRetries: 1 }
+			{ maxRetries: 1 },
 		);
 		if (!response.ok) return null;
 
@@ -1237,14 +1235,16 @@ export async function fetchRepoStatsFromDepsDev(
 			license: data.license ?? 'unknown',
 			description: data.description ?? '',
 			homepage: data.homepage ?? '',
-			scorecard: data.scorecard ? {
-				overallScore: data.scorecard.overallScore,
-				checks: (data.scorecard.checks || []).map((c: any) => ({
-					name: c.name,
-					score: c.score,
-					reason: c.reason,
-				})),
-			} : undefined,
+			scorecard: data.scorecard
+				? {
+						overallScore: data.scorecard.overallScore,
+						checks: (data.scorecard.checks || []).map((c: any) => ({
+							name: c.name,
+							score: c.score,
+							reason: c.reason,
+						})),
+					}
+				: undefined,
 		};
 
 		cacheSet(cacheKey, result, CACHE_TTL_VERY_LONG);
@@ -1639,7 +1639,9 @@ export async function handleNpmTrends(args: {
 				}
 
 				try {
-					const response = await fetchWithRetry(`https://api.npmjs.org/downloads/point/${period}/${name}`);
+					const response = await fetchWithRetry(
+						`https://api.npmjs.org/downloads/point/${period}/${name}`,
+					);
 
 					if (!response.ok) {
 						let errorMsg = `Failed to fetch download trends: ${response.status} ${response.statusText}`;
@@ -1834,7 +1836,7 @@ export async function handleNpmCompare(args: {
 					let monthlyDownloads: number | null = null;
 					try {
 						const downloadsResponse = await fetchWithRetry(
-							`https://api.npmjs.org/downloads/point/last-month/${name}`
+							`https://api.npmjs.org/downloads/point/last-month/${name}`,
 						);
 						if (downloadsResponse.ok) {
 							const downloadsData = await downloadsResponse.json();
@@ -1950,7 +1952,10 @@ export interface LocalScoreResult {
 	};
 }
 
-export async function getLocalPackageMetrics(name: string, ignoreCache = false): Promise<LocalScoreResult> {
+export async function getLocalPackageMetrics(
+	name: string,
+	ignoreCache = false,
+): Promise<LocalScoreResult> {
 	const cacheKey = generateCacheKey('localMetrics', name);
 	const cached = ignoreCache ? undefined : cacheGet<LocalScoreResult>(cacheKey);
 	if (cached) return cached;
@@ -1971,14 +1976,18 @@ export async function getLocalPackageMetrics(name: string, ignoreCache = false):
 	}
 
 	const versionData = packageInfo.versions[latestVersion];
-	const hasTypes = Boolean(versionData.types || versionData.typings || versionData.dependencies?.[`@types/${name}`]);
+	const hasTypes = Boolean(
+		versionData.types || versionData.typings || versionData.dependencies?.[`@types/${name}`],
+	);
 	const hasReadme = Boolean(versionData.readme || packageInfo.readme);
 	const dependencyCount = Object.keys(versionData.dependencies || {}).length;
 
 	// 2. Fetch downloads for last month
 	let downloadsLastMonth = 0;
 	try {
-		const downloadsResponse = await fetchWithRetry(`https://api.npmjs.org/downloads/point/last-month/${name}`);
+		const downloadsResponse = await fetchWithRetry(
+			`https://api.npmjs.org/downloads/point/last-month/${name}`,
+		);
 		if (downloadsResponse.ok) {
 			const dlData = await downloadsResponse.json();
 			downloadsLastMonth = dlData.downloads || 0;
@@ -2016,7 +2025,9 @@ export async function getLocalPackageMetrics(name: string, ignoreCache = false):
 					scorecard = depsDevData.scorecard;
 				}
 			} catch (ghError) {
-				console.debug(`Could not fetch deps.dev project data for ${owner}/${cleanRepo}: ${ghError}`);
+				console.debug(
+					`Could not fetch deps.dev project data for ${owner}/${cleanRepo}: ${ghError}`,
+				);
 			}
 		}
 	}
@@ -2035,23 +2046,25 @@ export async function getLocalPackageMetrics(name: string, ignoreCache = false):
 	let popularity = popularityNPM;
 	if (github.hasGitHubData) {
 		const popularityGH = Math.min(1, github.starsCount / 50000);
-		popularity = (popularityNPM * 0.7) + (popularityGH * 0.3);
+		popularity = popularityNPM * 0.7 + popularityGH * 0.3;
 	}
 
-	const quality = (
-		(hasTypes ? 0.3 : 0) +
-		(hasReadme ? 0.2 : 0) +
-		Math.max(0, 0.5 - (dependencyCount * 0.005))
-	);
+	const quality =
+		(hasTypes ? 0.3 : 0) + (hasReadme ? 0.2 : 0) + Math.max(0, 0.5 - dependencyCount * 0.005);
 
-	const maintenancePublish = lastPublishDaysAgo < 30 ? 1.0
-		: lastPublishDaysAgo < 90 ? 0.8
-		: lastPublishDaysAgo < 365 ? 0.5
-		: 0.2;
+	const maintenancePublish =
+		lastPublishDaysAgo < 30
+			? 1.0
+			: lastPublishDaysAgo < 90
+				? 0.8
+				: lastPublishDaysAgo < 365
+					? 0.5
+					: 0.2;
 	let maintenance = maintenancePublish;
 	if (github.hasGitHubData) {
-		const issuesScore = github.openIssuesCount < 50 ? 0.3 : github.openIssuesCount < 200 ? 0.2 : 0.1;
-		maintenance = (maintenancePublish * 0.7) + issuesScore;
+		const issuesScore =
+			github.openIssuesCount < 50 ? 0.3 : github.openIssuesCount < 200 ? 0.2 : 0.1;
+		maintenance = maintenancePublish * 0.7 + issuesScore;
 	}
 
 	const finalScore = popularity * 0.4 + quality * 0.3 + maintenance * 0.3;
@@ -2616,7 +2629,7 @@ export async function fetchReadmeFromCDN(
 			const response = await fetchWithRetry(
 				cdnUrl,
 				{ headers: { Accept: 'text/plain' } },
-				{ maxRetries: 1, skipThrottle: true }
+				{ maxRetries: 1, skipThrottle: true },
 			);
 
 			if (response.ok) {
@@ -2853,7 +2866,7 @@ export async function handleNpmSearch(args: {
 		}
 
 		const response = await fetchWithRetry(
-			`${NPM_REGISTRY_URL}/-/v1/search?text=${encodeURIComponent(query)}&size=${limit}`
+			`${NPM_REGISTRY_URL}/-/v1/search?text=${encodeURIComponent(query)}&size=${limit}`,
 		);
 		if (!response.ok) {
 			throw new Error(`Failed to search packages: ${response.status} ${response.statusText}`);
@@ -3499,7 +3512,7 @@ export async function handleNpmDeprecated(args: {
 							try {
 								// console.debug(`[handleNpmDeprecated] Checking dependency: ${depName}@${depSemVer}`);
 								const depInfoResponse = await fetchWithRetry(
-									`${NPM_REGISTRY_URL}/${encodeURIComponent(depName)}`
+									`${NPM_REGISTRY_URL}/${encodeURIComponent(depName)}`,
 								);
 
 								if (!depInfoResponse.ok) {
@@ -3804,7 +3817,7 @@ export async function handleNpmChangelogAnalysis(args: {
 									Accept: 'application/vnd.github.v3+json',
 								},
 							},
-							{ maxRetries: 0 }
+							{ maxRetries: 0 },
 						);
 						if (githubApiResponse.ok) {
 							const releasesData = (await githubApiResponse.json()) as any[];
@@ -3823,7 +3836,7 @@ export async function handleNpmChangelogAnalysis(args: {
 					const publishTime = npmData.time;
 					if (githubReleases.length === 0 && publishTime) {
 						const timeKeys = Object.keys(publishTime).filter(
-							(k) => k !== 'modified' && k !== 'created'
+							(k) => k !== 'modified' && k !== 'created',
 						);
 						const sortedVersions = timeKeys.sort((a, b) => {
 							return new Date(publishTime[b]).getTime() - new Date(publishTime[a]).getTime();
@@ -3983,7 +3996,7 @@ export async function handleNpmAlternatives(args: {
 					const searchResponse = await fetchWithRetry(
 						`${NPM_REGISTRY_URL}/-/v1/search?text=keywords:${encodeURIComponent(
 							originalPackageName,
-						)}&size=10`
+						)}&size=10`,
 					);
 					if (!searchResponse.ok) {
 						const errorResult = {
@@ -4003,7 +4016,7 @@ export async function handleNpmAlternatives(args: {
 					let originalPackageDownloads = 0;
 					try {
 						const dlResponse = await fetchWithRetry(
-							`https://api.npmjs.org/downloads/point/last-month/${originalPackageName}`
+							`https://api.npmjs.org/downloads/point/last-month/${originalPackageName}`,
 						);
 						if (dlResponse.ok) {
 							originalPackageDownloads =
@@ -4050,7 +4063,7 @@ export async function handleNpmAlternatives(args: {
 								let altDownloads = 0;
 								try {
 									const altDlResponse = await fetchWithRetry(
-										`https://api.npmjs.org/downloads/point/last-month/${alt.package.name}`
+										`https://api.npmjs.org/downloads/point/last-month/${alt.package.name}`,
 									);
 									if (altDlResponse.ok) {
 										altDownloads = ((await altDlResponse.json()) as DownloadCount).downloads || 0;
@@ -4248,9 +4261,9 @@ export default function createServer({ config }: { config: z.infer<typeof config
 		'analyze-package',
 		{
 			description: 'Analyze an NPM package for security and quality',
-			argsSchema: {
+			argsSchema: z.object({
 				package: z.string().describe('Name of the npm package to analyze'),
-			},
+			}),
 		},
 		({ package: pkgName }) => ({
 			messages: [
@@ -4270,10 +4283,10 @@ export default function createServer({ config }: { config: z.infer<typeof config
 		'npmVersions',
 		{
 			description: 'Get all available versions of an NPM package',
-			inputSchema: {
+			inputSchema: z.object({
 				packages: z.array(z.string()).describe('List of package names to get versions for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			},
+			}),
 			annotations: {
 				title: 'Get All Package Versions',
 				readOnlyHint: true,
@@ -4290,10 +4303,10 @@ export default function createServer({ config }: { config: z.infer<typeof config
 		'npmLatest',
 		{
 			description: 'Get the latest version and changelog of an NPM package',
-			inputSchema: {
+			inputSchema: z.object({
 				packages: z.array(z.string()).describe('List of package names to get latest versions for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			},
+			}),
 			annotations: {
 				title: 'Get Latest Package Information',
 				readOnlyHint: true,
@@ -4310,10 +4323,10 @@ export default function createServer({ config }: { config: z.infer<typeof config
 		'npmDeps',
 		{
 			description: 'Analyze dependencies and devDependencies of an NPM package',
-			inputSchema: {
+			inputSchema: z.object({
 				packages: z.array(z.string()).describe('List of package names to analyze dependencies for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			},
+			}),
 			annotations: {
 				title: 'Get Package Dependencies',
 				readOnlyHint: true,
@@ -4330,10 +4343,10 @@ export default function createServer({ config }: { config: z.infer<typeof config
 		'npmTypes',
 		{
 			description: 'Check TypeScript types availability and version for a package',
-			inputSchema: {
+			inputSchema: z.object({
 				packages: z.array(z.string()).describe('List of package names to check types for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			},
+			}),
 			annotations: {
 				title: 'Check TypeScript Type Availability',
 				readOnlyHint: true,
@@ -4350,10 +4363,10 @@ export default function createServer({ config }: { config: z.infer<typeof config
 		'npmSize',
 		{
 			description: 'Get package size information including dependencies and bundle size',
-			inputSchema: {
+			inputSchema: z.object({
 				packages: z.array(z.string()).describe('List of package names to get size information for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			},
+			}),
 			annotations: {
 				title: 'Get Package Size (Bundlephobia)',
 				readOnlyHint: true,
@@ -4370,12 +4383,12 @@ export default function createServer({ config }: { config: z.infer<typeof config
 		'npmVulnerabilities',
 		{
 			description: 'Check for known vulnerabilities in packages',
-			inputSchema: {
+			inputSchema: z.object({
 				packages: z
 					.array(z.string())
 					.describe('List of package names to check for vulnerabilities'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			},
+			}),
 			annotations: {
 				title: 'Check Package Vulnerabilities (OSV.dev)',
 				readOnlyHint: true,
@@ -4392,7 +4405,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 		'npmTrends',
 		{
 			description: 'Get download trends and popularity metrics for packages',
-			inputSchema: {
+			inputSchema: z.object({
 				packages: z.array(z.string()).describe('List of package names to get trends for'),
 				period: z
 					.enum(['last-week', 'last-month', 'last-year'])
@@ -4400,7 +4413,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 					.optional()
 					.default('last-month'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			},
+			}),
 			annotations: {
 				title: 'Get NPM Package Download Trends',
 				readOnlyHint: true,
@@ -4417,10 +4430,10 @@ export default function createServer({ config }: { config: z.infer<typeof config
 		'npmCompare',
 		{
 			description: 'Compare multiple NPM packages based on various metrics',
-			inputSchema: {
+			inputSchema: z.object({
 				packages: z.array(z.string()).describe('List of package names to compare'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			},
+			}),
 			annotations: {
 				title: 'Compare NPM Packages',
 				readOnlyHint: true,
@@ -4437,10 +4450,10 @@ export default function createServer({ config }: { config: z.infer<typeof config
 		'npmMaintainers',
 		{
 			description: 'Get maintainers information for NPM packages',
-			inputSchema: {
+			inputSchema: z.object({
 				packages: z.array(z.string()).describe('List of package names to get maintainers for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			},
+			}),
 			annotations: {
 				title: 'Get NPM Package Maintainers',
 				readOnlyHint: true,
@@ -4458,10 +4471,10 @@ export default function createServer({ config }: { config: z.infer<typeof config
 		{
 			description:
 				'Get consolidated package score based on quality, maintenance, and popularity metrics',
-			inputSchema: {
+			inputSchema: z.object({
 				packages: z.array(z.string()).describe('List of package names to get scores for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			},
+			}),
 			annotations: {
 				title: 'Get NPM Package Score (NPMS.io)',
 				readOnlyHint: true,
@@ -4478,10 +4491,10 @@ export default function createServer({ config }: { config: z.infer<typeof config
 		'npmPackageReadme',
 		{
 			description: 'Get the README content for NPM packages',
-			inputSchema: {
+			inputSchema: z.object({
 				packages: z.array(z.string()).describe('List of package names to get READMEs for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			},
+			}),
 			annotations: {
 				title: 'Get NPM Package README',
 				readOnlyHint: true,
@@ -4498,7 +4511,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 		'npmSearch',
 		{
 			description: 'Search for NPM packages with optional limit',
-			inputSchema: {
+			inputSchema: z.object({
 				query: z.string().describe('Search query for packages'),
 				limit: z
 					.number()
@@ -4507,7 +4520,7 @@ export default function createServer({ config }: { config: z.infer<typeof config
 					.optional()
 					.describe('Maximum number of results to return (default: 10)'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			},
+			}),
 			annotations: {
 				title: 'Search NPM Packages',
 				readOnlyHint: true,
@@ -4524,13 +4537,13 @@ export default function createServer({ config }: { config: z.infer<typeof config
 		'npmLicenseCompatibility',
 		{
 			description: 'Check license compatibility between multiple packages',
-			inputSchema: {
+			inputSchema: z.object({
 				packages: z
 					.array(z.string())
 					.min(1)
 					.describe('List of package names to check for license compatibility'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			},
+			}),
 			annotations: {
 				title: 'Check NPM License Compatibility',
 				readOnlyHint: true,
@@ -4547,10 +4560,10 @@ export default function createServer({ config }: { config: z.infer<typeof config
 		'npmRepoStats',
 		{
 			description: 'Get repository statistics for NPM packages',
-			inputSchema: {
+			inputSchema: z.object({
 				packages: z.array(z.string()).describe('List of package names to get repository stats for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			},
+			}),
 			annotations: {
 				title: 'Get NPM Package Repository Stats (GitHub)',
 				readOnlyHint: true,
@@ -4567,10 +4580,10 @@ export default function createServer({ config }: { config: z.infer<typeof config
 		'npmDeprecated',
 		{
 			description: 'Check if packages are deprecated',
-			inputSchema: {
+			inputSchema: z.object({
 				packages: z.array(z.string()).describe('List of package names to check for deprecation'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			},
+			}),
 			annotations: {
 				title: 'Check NPM Package Deprecation Status',
 				readOnlyHint: true,
@@ -4587,10 +4600,10 @@ export default function createServer({ config }: { config: z.infer<typeof config
 		'npmChangelogAnalysis',
 		{
 			description: 'Analyze changelog and release history of packages',
-			inputSchema: {
+			inputSchema: z.object({
 				packages: z.array(z.string()).describe('List of package names to analyze changelogs for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			},
+			}),
 			annotations: {
 				title: 'Analyze NPM Package Changelog (GitHub)',
 				readOnlyHint: true,
@@ -4607,10 +4620,10 @@ export default function createServer({ config }: { config: z.infer<typeof config
 		'npmAlternatives',
 		{
 			description: 'Find alternative packages with similar functionality',
-			inputSchema: {
+			inputSchema: z.object({
 				packages: z.array(z.string()).describe('List of package names to find alternatives for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			},
+			}),
 			annotations: {
 				title: 'Find NPM Package Alternatives',
 				readOnlyHint: true,
@@ -4627,10 +4640,10 @@ export default function createServer({ config }: { config: z.infer<typeof config
 		'npmQuality',
 		{
 			description: 'Analyze package quality metrics',
-			inputSchema: {
+			inputSchema: z.object({
 				packages: z.array(z.string()).describe('List of package names to analyze'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			},
+			}),
 			annotations: {
 				title: 'Analyze NPM Package Quality (NPMS.io)',
 				readOnlyHint: true,
@@ -4647,10 +4660,10 @@ export default function createServer({ config }: { config: z.infer<typeof config
 		'npmMaintenance',
 		{
 			description: 'Analyze package maintenance metrics',
-			inputSchema: {
+			inputSchema: z.object({
 				packages: z.array(z.string()).describe('List of package names to analyze'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
-			},
+			}),
 			annotations: {
 				title: 'Analyze NPM Package Maintenance (NPMS.io)',
 				readOnlyHint: true,

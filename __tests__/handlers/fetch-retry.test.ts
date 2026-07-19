@@ -55,11 +55,15 @@ describe('fetchWithRetry', () => {
 				}),
 			);
 
-		const fetchPromise = fetchWithRetry('https://example.com/api', {}, { maxRetries: 1, skipThrottle: true });
-		
+		const fetchPromise = fetchWithRetry(
+			'https://example.com/api',
+			{},
+			{ maxRetries: 1, skipThrottle: true },
+		);
+
 		// Avanzar timers para que el reintento ocurra al instante
 		await vi.runAllTimersAsync();
-		
+
 		const response = await fetchPromise;
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 		expect(response.status).toBe(200);
@@ -84,7 +88,11 @@ describe('fetchWithRetry', () => {
 				}),
 			);
 
-		const fetchPromise = fetchWithRetry('https://example.com/api', {}, { maxRetries: 1, skipThrottle: true });
+		const fetchPromise = fetchWithRetry(
+			'https://example.com/api',
+			{},
+			{ maxRetries: 1, skipThrottle: true },
+		);
 		await vi.runAllTimersAsync();
 		const response = await fetchPromise;
 		expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -101,7 +109,11 @@ describe('fetchWithRetry', () => {
 			}),
 		);
 
-		const response = await fetchWithRetry('https://example.com/api', {}, { maxRetries: 3, skipThrottle: true });
+		const response = await fetchWithRetry(
+			'https://example.com/api',
+			{},
+			{ maxRetries: 3, skipThrottle: true },
+		);
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 		expect(response.status).toBe(404);
 	});
@@ -120,7 +132,11 @@ describe('fetchWithRetry', () => {
 				}),
 			);
 
-		const fetchPromise = fetchWithRetry('https://example.com/api', {}, { maxRetries: 1, skipThrottle: true });
+		const fetchPromise = fetchWithRetry(
+			'https://example.com/api',
+			{},
+			{ maxRetries: 1, skipThrottle: true },
+		);
 		await vi.runAllTimersAsync();
 		const response = await fetchPromise;
 		expect(fetchMock).toHaveBeenCalledTimes(2);
