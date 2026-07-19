@@ -1,6 +1,6 @@
+import * as fs from 'node:fs';
 import { Client } from '@modelcontextprotocol/client';
 import { StdioClientTransport } from '@modelcontextprotocol/client/stdio';
-import * as fs from 'node:fs';
 
 async function runE2EValidation() {
 	console.log('----------------------------------------------------');
