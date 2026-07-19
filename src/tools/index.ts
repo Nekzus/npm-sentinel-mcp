@@ -27,7 +27,7 @@ import { NPM_METRICS_ICON, NPM_REGISTRY_ICON, NPM_SECURITY_ICON } from '../icons
 const BatchResultOutputSchema = z
 	.object({
 		results: z.array(z.record(z.string(), z.unknown())).optional(),
-		summary: z.record(z.string(), z.unknown()).optional(),
+		summary: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
 		message: z.string().optional(),
 	})
 	.passthrough();

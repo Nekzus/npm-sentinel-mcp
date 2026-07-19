@@ -4054,22 +4054,17 @@ export async function handleNpmAlternatives(args: {
 					let originalPackageDownloads = 0;
 
 					try {
-						const initSearchResponse = await fetchWithRetry(
-							`${NPM_REGISTRY_URL}/-/v1/search?text=keywords:${encodeURIComponent(
-								originalPackageName,
-							)}&size=5`,
+						const pkgManifestResponse = await fetchWithRetry(
+							`${NPM_REGISTRY_URL}/${encodeURIComponent(originalPackageName)}/latest`,
 						);
-						if (initSearchResponse.ok) {
-							const initSearchData = (await initSearchResponse.json()) as NpmSearchResponse;
-							const match = (initSearchData.objects || []).find(
-								(p) => p.package.name === originalPackageName,
-							);
-							if (match?.package?.keywords) {
-								originalPackageKeywords = match.package.keywords;
+						if (pkgManifestResponse.ok) {
+							const pkgManifest = (await pkgManifestResponse.json()) as any;
+							if (Array.isArray(pkgManifest.keywords)) {
+								originalPackageKeywords = pkgManifest.keywords;
 							}
 						}
 					} catch {
-						// Optional keyword retrieval failure
+						// Optional manifest retrieval failure
 					}
 
 					try {
@@ -4092,87 +4087,126 @@ export async function handleNpmAlternatives(args: {
 						keywords: originalPackageKeywords,
 					};
 
-					const genericKeywords = originalPackageKeywords.filter(
-						(kw) =>
-							kw.toLowerCase() !== originalPackageName.toLowerCase() &&
-							!kw.toLowerCase().includes(originalPackageName.toLowerCase()) &&
-							kw.length > 2,
-					);
+					const KNOWN_ALTERNATIVES_MAP: Record<string, string[]> = {
+						express: ['fastify', 'koa', 'hono', 'restify', 'nestjs'],
+						lodash: ['ramda', 'remeda', 'radash', 'underscore'],
+						moment: ['dayjs', 'date-fns', 'luxon'],
+						request: ['axios', 'node-fetch', 'got', 'ky', 'superagent'],
+						react: ['preact', 'vue', 'svelte', 'solid-js'],
+						vue: ['react', 'svelte', 'solid-js', 'preact'],
+						jest: ['vitest', 'mocha', 'ava'],
+						axios: ['got', 'ky', 'node-fetch', 'superagent'],
+						chalk: ['kleur', 'colorette', 'picocolors', 'ansis'],
+						commander: ['yargs', 'cac', 'clipanion'],
+						winston: ['pino', 'bunyan', 'loglevel'],
+						mongoose: ['prisma', 'typeorm', 'drizzle-orm', 'sequelize'],
+						webpack: ['vite', 'esbuild', 'rollup', 'parcel', 'turbopack'],
+					};
 
-					const domainKeywords = genericKeywords.filter(
-						(kw) =>
-							![
-								'mobile',
-								'ionic',
-								'component',
-								'components',
-								'ui',
-								'css',
-								'react',
-								'vue',
-								'angular',
-								'stencil',
-								'storybook',
-								'icon',
-								'icons',
-							].includes(kw.toLowerCase()),
-					);
+					let validAlternativesRaw: any[] = [];
+					const knownCandidates = KNOWN_ALTERNATIVES_MAP[originalPackageName.toLowerCase()];
 
-					const selectedKeywords = domainKeywords.length > 0 ? domainKeywords : genericKeywords;
-
-					let searchQuery = originalPackageName;
-					if (selectedKeywords.length >= 2) {
-						searchQuery = selectedKeywords.slice(0, 3).join(' ');
-					} else if (selectedKeywords.length === 1) {
-						searchQuery = selectedKeywords[0];
-					}
-
-					const searchResponse = await fetchWithRetry(
-						`${NPM_REGISTRY_URL}/-/v1/search?text=${encodeURIComponent(searchQuery)}&size=30`,
-					);
-
-					if (!searchResponse.ok) {
-						const errorResult = {
-							packageInput: pkgInput,
-							packageName: originalPackageName,
-							status: 'error' as const,
-							error: `Failed to search for alternatives: ${searchResponse.status} ${searchResponse.statusText}`,
-							data: null,
-							message: 'Could not perform search for alternatives.',
-						};
-						return errorResult;
-					}
-
-					const searchData = (await searchResponse.json()) as NpmSearchResponse;
-					const alternativePackagesRaw = searchData.objects || [];
-
-					let validAlternativesRaw = alternativePackagesRaw.filter((alt) =>
-						isAlternativeCandidate(
-							alt.package.name,
-							alt.package.description || '',
-							originalPackageName,
-						),
-					);
-
-					if (validAlternativesRaw.length === 0 && searchQuery !== originalPackageName) {
+					if (knownCandidates && knownCandidates.length > 0) {
 						try {
-							const fallbackResponse = await fetchWithRetry(
-								`${NPM_REGISTRY_URL}/-/v1/search?text=${encodeURIComponent(
-									originalPackageName,
-								)}&size=30`,
+							const knownResponse = await fetchWithRetry(
+								`${NPM_REGISTRY_URL}/-/v1/search?text=${encodeURIComponent(knownCandidates.join(' '))}&size=20`,
 							);
-							if (fallbackResponse.ok) {
-								const fallbackData = (await fallbackResponse.json()) as NpmSearchResponse;
-								validAlternativesRaw = (fallbackData.objects || []).filter((alt) =>
-									isAlternativeCandidate(
-										alt.package.name,
-										alt.package.description || '',
-										originalPackageName,
-									),
+							if (knownResponse.ok) {
+								const knownData = (await knownResponse.json()) as NpmSearchResponse;
+								validAlternativesRaw = (knownData.objects || []).filter(
+									(alt) =>
+										knownCandidates.includes(alt.package.name.toLowerCase()) &&
+										alt.package.name.toLowerCase() !== originalPackageName.toLowerCase(),
 								);
 							}
 						} catch {
-							// Fallback failure
+							// Known candidate search failure fallback
+						}
+					}
+
+					if (validAlternativesRaw.length === 0) {
+						const genericKeywords = originalPackageKeywords.filter(
+							(kw) =>
+								kw.toLowerCase() !== originalPackageName.toLowerCase() &&
+								!kw.toLowerCase().includes(originalPackageName.toLowerCase()) &&
+								kw.length > 2,
+						);
+
+						const domainKeywords = genericKeywords.filter(
+							(kw) =>
+								![
+									'mobile',
+									'ionic',
+									'component',
+									'components',
+									'ui',
+									'css',
+									'react',
+									'vue',
+									'angular',
+									'stencil',
+									'storybook',
+									'icon',
+									'icons',
+								].includes(kw.toLowerCase()),
+						);
+
+						const selectedKeywords = domainKeywords.length > 0 ? domainKeywords : genericKeywords;
+
+						let searchQuery = originalPackageName;
+						if (selectedKeywords.length >= 2) {
+							searchQuery = selectedKeywords.slice(0, 3).join(' ');
+						} else if (selectedKeywords.length === 1) {
+							searchQuery = selectedKeywords[0];
+						}
+
+						const searchResponse = await fetchWithRetry(
+							`${NPM_REGISTRY_URL}/-/v1/search?text=${encodeURIComponent(searchQuery)}&size=30`,
+						);
+
+						if (!searchResponse.ok) {
+							const errorResult = {
+								packageInput: pkgInput,
+								packageName: originalPackageName,
+								status: 'error' as const,
+								error: `Failed to search for alternatives: ${searchResponse.status} ${searchResponse.statusText}`,
+								data: null,
+								message: 'Could not perform search for alternatives.',
+							};
+							return errorResult;
+						}
+
+						const searchData = (await searchResponse.json()) as NpmSearchResponse;
+						const alternativePackagesRaw = searchData.objects || [];
+
+						validAlternativesRaw = alternativePackagesRaw.filter((alt) =>
+							isAlternativeCandidate(
+								alt.package.name,
+								alt.package.description || '',
+								originalPackageName,
+							),
+						);
+
+						if (validAlternativesRaw.length === 0 && searchQuery !== originalPackageName) {
+							try {
+								const fallbackResponse = await fetchWithRetry(
+									`${NPM_REGISTRY_URL}/-/v1/search?text=${encodeURIComponent(
+										originalPackageName,
+									)}&size=30`,
+								);
+								if (fallbackResponse.ok) {
+									const fallbackData = (await fallbackResponse.json()) as NpmSearchResponse;
+									validAlternativesRaw = (fallbackData.objects || []).filter((alt) =>
+										isAlternativeCandidate(
+											alt.package.name,
+											alt.package.description || '',
+											originalPackageName,
+										),
+									);
+								}
+							} catch {
+								// Fallback failure
+							}
 						}
 					}
 
