@@ -3,6 +3,23 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.19.0-alpha.10](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.9...v1.19.0-alpha.10) (2026-07-19)
+
+
+### Bug Fixes
+
+* **lint:** clean unused imports and improve optional chaining in index.ts ([a4d0bfb](https://github.com/Nekzus/npm-sentinel-mcp/commit/a4d0bfb12322873251460506b2bd0fb169aa32bc))
+* **lint:** organize imports and setNpmRegistryUrl export in index.ts ([c49950a](https://github.com/Nekzus/npm-sentinel-mcp/commit/c49950a90566a5371c3b1ccdbe6f5dd4b6652896))
+* **lint:** use optional chaining in handleNpmAlternatives keyword check ([059ca7d](https://github.com/Nekzus/npm-sentinel-mcp/commit/059ca7d639d3bc2bc50fe852066af992ca82951a))
+* **test:** remove unused imports in cache-invalidation.test.ts ([56184b3](https://github.com/Nekzus/npm-sentinel-mcp/commit/56184b3df58eac618e0b6f055f10e04ccf45840e))
+
+
+### Features
+
+* **audit:** refine npmAlternatives filtering and standardize empty-array error schema ([4b67a74](https://github.com/Nekzus/npm-sentinel-mcp/commit/4b67a74d3d0af0a8817ab8f52a8b7cf4fb63c9cc))
+* **mcp:** add SVG Data URI icons and context logging to tools, resources and prompts ([76b83a2](https://github.com/Nekzus/npm-sentinel-mcp/commit/76b83a21d3ae86bdb126d1e28ae0b834ae2ac4f7))
+* **mcp:** implement outputSchema and structuredContent for all 19 tools ([e16f21d](https://github.com/Nekzus/npm-sentinel-mcp/commit/e16f21da0cda32b81cd3bbda897168d448fd1a75))
+
 # [1.19.0-alpha.9](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.8...v1.19.0-alpha.9) (2026-07-19)
 
 
