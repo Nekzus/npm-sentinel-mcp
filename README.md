@@ -137,6 +137,34 @@ docker build -t nekzus/npm-sentinel-mcp .
 docker run -i --rm -w /projects -v ${PWD}:/projects nekzus/npm-sentinel-mcp node dist/index.js
 ```
 
+### Streamable HTTP (POST) & Cloudflare Workers Integration
+
+The package exports a stateless HTTP handler `handleStreamableHttpRequest` designed for serverless platforms (Cloudflare Workers, Vercel, Express, Fastify, Next.js API routes) requiring Streamable HTTP POST transport under MCP v2:
+
+```typescript
+import { handleStreamableHttpRequest } from '@nekzus/mcp-server/http';
+
+export default {
+  async fetch(request: Request): Promise<Response> {
+    if (request.method !== 'POST') {
+      return new Response('NPM Sentinel MCP v2 Streamable HTTP Server', { status: 200 });
+    }
+
+    try {
+      const payload = await request.json();
+      const mcpResponse = await handleStreamableHttpRequest(payload);
+
+      return new Response(mcpResponse.body, {
+        status: mcpResponse.status,
+        headers: mcpResponse.headers,
+      });
+    } catch {
+      return new Response(JSON.stringify({ error: 'Invalid JSON-RPC payload' }), { status: 400 });
+    }
+  },
+};
+```
+
 ## Configuration
 
 The server supports the following configuration parameters:
