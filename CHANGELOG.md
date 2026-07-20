@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.19.0-alpha.14](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.13...v1.19.0-alpha.14) (2026-07-20)
+
+
+### Bug Fixes
+
+* **scorecard:** condition Scorecard reason sanitization strictly to score -1 and internal errors ([1180548](https://github.com/Nekzus/npm-sentinel-mcp/commit/118054845eb40e07db3f4cc4fb8b9a47c5eb61f2))
+
 # [1.19.0-alpha.13](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.12...v1.19.0-alpha.13) (2026-07-20)
 
 
