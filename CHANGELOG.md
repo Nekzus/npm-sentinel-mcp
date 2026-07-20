@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.19.0-alpha.15](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.14...v1.19.0-alpha.15) (2026-07-20)
+
+
+### Features
+
+* **http:** export stateless Streamable HTTP POST transport handler for Cloudflare Workers and web servers ([07918fe](https://github.com/Nekzus/npm-sentinel-mcp/commit/07918fefc5a1a9479728bb9e14f3df0b48efc426))
+
 # [1.19.0-alpha.14](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.13...v1.19.0-alpha.14) (2026-07-20)
 
 
