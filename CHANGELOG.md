@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.19.0-alpha.16](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.15...v1.19.0-alpha.16) (2026-07-20)
+
+
+### Bug Fixes
+
+* **linter:** resolve unused options parameter, import sorting, and template literal linter issues in src/http.ts ([79409e7](https://github.com/Nekzus/npm-sentinel-mcp/commit/79409e798062846857ff5258889c026823f2b522))
+
 # [1.19.0-alpha.15](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.14...v1.19.0-alpha.15) (2026-07-20)
 
 
