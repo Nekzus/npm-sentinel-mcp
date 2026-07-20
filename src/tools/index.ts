@@ -195,8 +195,7 @@ export function registerAllTools(server: McpServer): void {
 	server.registerTool(
 		'npmVulnerabilities',
 		{
-			description:
-				'Check for known vulnerabilities in packages. Supports explicit version specifiers (e.g. "event-stream@3.3.6" or "lodash@4.17.15") to audit specific versions.',
+			description: 'Check for known vulnerabilities in packages',
 			inputSchema: z.object({
 				packages: z
 					.array(z.string())
