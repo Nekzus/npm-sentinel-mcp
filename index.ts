@@ -4383,7 +4383,9 @@ function isNpmPackageVersionData(data: unknown): data is z.infer<typeof NpmPacka
 }
 
 // Run STDIO server when executed directly (for backward compatibility)
-main().catch((error) => {
-	console.error('Server error:', error);
-	process.exit(1);
-});
+if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
+	main().catch((error) => {
+		console.error('Server error:', error);
+		process.exit(1);
+	});
+}
