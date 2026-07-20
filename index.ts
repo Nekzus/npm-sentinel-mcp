@@ -1263,9 +1263,9 @@ export async function fetchRepoStatsFromDepsDev(
 							score: c.score,
 							reason:
 								c.reason &&
+								(c.score === -1 || c.reason.toLowerCase().includes('internal error')) &&
 								(c.reason.toLowerCase().includes('internal error') ||
-									c.reason.toLowerCase().includes('token') ||
-									c.reason.toLowerCase().includes('permissions'))
+									c.reason.toLowerCase().includes('classic branch protection rules'))
 									? 'Check not evaluated due to upstream OpenSSF Scorecard API permission limits'
 									: c.reason || 'No details provided',
 						})),
