@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.19.0-alpha.13](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.12...v1.19.0-alpha.13) (2026-07-20)
+
+
+### Bug Fixes
+
+* **scorecard:** sanitize internal error messages from OpenSSF Scorecard API ([323f19e](https://github.com/Nekzus/npm-sentinel-mcp/commit/323f19e0eac985ee6da931bc715609a96f14f1de))
+
 # [1.19.0-alpha.12](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.11...v1.19.0-alpha.12) (2026-07-19)
 
 
