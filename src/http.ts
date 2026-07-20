@@ -1,3 +1,4 @@
+import { setNpmRegistryUrl } from './config.js';
 import {
 	handleNpmAlternatives,
 	handleNpmChangelogAnalysis,
@@ -64,6 +65,10 @@ export async function handleStreamableHttpRequest(
 	options: StreamableHttpHandlerOptions = {},
 ): Promise<StreamableHttpResponse> {
 	try {
+		if (options.npmRegistryUrl) {
+			setNpmRegistryUrl(options.npmRegistryUrl);
+		}
+
 		if (typeof requestBody !== 'object' || requestBody === null) {
 			return {
 				status: 400,
@@ -115,18 +120,19 @@ export async function handleStreamableHttpRequest(
 			responseResult = {};
 		}
 
+		const responseJson = JSON.stringify({
+			jsonrpc: '2.0',
+			id: payload.id ?? null,
+			result: responseResult,
+		});
+
 		return {
 			status: 200,
 			headers: {
 				'Content-Type': 'application/x-ndjson',
 				'Cache-Control': 'no-cache',
 			},
-			body:
-				JSON.stringify({
-					jsonrpc: '2.0',
-					id: payload.id ?? null,
-					result: responseResult,
-				}) + '\n',
+			body: `${responseJson}\n`,
 		};
 	} catch (error) {
 		return {
