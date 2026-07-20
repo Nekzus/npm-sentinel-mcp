@@ -1263,9 +1263,10 @@ export async function fetchRepoStatsFromDepsDev(
 							score: c.score,
 							reason:
 								c.reason &&
-								(c.reason.toLowerCase().includes('token missing') ||
+								(c.reason.toLowerCase().includes('internal error') ||
+									c.reason.toLowerCase().includes('token') ||
 									c.reason.toLowerCase().includes('permissions'))
-									? 'Check requires elevated repository access'
+									? 'Check not evaluated due to upstream OpenSSF Scorecard API permission limits'
 									: c.reason || 'No details provided',
 						})),
 					}
