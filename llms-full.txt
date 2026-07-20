@@ -472,6 +472,36 @@ interface NpmMaintenanceResult {
 
 ---
 
+## Streamable HTTP (POST) & Cloudflare Workers Integration
+
+The `@nekzus/mcp-server/http` module exports `handleStreamableHttpRequest` for stateless serverless deployments (Cloudflare Workers, Express, Fastify, Next.js API routes) requiring Streamable HTTP POST transport under MCP v2:
+
+```typescript
+import { handleStreamableHttpRequest } from '@nekzus/mcp-server/http';
+
+export default {
+  async fetch(request: Request): Promise<Response> {
+    if (request.method !== 'POST') {
+      return new Response('NPM Sentinel MCP v2 Streamable HTTP Server', { status: 200 });
+    }
+
+    try {
+      const payload = await request.json();
+      const mcpResponse = await handleStreamableHttpRequest(payload);
+
+      return new Response(mcpResponse.body, {
+        status: mcpResponse.status,
+        headers: mcpResponse.headers,
+      });
+    } catch {
+      return new Response(JSON.stringify({ error: 'Invalid JSON-RPC payload' }), { status: 400 });
+    }
+  },
+};
+```
+
+---
+
 ## Technical Support & License
 
 - **License**: MIT
