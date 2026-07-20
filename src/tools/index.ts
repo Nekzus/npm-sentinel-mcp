@@ -59,7 +59,7 @@ const LicenseCompatibilityResultOutputSchema = z
 	})
 	.passthrough();
 
-async function withStructuredOutput(
+export async function withStructuredOutput(
 	handlerPromise: Promise<CallToolResult>,
 ): Promise<CallToolResult> {
 	const res = await handlerPromise;
