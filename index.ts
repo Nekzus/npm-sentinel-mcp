@@ -8,6 +8,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
 import fetch from 'node-fetch';
 import { z } from 'zod';
 import createServer from './src/server.js';
+import { needsVersionResolution, resolvePackageVersion } from './src/utils/version-resolver.js';
 
 // Cache configuration
 export let NPM_REGISTRY_URL = (
@@ -19,10 +20,37 @@ export function setNpmRegistryUrl(url: string): void {
 }
 
 // Cache configuration
+const CACHE_TTL_SHORT = 5 * 60 * 1000; // 5 minutes
 const CACHE_TTL_MEDIUM = 60 * 60 * 1000; // 1 hour
 const CACHE_TTL_LONG = 6 * 60 * 60 * 1000; // 6 hours
 const CACHE_TTL_VERY_LONG = 24 * 60 * 60 * 1000; // 24 hours
 const MAX_CACHE_SIZE = 500; // Max number of items in cache
+
+async function resolveVersionIfShorthand(name: string, version: string): Promise<string> {
+	if (!needsVersionResolution(version)) {
+		return version;
+	}
+	const cacheKey = generateCacheKey('abbreviatedPackument', name);
+	let packument = cacheGet<any>(cacheKey);
+	if (!packument) {
+		try {
+			const res = await fetchWithRetry(`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}`, {
+				headers: { Accept: 'application/vnd.npm.install-v1+json' },
+			});
+			if (res.ok) {
+				packument = await res.json();
+				cacheSet(cacheKey, packument, CACHE_TTL_SHORT);
+			}
+		} catch {
+			// Ignore error and fall back to original version
+		}
+	}
+	if (packument) {
+		const resolved = resolvePackageVersion(packument, version);
+		if (resolved) return resolved;
+	}
+	return version;
+}
 
 interface CacheEntry<T> {
 	data: T;
@@ -637,7 +665,8 @@ export async function handleNpmLatest(args: {
 				}
 
 				try {
-					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${versionTag}`);
+					const resolvedVersion = await resolveVersionIfShorthand(name, versionTag);
+					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${resolvedVersion}`);
 
 					if (!response.ok) {
 						let errorMsg = `Failed to fetch package version: ${response.status} ${response.statusText}`;
@@ -792,7 +821,8 @@ export async function handleNpmDeps(args: {
 				}
 
 				try {
-					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${version}`);
+					const resolvedVersion = await resolveVersionIfShorthand(name, version);
+					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${resolvedVersion}`);
 
 					if (!response.ok) {
 						return {
@@ -942,7 +972,8 @@ export async function handleNpmTypes(args: {
 				}
 
 				try {
-					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${version}`);
+					const resolvedVersion = await resolveVersionIfShorthand(name, version);
+					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${resolvedVersion}`);
 
 					if (!response.ok) {
 						return {
@@ -1857,8 +1888,9 @@ export async function handleNpmCompare(args: {
 				}
 
 				try {
+					const resolvedVersion = await resolveVersionIfShorthand(name, versionTag);
 					// Fetch package version details from registry
-					const pkgResponse = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${versionTag}`);
+					const pkgResponse = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${resolvedVersion}`);
 					if (!pkgResponse.ok) {
 						throw new Error(
 							`Failed to fetch package info for ${name}@${versionTag}: ${pkgResponse.status} ${pkgResponse.statusText}`,
@@ -2791,7 +2823,7 @@ export async function handleNpmPackageReadme(args: {
 					}
 
 					const versionToUse =
-						versionTag === 'latest' ? packageInfo['dist-tags']?.latest : versionTag;
+						resolvePackageVersion(packageInfo, versionTag) || versionTag;
 
 					if (!versionToUse || !packageInfo.versions?.[versionToUse]) {
 						return {
@@ -3076,7 +3108,8 @@ export async function handleNpmLicenseCompatibility(args: {
 				}
 
 				try {
-					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${versionTag}`);
+					const resolvedVersion = await resolveVersionIfShorthand(name, versionTag);
+					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${resolvedVersion}`);
 					if (!response.ok) {
 						let errorMsg = `Failed to fetch package info: ${response.status} ${response.statusText}`;
 						if (response.status === 404) {
@@ -3531,16 +3564,8 @@ export async function handleNpmDeprecated(args: {
 
 					const mainPkgData = (await mainPkgResponse.json()) as NpmRegistryResponse;
 
-					let versionToFetch = version;
-					if (version === 'latest') {
-						versionToFetch = mainPkgData['dist-tags']?.latest || 'latest';
-						if (versionToFetch === 'latest' && !mainPkgData.versions?.[versionToFetch]) {
-							const availableVersions = Object.keys(mainPkgData.versions || {});
-							if (availableVersions.length > 0) {
-								versionToFetch = availableVersions.sort().pop() || 'latest'; // Basic sort
-							}
-						}
-					}
+					const versionToFetch =
+						resolvePackageVersion(mainPkgData, version) || version;
 
 					const finalPackageNameForOutput = `${name}@${versionToFetch}`;
 					const versionInfo = mainPkgData.versions?.[versionToFetch];
