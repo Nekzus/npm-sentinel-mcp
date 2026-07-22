@@ -101,7 +101,10 @@ export async function handleStreamableHttpRequest(
 			};
 		} else if (payload.method === 'tools/call') {
 			const toolName = payload.params?.name;
-			const handler = toolName ? TOOL_HANDLERS_MAP[toolName] : null;
+			const handler =
+				toolName && Object.prototype.hasOwnProperty.call(TOOL_HANDLERS_MAP, toolName)
+					? TOOL_HANDLERS_MAP[toolName]
+					: null;
 
 			if (handler) {
 				responseResult = await handler(payload.params?.arguments || {});

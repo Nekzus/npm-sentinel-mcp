@@ -297,6 +297,16 @@ describe('npm security handlers', () => {
 			const parsed = JSON.parse((result.content[0] as any).text as string);
 			expect(parsed.error).toContain('No package names provided');
 		});
+
+		test('should gracefully handle reserved Object prototype property names like constructor', async () => {
+			const result = await handleNpmVulnerabilities({
+				packages: ['constructor', '__proto__', 'prototype'],
+			});
+			validateToolResponse(result);
+			expect(result.isError).toBe(false);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
+			expect(parsed.results).toBeDefined();
+		});
 	});
 
 	describe('handleNpmLicenseCompatibility', () => {
