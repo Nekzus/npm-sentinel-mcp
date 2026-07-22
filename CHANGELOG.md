@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.19.0-alpha.18](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.17...v1.19.0-alpha.18) (2026-07-22)
+
+
+### Bug Fixes
+
+* **linter:** use modern Object.hasOwn instead of Object.prototype.hasOwnProperty.call in index.ts and src/http.ts ([bef70c1](https://github.com/Nekzus/npm-sentinel-mcp/commit/bef70c1c490ac3523ed855a330abb2b120c1bb48))
+
 # [1.19.0-alpha.17](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.16...v1.19.0-alpha.17) (2026-07-22)
 
 
