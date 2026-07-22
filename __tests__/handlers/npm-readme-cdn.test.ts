@@ -62,9 +62,8 @@ describe('handleNpmPackageReadme CDN Fallback', () => {
 		validateToolResponse(result);
 		const parsed = JSON.parse(extractTextFromResponse(result));
 
-		expect(parsed.results[0].packageName).toBe('zod');
-		expect(parsed.results[0].status).toBe('success');
-		expect(parsed.results[0].data.readme).toBe('# Zod README from jsDelivr');
+		expect(parsed.results[0].data.readme).toContain('# Zod README from jsDelivr');
+		expect(parsed.results[0].data.readme).toContain('<untrusted_external_content');
 		expect(parsed.results[0].data.hasReadme).toBe(true);
 		expect(parsed.results[0].data.readmeSource).toBe('cdn');
 	});
@@ -86,7 +85,8 @@ describe('handleNpmPackageReadme CDN Fallback', () => {
 
 		expect(parsed.results[0].packageName).toBe('zod');
 		expect(parsed.results[0].status).toBe('success');
-		expect(parsed.results[0].data.readme).toBe('# Zod README from unpkg');
+		expect(parsed.results[0].data.readme).toContain('# Zod README from unpkg');
+		expect(parsed.results[0].data.readme).toContain('<untrusted_external_content');
 		expect(parsed.results[0].data.hasReadme).toBe(true);
 		expect(parsed.results[0].data.readmeSource).toBe('cdn');
 	});

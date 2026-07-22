@@ -27,9 +27,17 @@ This server features **Modular ESM Architecture (`src/`)**, **Dual Output Protoc
 - **Dependency & Transitive Mapping**: Complete dependency tree analysis mapping through `deps.dev`.
 - **Package Quality & Maintenance Metrics**: Real-time scoring using OpenSSF Scorecard, GitHub repository metrics, and npms.io.
 - **Download Trends & Performance**: Real-time download statistics and bundle size analysis.
+- **Indirect Prompt Injection Defense (OWASP LLM01)**: All tools returning raw 3rd-party Markdown/text (`npmPackageReadme`, `npmChangelogAnalysis`) wrap untrusted content in `<untrusted_external_content>` tags, attach `_meta.untrustedExternalContent = true` flags, and enforce strict tool schema warnings.
 - **Efficient Caching System**: Automated cache invalidation on workspace lockfile changes (`pnpm-lock.yaml`, `package-lock.json`, `yarn.lock`) with manual bypass (`ignoreCache: true`).
 
-## Caching and Invalidation
+## Security & OWASP LLM01 Compliance
+
+This server implements **Defense-in-Depth** controls aligned with OWASP LLM01:2025 (Indirect Prompt Injection):
+
+1. **XML Data Demarcation**: Content from external packages (`README.md`, GitHub changelogs, release notes) is wrapped inside `<untrusted_external_content source="..." package="..." type="...">` tags so consuming LLM models distinguish untrusted data from instructions.
+2. **Metadata Signaling (`_meta`)**: Responses include `_meta.untrustedExternalContent = true` and `_meta.sources` arrays for programmatic client-side detection and policy enforcement.
+3. **Tool & Prompt Safety Warnings**: Tool descriptions and prompt definitions explicitly instruct LLM agents to treat documentation as passive data and ignore embedded execution commands.
+4. **Prototype Pollution Protection**: Enforces `Object.hasOwn()` checks on dictionary lookups (blocking reserved properties like `constructor` and `__proto__`).
 
 To ensure data accuracy while maintaining high performance:
 - **Automatic Invalidation**: The cache is automatically invalidated whenever `pnpm-lock.yaml`, `package-lock.json`, or `yarn.lock` changes in your workspace.

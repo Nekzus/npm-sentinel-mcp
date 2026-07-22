@@ -2818,9 +2818,12 @@ export async function handleNpmPackageReadme(args: {
 					}
 
 					const hasReadme = !!readmeContent;
+					const demarcatedReadme = readmeContent
+						? `<untrusted_external_content source="${readmeSource || 'registry'}" package="${name}" type="readme">\n${readmeContent}\n</untrusted_external_content>`
+						: null;
 
 					const readmeResultData = {
-						readme: readmeContent,
+						readme: demarcatedReadme,
 						hasReadme: hasReadme,
 						readmeSource: readmeSource,
 						versionFetched: versionToUse, // Store the actually fetched version
@@ -2835,7 +2838,7 @@ export async function handleNpmPackageReadme(args: {
 						versionFetched: versionToUse,
 						status: 'success' as const,
 						error: null,
-						data: { readme: readmeContent, hasReadme: hasReadme, readmeSource: readmeSource }, // Return only readme and hasReadme in data field for consistency
+						data: { readme: demarcatedReadme, hasReadme: hasReadme, readmeSource: readmeSource },
 						message: `Successfully fetched README for ${name}@${versionToUse}.`,
 					};
 				} catch (error) {
@@ -2859,7 +2862,19 @@ export async function handleNpmPackageReadme(args: {
 		};
 
 		const responseJson = JSON.stringify(finalResponse, null, 2);
-		return { content: [{ type: 'text', text: responseJson }], isError: false };
+		return {
+			content: [
+				{
+					type: 'text',
+					text: responseJson,
+					_meta: {
+						untrustedExternalContent: true,
+						sources: ['npm-registry', 'cdn'],
+					},
+				},
+			],
+			isError: false,
+		};
 	} catch (error) {
 		const errorResponse = JSON.stringify(
 			{
@@ -3927,7 +3942,7 @@ export async function handleNpmChangelogAnalysis(args: {
 							repositoryUrl: repositoryUrl,
 							changelogSourceUrl: changelogSourceUrl,
 							changelogContent: changelogContent
-								? `${changelogContent.split('\n').slice(0, 50).join('\n')}...`
+								? `<untrusted_external_content source="${changelogSourceUrl || 'github'}" package="${name}" type="changelog">\n${changelogContent.split('\n').slice(0, 50).join('\n')}...\n</untrusted_external_content>`
 								: null,
 							hasChangelogFile: hasChangelogFile,
 							githubReleases: githubReleases,
@@ -3958,7 +3973,19 @@ export async function handleNpmChangelogAnalysis(args: {
 		};
 
 		const responseJson = JSON.stringify(finalResponse, null, 2);
-		return { content: [{ type: 'text', text: responseJson }], isError: false };
+		return {
+			content: [
+				{
+					type: 'text',
+					text: responseJson,
+					_meta: {
+						untrustedExternalContent: true,
+						sources: ['github-releases', 'github-raw', 'npm-registry'],
+					},
+				},
+			],
+			isError: false,
+		};
 	} catch (error) {
 		const errorResponse = JSON.stringify(
 			{

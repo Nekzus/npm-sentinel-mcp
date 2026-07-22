@@ -28,4 +28,8 @@ This MCP server implements strict, multi-layered security controls designed to p
   - **STDIO Mode**: Zero open network ports listening locally by default.
   - **Docker Image**: Multi-stage build running strictly under a non-root user (`USER node`).
   - **Streamable HTTP POST**: Fully stateless HTTP execution without memory session retention.
+- **Indirect Prompt Injection Mitigations (OWASP LLM01)**: Tools that fetch raw third-party content (`npmPackageReadme`, `npmChangelogAnalysis`) implement Defense-in-Depth safeguards:
+  - **XML Data Demarcation**: Untrusted Markdown and release text are wrapped inside `<untrusted_external_content>` tags.
+  - **Metadata Signaling**: Responses include `_meta.untrustedExternalContent = true` and `_meta.sources` arrays for programmatic client-side detection.
+  - **Tool Schema & Prompt Guidance**: Tool descriptions and prompts explicitly instruct consuming LLM agents to treat returned documentation strictly as passive data.
 - **Privacy Policy**: No credentials, tokens, or personal identifying information (PII) are stored or logged.

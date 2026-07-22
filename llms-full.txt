@@ -41,6 +41,12 @@ All registered tools, resources, and prompts expose pre-rendered SVG Data URIs (
 ### 3. Context Diagnostics Logging
 Handlers issue real-time diagnostic logs (`info`) using `ctx.mcpReq.log` during execution.
 
+### 4. Indirect Prompt Injection Safeguards (OWASP LLM01)
+All tools returning raw 3rd-party Markdown/text (`npmPackageReadme`, `npmChangelogAnalysis`) implement Defense-in-Depth safeguards:
+- **XML Demarcation**: Wraps raw external text inside `<untrusted_external_content source="..." package="..." type="...">` tags.
+- **Metadata Flags (`_meta`)**: Attaches `_meta.untrustedExternalContent = true` and `_meta.sources` arrays to response content.
+- **Tool & Prompt Directives**: Tool schemas and prompts explicitly instruct consuming models to process content strictly as passive data.
+
 ---
 
 ## Resources Specification
