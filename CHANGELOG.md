@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.19.0-alpha.20](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.19...v1.19.0-alpha.20) (2026-07-22)
+
+
+### Features
+
+* **resolver:** implement smart SemVer shorthand resolution for version queries ([915ec50](https://github.com/Nekzus/npm-sentinel-mcp/commit/915ec50817cf3b381ef0b07850f66ce6ef00ce13))
+
 # [1.19.0-alpha.19](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.18...v1.19.0-alpha.19) (2026-07-22)
 
 
