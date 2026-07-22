@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.19.0-alpha.17](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.16...v1.19.0-alpha.17) (2026-07-22)
+
+
+### Bug Fixes
+
+* **security:** prevent prototype property collisions (e.g. constructor) across ECOSYSTEM_MAP, KNOWN_ALTERNATIVES_MAP, TOOL_HANDLERS_MAP, and version objects ([3f24e57](https://github.com/Nekzus/npm-sentinel-mcp/commit/3f24e57ca8756209a3c412cc98632d62745d625f))
+
 # [1.19.0-alpha.16](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.15...v1.19.0-alpha.16) (2026-07-20)
 
 
