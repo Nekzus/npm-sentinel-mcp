@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.19.0-alpha.19](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.18...v1.19.0-alpha.19) (2026-07-22)
+
+
+### Features
+
+* **security:** implement OWASP LLM01 indirect prompt injection mitigations via XML demarcation and _meta flags ([8f88f9f](https://github.com/Nekzus/npm-sentinel-mcp/commit/8f88f9f2f910475fcce51328f5d80e024ea2d86e))
+
 # [1.19.0-alpha.18](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.17...v1.19.0-alpha.18) (2026-07-22)
 
 
