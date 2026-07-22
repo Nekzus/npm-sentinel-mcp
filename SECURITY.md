@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-Use the latest version of this project to ensure you have the most up-to-date security patches.
+Please use the latest release of `@nekzus/mcp-server` to ensure you have the most up-to-date security patches.
 
 | Version | Supported          |
 | ------- | ------------------ |
@@ -11,16 +11,21 @@ Use the latest version of this project to ensure you have the most up-to-date se
 
 ## Reporting a Vulnerability
 
-We take security vulnerabilities seriously. If you discover a security issue, please do not open a public issue. instead:
+We take the security of `npm-sentinel-mcp` seriously. If you discover a security vulnerability, please do not open a public issue. Instead:
 
-1.  Email the maintainer at [nekzus.dev@gmail.com](mailto:nekzus.dev@gmail.com).
-2.  Provide a detailed description of the vulnerability and steps to reproduce it.
-3.  We will acknowledge your report and work on a fix as soon as possible.
+1. Email the maintainers at [nekzus.dev@gmail.com](mailto:nekzus.dev@gmail.com) or submit a GitHub Private Vulnerability Report.
+2. Provide a detailed description of the vulnerability and steps to reproduce it.
+3. We will acknowledge your report within 24 hours and issue a security patch as soon as possible.
 
-## Security Measures
+## Security Architecture & Defenses
 
-This server implements several security layers to protect the host system and the user:
+This MCP server implements strict, multi-layered security controls designed to protect host systems, AI clients, and end users:
 
--   **Input Validation**: All package names and inputs are strictly validated against a regex allowlist to prevent Command Injection, Path Traversal, and SSRF attacks.
--   **Dependency Scanning**: The project is regularly audited using `npm audit` and commercial scanning tools.
--   **Safe Execution**: The Docker container runs as a non-root user.
+- **Strict Input Validation & Sanitization**: All package names and input arguments are validated against strict npm specification rules to block Command Injection, Path Traversal, and Cross-Site Scripting (XSS) vectors.
+- **Prototype Collision Safeguards**: All internal dictionary and map lookups enforce own-property checks (`Object.prototype.hasOwnProperty`) to prevent prototype pollution and unhandled exceptions from reserved property names (e.g., `constructor`, `__proto__`).
+- **Stateless & Read-Only Execution**: All 19 tools perform read-only queries against trusted public endpoints (NPM Registry, OSV.dev, deps.dev, GitHub API). The server does not write, execute, or publish code.
+- **Container & Transport Security**: 
+  - **STDIO Mode**: Zero open network ports listening locally by default.
+  - **Docker Image**: Multi-stage build running strictly under a non-root user (`USER node`).
+  - **Streamable HTTP POST**: Fully stateless HTTP execution without memory session retention.
+- **Privacy Policy**: No credentials, tokens, or personal identifying information (PII) are stored or logged.
