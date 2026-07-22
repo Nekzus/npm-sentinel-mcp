@@ -1454,10 +1454,7 @@ export async function handleNpmVulnerabilities(args: {
 				await processPackage(name, version);
 
 				// Ecosystem Check: Scan associated packages that share the same version
-				if (
-					Object.prototype.hasOwnProperty.call(ECOSYSTEM_MAP, name) &&
-					Array.isArray(ECOSYSTEM_MAP[name])
-				) {
+				if (Object.hasOwn(ECOSYSTEM_MAP, name) && Array.isArray(ECOSYSTEM_MAP[name])) {
 					for (const associatedPkg of ECOSYSTEM_MAP[name]) {
 						await processPackage(associatedPkg, version);
 					}
@@ -4139,10 +4136,7 @@ export async function handleNpmAlternatives(args: {
 
 					let validAlternativesRaw: any[] = [];
 					const pkgLower = originalPackageName.toLowerCase();
-					const knownCandidates = Object.prototype.hasOwnProperty.call(
-						KNOWN_ALTERNATIVES_MAP,
-						pkgLower,
-					)
+					const knownCandidates = Object.hasOwn(KNOWN_ALTERNATIVES_MAP, pkgLower)
 						? KNOWN_ALTERNATIVES_MAP[pkgLower]
 						: undefined;
 
