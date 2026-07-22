@@ -1454,7 +1454,10 @@ export async function handleNpmVulnerabilities(args: {
 				await processPackage(name, version);
 
 				// Ecosystem Check: Scan associated packages that share the same version
-				if (ECOSYSTEM_MAP[name]) {
+				if (
+					Object.prototype.hasOwnProperty.call(ECOSYSTEM_MAP, name) &&
+					Array.isArray(ECOSYSTEM_MAP[name])
+				) {
 					for (const associatedPkg of ECOSYSTEM_MAP[name]) {
 						await processPackage(associatedPkg, version);
 					}
@@ -4135,9 +4138,15 @@ export async function handleNpmAlternatives(args: {
 					};
 
 					let validAlternativesRaw: any[] = [];
-					const knownCandidates = KNOWN_ALTERNATIVES_MAP[originalPackageName.toLowerCase()];
+					const pkgLower = originalPackageName.toLowerCase();
+					const knownCandidates = Object.prototype.hasOwnProperty.call(
+						KNOWN_ALTERNATIVES_MAP,
+						pkgLower,
+					)
+						? KNOWN_ALTERNATIVES_MAP[pkgLower]
+						: undefined;
 
-					if (knownCandidates && knownCandidates.length > 0) {
+					if (Array.isArray(knownCandidates) && knownCandidates.length > 0) {
 						try {
 							const knownResponse = await fetchWithRetry(
 								`${NPM_REGISTRY_URL}/-/v1/search?text=${encodeURIComponent(knownCandidates.join(' '))}&size=20`,
