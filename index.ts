@@ -151,7 +151,7 @@ export async function fetchWithRetry(
 						const retryAfter = response.headers.get('retry-after');
 						const waitMs = retryAfter
 							? parseInt(retryAfter, 10) * 1000
-							: HTTP_INITIAL_BACKOFF_MS * (2 ** attempt);
+							: HTTP_INITIAL_BACKOFF_MS * 2 ** attempt;
 						await new Promise((resolve) => setTimeout(resolve, waitMs));
 						continue;
 					}
@@ -159,7 +159,7 @@ export async function fetchWithRetry(
 				return response;
 			} catch (err) {
 				if (attempt < maxRetries) {
-					const waitMs = HTTP_INITIAL_BACKOFF_MS * (2 ** attempt);
+					const waitMs = HTTP_INITIAL_BACKOFF_MS * 2 ** attempt;
 					await new Promise((resolve) => setTimeout(resolve, waitMs));
 					continue;
 				}
@@ -326,8 +326,6 @@ export type NpmPackageInfo = z.infer<typeof NpmPackageInfoSchema>;
 export type NpmPackageData = z.infer<typeof NpmPackageDataSchema>;
 export type BundlephobiaData = z.infer<typeof BundlephobiaDataSchema>;
 export type NpmDownloadsData = z.infer<typeof NpmDownloadsDataSchema>;
-
-
 
 // Type guards for API responses
 function isNpmPackageInfo(data: unknown): data is NpmPackageInfo {
@@ -543,8 +541,6 @@ export async function handleNpmVersions(args: {
 		};
 	}
 }
-
-
 
 export async function handleNpmLatest(args: {
 	packages: string[];
@@ -953,7 +949,9 @@ export async function handleNpmTypes(args: {
 					};
 
 					try {
-						const typesResponse = await fetchWithRetry(`${NPM_REGISTRY_URL}/${typesPackageName}/latest`);
+						const typesResponse = await fetchWithRetry(
+							`${NPM_REGISTRY_URL}/${typesPackageName}/latest`,
+						);
 						if (typesResponse.ok) {
 							const typesData = (await typesResponse.json()) as NpmPackageData;
 							typesPackageInfo = {
@@ -1077,7 +1075,7 @@ export async function handleNpmSize(args: {
 
 				try {
 					const response = await fetchWithRetry(
-						`https://bundlephobia.com/api/size?package=${bundlephobiaQuery}`
+						`https://bundlephobia.com/api/size?package=${bundlephobiaQuery}`,
 					);
 
 					if (!response.ok) {
@@ -1214,7 +1212,7 @@ export interface DepsDevProjectData {
 export async function fetchRepoStatsFromDepsDev(
 	owner: string,
 	repo: string,
-	ignoreCache = false
+	ignoreCache = false,
 ): Promise<DepsDevProjectData | null> {
 	const projectKey = encodeURIComponent(`github.com/${owner}/${repo}`);
 	const cacheKey = generateCacheKey('depsDevProject', owner, repo);
@@ -1225,7 +1223,7 @@ export async function fetchRepoStatsFromDepsDev(
 		const response = await fetchWithRetry(
 			`https://api.deps.dev/v3alpha/projects/${projectKey}`,
 			{},
-			{ maxRetries: 1 }
+			{ maxRetries: 1 },
 		);
 		if (!response.ok) return null;
 
@@ -1237,14 +1235,16 @@ export async function fetchRepoStatsFromDepsDev(
 			license: data.license ?? 'unknown',
 			description: data.description ?? '',
 			homepage: data.homepage ?? '',
-			scorecard: data.scorecard ? {
-				overallScore: data.scorecard.overallScore,
-				checks: (data.scorecard.checks || []).map((c: any) => ({
-					name: c.name,
-					score: c.score,
-					reason: c.reason,
-				})),
-			} : undefined,
+			scorecard: data.scorecard
+				? {
+						overallScore: data.scorecard.overallScore,
+						checks: (data.scorecard.checks || []).map((c: any) => ({
+							name: c.name,
+							score: c.score,
+							reason: c.reason,
+						})),
+					}
+				: undefined,
 		};
 
 		cacheSet(cacheKey, result, CACHE_TTL_VERY_LONG);
@@ -1428,7 +1428,7 @@ export async function handleNpmVulnerabilities(args: {
 				await processPackage(name, version);
 
 				// Ecosystem Check: Scan associated packages that share the same version
-				if (ECOSYSTEM_MAP[name]) {
+				if (Object.hasOwn(ECOSYSTEM_MAP, name) && Array.isArray(ECOSYSTEM_MAP[name])) {
 					for (const associatedPkg of ECOSYSTEM_MAP[name]) {
 						await processPackage(associatedPkg, version);
 					}
@@ -1639,7 +1639,9 @@ export async function handleNpmTrends(args: {
 				}
 
 				try {
-					const response = await fetchWithRetry(`https://api.npmjs.org/downloads/point/${period}/${name}`);
+					const response = await fetchWithRetry(
+						`https://api.npmjs.org/downloads/point/${period}/${name}`,
+					);
 
 					if (!response.ok) {
 						let errorMsg = `Failed to fetch download trends: ${response.status} ${response.statusText}`;
@@ -1834,7 +1836,7 @@ export async function handleNpmCompare(args: {
 					let monthlyDownloads: number | null = null;
 					try {
 						const downloadsResponse = await fetchWithRetry(
-							`https://api.npmjs.org/downloads/point/last-month/${name}`
+							`https://api.npmjs.org/downloads/point/last-month/${name}`,
 						);
 						if (downloadsResponse.ok) {
 							const downloadsData = await downloadsResponse.json();
@@ -1950,7 +1952,10 @@ export interface LocalScoreResult {
 	};
 }
 
-export async function getLocalPackageMetrics(name: string, ignoreCache = false): Promise<LocalScoreResult> {
+export async function getLocalPackageMetrics(
+	name: string,
+	ignoreCache = false,
+): Promise<LocalScoreResult> {
 	const cacheKey = generateCacheKey('localMetrics', name);
 	const cached = ignoreCache ? undefined : cacheGet<LocalScoreResult>(cacheKey);
 	if (cached) return cached;
@@ -1971,14 +1976,18 @@ export async function getLocalPackageMetrics(name: string, ignoreCache = false):
 	}
 
 	const versionData = packageInfo.versions[latestVersion];
-	const hasTypes = Boolean(versionData.types || versionData.typings || versionData.dependencies?.[`@types/${name}`]);
+	const hasTypes = Boolean(
+		versionData.types || versionData.typings || versionData.dependencies?.[`@types/${name}`],
+	);
 	const hasReadme = Boolean(versionData.readme || packageInfo.readme);
 	const dependencyCount = Object.keys(versionData.dependencies || {}).length;
 
 	// 2. Fetch downloads for last month
 	let downloadsLastMonth = 0;
 	try {
-		const downloadsResponse = await fetchWithRetry(`https://api.npmjs.org/downloads/point/last-month/${name}`);
+		const downloadsResponse = await fetchWithRetry(
+			`https://api.npmjs.org/downloads/point/last-month/${name}`,
+		);
 		if (downloadsResponse.ok) {
 			const dlData = await downloadsResponse.json();
 			downloadsLastMonth = dlData.downloads || 0;
@@ -2016,7 +2025,9 @@ export async function getLocalPackageMetrics(name: string, ignoreCache = false):
 					scorecard = depsDevData.scorecard;
 				}
 			} catch (ghError) {
-				console.debug(`Could not fetch deps.dev project data for ${owner}/${cleanRepo}: ${ghError}`);
+				console.debug(
+					`Could not fetch deps.dev project data for ${owner}/${cleanRepo}: ${ghError}`,
+				);
 			}
 		}
 	}
@@ -2035,23 +2046,25 @@ export async function getLocalPackageMetrics(name: string, ignoreCache = false):
 	let popularity = popularityNPM;
 	if (github.hasGitHubData) {
 		const popularityGH = Math.min(1, github.starsCount / 50000);
-		popularity = (popularityNPM * 0.7) + (popularityGH * 0.3);
+		popularity = popularityNPM * 0.7 + popularityGH * 0.3;
 	}
 
-	const quality = (
-		(hasTypes ? 0.3 : 0) +
-		(hasReadme ? 0.2 : 0) +
-		Math.max(0, 0.5 - (dependencyCount * 0.005))
-	);
+	const quality =
+		(hasTypes ? 0.3 : 0) + (hasReadme ? 0.2 : 0) + Math.max(0, 0.5 - dependencyCount * 0.005);
 
-	const maintenancePublish = lastPublishDaysAgo < 30 ? 1.0
-		: lastPublishDaysAgo < 90 ? 0.8
-		: lastPublishDaysAgo < 365 ? 0.5
-		: 0.2;
+	const maintenancePublish =
+		lastPublishDaysAgo < 30
+			? 1.0
+			: lastPublishDaysAgo < 90
+				? 0.8
+				: lastPublishDaysAgo < 365
+					? 0.5
+					: 0.2;
 	let maintenance = maintenancePublish;
 	if (github.hasGitHubData) {
-		const issuesScore = github.openIssuesCount < 50 ? 0.3 : github.openIssuesCount < 200 ? 0.2 : 0.1;
-		maintenance = (maintenancePublish * 0.7) + issuesScore;
+		const issuesScore =
+			github.openIssuesCount < 50 ? 0.3 : github.openIssuesCount < 200 ? 0.2 : 0.1;
+		maintenance = maintenancePublish * 0.7 + issuesScore;
 	}
 
 	const finalScore = popularity * 0.4 + quality * 0.3 + maintenance * 0.3;
@@ -2616,7 +2629,7 @@ export async function fetchReadmeFromCDN(
 			const response = await fetchWithRetry(
 				cdnUrl,
 				{ headers: { Accept: 'text/plain' } },
-				{ maxRetries: 1, skipThrottle: true }
+				{ maxRetries: 1, skipThrottle: true },
 			);
 
 			if (response.ok) {
@@ -2743,7 +2756,11 @@ export async function handleNpmPackageReadme(args: {
 					const versionToUse =
 						versionTag === 'latest' ? packageInfo['dist-tags']?.latest : versionTag;
 
-					if (!versionToUse || !packageInfo.versions || !packageInfo.versions[versionToUse]) {
+					if (
+						!versionToUse ||
+						!packageInfo.versions ||
+						!Object.hasOwn(packageInfo.versions, versionToUse)
+					) {
 						return {
 							packageInput: pkgInput,
 							packageName: name,
@@ -2853,7 +2870,7 @@ export async function handleNpmSearch(args: {
 		}
 
 		const response = await fetchWithRetry(
-			`${NPM_REGISTRY_URL}/-/v1/search?text=${encodeURIComponent(query)}&size=${limit}`
+			`${NPM_REGISTRY_URL}/-/v1/search?text=${encodeURIComponent(query)}&size=${limit}`,
 		);
 		if (!response.ok) {
 			throw new Error(`Failed to search packages: ${response.status} ${response.statusText}`);
@@ -3499,7 +3516,7 @@ export async function handleNpmDeprecated(args: {
 							try {
 								// console.debug(`[handleNpmDeprecated] Checking dependency: ${depName}@${depSemVer}`);
 								const depInfoResponse = await fetchWithRetry(
-									`${NPM_REGISTRY_URL}/${encodeURIComponent(depName)}`
+									`${NPM_REGISTRY_URL}/${encodeURIComponent(depName)}`,
 								);
 
 								if (!depInfoResponse.ok) {
@@ -3804,7 +3821,7 @@ export async function handleNpmChangelogAnalysis(args: {
 									Accept: 'application/vnd.github.v3+json',
 								},
 							},
-							{ maxRetries: 0 }
+							{ maxRetries: 0 },
 						);
 						if (githubApiResponse.ok) {
 							const releasesData = (await githubApiResponse.json()) as any[];
@@ -3823,7 +3840,7 @@ export async function handleNpmChangelogAnalysis(args: {
 					const publishTime = npmData.time;
 					if (githubReleases.length === 0 && publishTime) {
 						const timeKeys = Object.keys(publishTime).filter(
-							(k) => k !== 'modified' && k !== 'created'
+							(k) => k !== 'modified' && k !== 'created',
 						);
 						const sortedVersions = timeKeys.sort((a, b) => {
 							return new Date(publishTime[b]).getTime() - new Date(publishTime[a]).getTime();
@@ -3983,7 +4000,7 @@ export async function handleNpmAlternatives(args: {
 					const searchResponse = await fetchWithRetry(
 						`${NPM_REGISTRY_URL}/-/v1/search?text=keywords:${encodeURIComponent(
 							originalPackageName,
-						)}&size=10`
+						)}&size=10`,
 					);
 					if (!searchResponse.ok) {
 						const errorResult = {
@@ -4003,7 +4020,7 @@ export async function handleNpmAlternatives(args: {
 					let originalPackageDownloads = 0;
 					try {
 						const dlResponse = await fetchWithRetry(
-							`https://api.npmjs.org/downloads/point/last-month/${originalPackageName}`
+							`https://api.npmjs.org/downloads/point/last-month/${originalPackageName}`,
 						);
 						if (dlResponse.ok) {
 							originalPackageDownloads =
@@ -4050,7 +4067,7 @@ export async function handleNpmAlternatives(args: {
 								let altDownloads = 0;
 								try {
 									const altDlResponse = await fetchWithRetry(
-										`https://api.npmjs.org/downloads/point/last-month/${alt.package.name}`
+										`https://api.npmjs.org/downloads/point/last-month/${alt.package.name}`,
 									);
 									if (altDlResponse.ok) {
 										altDownloads = ((await altDlResponse.json()) as DownloadCount).downloads || 0;

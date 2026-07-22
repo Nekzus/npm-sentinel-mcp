@@ -54,9 +54,8 @@ describe('handleNpmPackageReadme CDN Fallback', () => {
 	});
 
 	test('should fallback to jsDelivr CDN when registry readme is null', async () => {
-		mockResponses.set(
-			'https://cdn.jsdelivr.net/npm/zod@4.4.3/README.md',
-			() => createMockResponse('# Zod README from jsDelivr', true, 200)
+		mockResponses.set('https://cdn.jsdelivr.net/npm/zod@4.4.3/README.md', () =>
+			createMockResponse('# Zod README from jsDelivr', true, 200),
 		);
 
 		const result = await handleNpmPackageReadme({ packages: ['zod'], ignoreCache: true });
@@ -72,15 +71,13 @@ describe('handleNpmPackageReadme CDN Fallback', () => {
 
 	test('should fallback to unpkg when jsDelivr fails', async () => {
 		// jsDelivr responde con 404
-		mockResponses.set(
-			'https://cdn.jsdelivr.net/npm/zod@4.4.3/README.md',
-			() => Promise.resolve({ ok: false, status: 404, statusText: 'Not Found', headers: new Map() })
+		mockResponses.set('https://cdn.jsdelivr.net/npm/zod@4.4.3/README.md', () =>
+			Promise.resolve({ ok: false, status: 404, statusText: 'Not Found', headers: new Map() }),
 		);
 
 		// unpkg responde con éxito
-		mockResponses.set(
-			'https://unpkg.com/zod@4.4.3/README.md',
-			() => createMockResponse('# Zod README from unpkg', true, 200)
+		mockResponses.set('https://unpkg.com/zod@4.4.3/README.md', () =>
+			createMockResponse('# Zod README from unpkg', true, 200),
 		);
 
 		const result = await handleNpmPackageReadme({ packages: ['zod'], ignoreCache: true });
@@ -96,13 +93,11 @@ describe('handleNpmPackageReadme CDN Fallback', () => {
 
 	test('should return hasReadme: false and readmeSource: null if all fail', async () => {
 		// Ambos CDNs fallan
-		mockResponses.set(
-			'https://cdn.jsdelivr.net/npm/zod@4.4.3/README.md',
-			() => Promise.resolve({ ok: false, status: 404, statusText: 'Not Found', headers: new Map() })
+		mockResponses.set('https://cdn.jsdelivr.net/npm/zod@4.4.3/README.md', () =>
+			Promise.resolve({ ok: false, status: 404, statusText: 'Not Found', headers: new Map() }),
 		);
-		mockResponses.set(
-			'https://unpkg.com/zod@4.4.3/README.md',
-			() => Promise.resolve({ ok: false, status: 404, statusText: 'Not Found', headers: new Map() })
+		mockResponses.set('https://unpkg.com/zod@4.4.3/README.md', () =>
+			Promise.resolve({ ok: false, status: 404, statusText: 'Not Found', headers: new Map() }),
 		);
 
 		const result = await handleNpmPackageReadme({ packages: ['zod'], ignoreCache: true });

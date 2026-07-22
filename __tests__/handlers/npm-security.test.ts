@@ -194,18 +194,19 @@ vi.mock('node-fetch', () => {
 				if (url.includes('transitive-root')) {
 					return Promise.resolve({
 						ok: true,
-						json: () => Promise.resolve({
-							nodes: [
-								{ versionKey: { name: 'transitive-root', version: '1.0.0' } },
-								{ versionKey: { name: 'transitive-child', version: '1.0.0' } }
-							]
-						})
+						json: () =>
+							Promise.resolve({
+								nodes: [
+									{ versionKey: { name: 'transitive-root', version: '1.0.0' } },
+									{ versionKey: { name: 'transitive-child', version: '1.0.0' } },
+								],
+							}),
 					});
 				}
 				// Default empty nodes for others
 				return Promise.resolve({
 					ok: true,
-					json: () => Promise.resolve({ nodes: [] })
+					json: () => Promise.resolve({ nodes: [] }),
 				});
 			}
 
@@ -295,6 +296,16 @@ describe('npm security handlers', () => {
 			validateToolResponse(result);
 			const parsed = JSON.parse((result.content[0] as any).text as string);
 			expect(parsed.error).toContain('No package names provided');
+		});
+
+		test('should gracefully handle reserved Object prototype property names like constructor', async () => {
+			const result = await handleNpmVulnerabilities({
+				packages: ['constructor', '__proto__', 'prototype'],
+			});
+			validateToolResponse(result);
+			expect(result.isError).toBe(false);
+			const parsed = JSON.parse((result.content[0] as any).text as string);
+			expect(parsed.results).toBeDefined();
 		});
 	});
 
