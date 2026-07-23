@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.21.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.20.1...v1.21.0) (2026-07-23)
+
+
+### Features
+
+* **canary:** add smart SemVer resolution and OWASP LLM01 prompt injection mitigations ([578ff22](https://github.com/Nekzus/npm-sentinel-mcp/commit/578ff22ff671ba9b86d286bd4bdecbe3a3db2b05))
+
 ## [1.20.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.20.0...v1.20.1) (2026-07-22)
 
 
