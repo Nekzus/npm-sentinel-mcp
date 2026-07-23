@@ -27,6 +27,7 @@ This server features **Modular ESM Architecture (`src/`)**, **Dual Output Protoc
 - **Dependency & Transitive Mapping**: Complete dependency tree analysis mapping through `deps.dev`.
 - **Package Quality & Maintenance Metrics**: Real-time scoring using OpenSSF Scorecard, GitHub repository metrics, and npms.io.
 - **Download Trends & Performance**: Real-time download statistics and bundle size analysis.
+- **Smart SemVer Shorthand & Range Resolution**: Transparently resolves major version shorthands, prefixes, and ranges (e.g., `express@2`, `express@v4`, `zod@3.x`, `react@^18`, `lodash@~4.17`) to the highest matching release without failing on missing exact version keys.
 - **Indirect Prompt Injection Defense (OWASP LLM01)**: All tools returning raw 3rd-party Markdown/text (`npmPackageReadme`, `npmChangelogAnalysis`) wrap untrusted content in `<untrusted_external_content>` tags, attach `_meta.untrustedExternalContent = true` flags, and enforce strict tool schema warnings.
 - **Efficient Caching System**: Automated cache invalidation on workspace lockfile changes (`pnpm-lock.yaml`, `package-lock.json`, `yarn.lock`) with manual bypass (`ignoreCache: true`).
 

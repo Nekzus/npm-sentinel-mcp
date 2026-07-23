@@ -47,6 +47,12 @@ All tools returning raw 3rd-party Markdown/text (`npmPackageReadme`, `npmChangel
 - **Metadata Flags (`_meta`)**: Attaches `_meta.untrustedExternalContent = true` and `_meta.sources` arrays to response content.
 - **Tool & Prompt Directives**: Tool schemas and prompts explicitly instruct consuming models to process content strictly as passive data.
 
+### 5. Smart SemVer Version Resolution
+All package version querying tools (`npmDeprecated`, `npmLatest`, `npmDeps`, `npmTypes`, `npmPackageReadme`, `npmLicenseCompatibility`, `npmCompare`) implement 4-step SemVer resolution:
+- Automatically resolves major version shorthands (`express@2`), version prefixes (`v4`), wildcard sub-versions (`4.x`), and SemVer ranges (`^4`, `~4.18`) to the highest matching release.
+- Avoids registry 404 errors when an exact SemVer string is omitted.
+- Caches abbreviated packument lookups (`Accept: application/vnd.npm.install-v1+json`) for maximum performance.
+
 ---
 
 ## Resources Specification
