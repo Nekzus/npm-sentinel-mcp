@@ -27,6 +27,10 @@ All notable changes to this project will be documented in this file. See
 # [1.19.0-alpha.17](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.16...v1.19.0-alpha.17) (2026-07-22)
 
 
+### Features
+
+* **resolver:** add smart SemVer shorthand & range resolution (`express@2`, `v4`, `4.x`, `^4`, `~4.18`) across all version handlers ([915ec50](https://github.com/Nekzus/npm-sentinel-mcp/commit/915ec50))
+
 ### Bug Fixes
 
 * **security:** prevent prototype property collisions (e.g. constructor) across ECOSYSTEM_MAP, KNOWN_ALTERNATIVES_MAP, TOOL_HANDLERS_MAP, and version objects ([3f24e57](https://github.com/Nekzus/npm-sentinel-mcp/commit/3f24e57ca8756209a3c412cc98632d62745d625f))
