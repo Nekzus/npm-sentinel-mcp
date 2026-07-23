@@ -30,7 +30,7 @@ const BatchResultOutputSchema = z
 		summary: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
 		message: z.string().optional(),
 	})
-	.passthrough();
+	.loose();
 
 const SearchResultOutputSchema = z
 	.object({
@@ -41,7 +41,7 @@ const SearchResultOutputSchema = z
 		results: z.array(z.record(z.string(), z.unknown())).optional(),
 		message: z.string().optional(),
 	})
-	.passthrough();
+	.loose();
 
 const CompareResultOutputSchema = z
 	.object({
@@ -49,7 +49,7 @@ const CompareResultOutputSchema = z
 		results: z.array(z.record(z.string(), z.unknown())).optional(),
 		message: z.string().optional(),
 	})
-	.passthrough();
+	.loose();
 
 const LicenseCompatibilityResultOutputSchema = z
 	.object({
@@ -57,7 +57,7 @@ const LicenseCompatibilityResultOutputSchema = z
 		compatibility: z.record(z.string(), z.unknown()).optional(),
 		licenseDetails: z.array(z.record(z.string(), z.unknown())).optional(),
 	})
-	.passthrough();
+	.loose();
 
 export async function withStructuredOutput(
 	handlerPromise: Promise<CallToolResult>,
