@@ -21,6 +21,8 @@ A powerful Model Context Protocol (MCP) server that revolutionizes NPM package a
 - **Dependency analysis and mapping**
 - **Advanced Security Scanning**: Recursive dependency checks, ecosystem awareness (e.g., React), and accurate version resolution.
 - **Strict Input Validation**: Protection against Path Traversal, SSRF, and Command Injection via rigorous input sanitization.
+- **Smart SemVer Shorthand & Range Resolution**: Transparently resolves major version shorthands, prefixes, and ranges (e.g., `express@2`, `express@v4`, `zod@3.x`, `react@^18`, `lodash@~4.17`) to the highest matching release without failing on missing exact version keys.
+- **Indirect Prompt Injection Defense (OWASP LLM01)**: All tools returning raw 3rd-party Markdown/text (`npmPackageReadme`, `npmChangelogAnalysis`) wrap untrusted content in `<untrusted_external_content>` tags, attach `_meta.untrustedExternalContent = true` flags, and enforce strict tool schema warnings.
 - **Package quality metrics**
 - **Download trends and statistics**
 - **TypeScript support verification**
@@ -32,6 +34,15 @@ A powerful Model Context Protocol (MCP) server that revolutionizes NPM package a
 - **Rigorous schema validation and type safety using Zod**
 
 Note: The server provides AI-assisted analysis through MCP integration.
+
+## Security & OWASP LLM01 Compliance
+
+This server implements **Defense-in-Depth** controls aligned with OWASP LLM01:2025 (Indirect Prompt Injection):
+
+1. **XML Data Demarcation**: Content from external packages (`README.md`, GitHub changelogs, release notes) is wrapped inside `<untrusted_external_content source="..." package="..." type="...">` tags so consuming LLM models distinguish untrusted data from instructions.
+2. **Metadata Signaling (`_meta`)**: Responses include `_meta.untrustedExternalContent = true` and `_meta.sources` arrays for programmatic client-side detection and policy enforcement.
+3. **Tool & Prompt Safety Warnings**: Tool descriptions and prompt definitions explicitly instruct LLM agents to treat documentation as passive data and ignore embedded execution commands.
+4. **Prototype Pollution Protection**: Enforces `Object.hasOwn()` checks on dictionary lookups (blocking reserved properties like `constructor` and `__proto__`).
 
 ## Caching and Invalidation
 

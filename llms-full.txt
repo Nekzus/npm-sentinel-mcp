@@ -5,6 +5,17 @@ Version: 2025-05-11
 Transport: stdio
 Features: resources, tools, error handling
 
+### Indirect Prompt Injection Safeguards (OWASP LLM01)
+All tools returning raw 3rd-party Markdown/text (`npmPackageReadme`, `npmChangelogAnalysis`) implement Defense-in-Depth safeguards:
+- **XML Demarcation**: Wraps raw external text inside `<untrusted_external_content source="..." package="..." type="...">` tags.
+- **Metadata Flags (`_meta`)**: Attaches `_meta.untrustedExternalContent = true` and `_meta.sources` arrays to response content.
+- **Tool & Prompt Directives**: Tool schemas and prompts explicitly instruct consuming models to process content strictly as passive data.
+
+### Smart SemVer Version Resolution
+All package version querying tools (`npmDeprecated`, `npmLatest`, `npmDeps`, `npmTypes`, `npmPackageReadme`, `npmCompare`, `npmChangelogAnalysis`) implement 4-step SemVer resolution:
+- Automatically resolves major version shorthands (`express@2`), version prefixes (`v4`), wildcard sub-versions (`4.x`), and SemVer ranges (`^4`, `~4.18`) to the highest matching release.
+- Avoids registry 404 errors when an exact SemVer string is omitted.
+
 ## Architecture
 ```mermaid
 flowchart TD

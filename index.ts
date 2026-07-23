@@ -17,6 +17,7 @@ let NPM_REGISTRY_URL = (process.env.NPM_REGISTRY_URL || 'https://registry.npmjs.
 );
 
 // Cache configuration
+const CACHE_TTL_SHORT = 5 * 60 * 1000; // 5 minutes
 const CACHE_TTL_MEDIUM = 60 * 60 * 1000; // 1 hour
 const CACHE_TTL_LONG = 6 * 60 * 60 * 1000; // 6 hours
 const CACHE_TTL_VERY_LONG = 24 * 60 * 60 * 1000; // 24 hours
@@ -173,6 +174,118 @@ export async function fetchWithRetry(
 			releaseSlot();
 		}
 	}
+}
+
+const KNOWN_DIST_TAGS = new Set([
+	'latest',
+	'next',
+	'beta',
+	'rc',
+	'canary',
+	'alpha',
+	'dev',
+	'experimental',
+	'nightly',
+	'stable',
+]);
+
+const EXACT_SEMVER_REGEX = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+
+/**
+ * Checks if a requested version string requires resolution against the package manifest/packument.
+ * Returns false for known dist-tags and exact SemVer versions (e.g., '1.2.3').
+ * Returns true for version shorthands or ranges (e.g., '2', 'v4', '4.x', '^4', '~4.18').
+ */
+export function needsVersionResolution(version: string): boolean {
+	if (!version) return false;
+	const trimmed = version.trim();
+	if (KNOWN_DIST_TAGS.has(trimmed.toLowerCase())) return false;
+	if (EXACT_SEMVER_REGEX.test(trimmed)) return false;
+	return true;
+}
+
+/**
+ * Resolves a requested version string (shorthand, tag, range, exact) against package manifest data.
+ */
+export function resolvePackageVersion(
+	packageData: {
+		versions?: Record<string, any>;
+		'dist-tags'?: Record<string, string>;
+	} | null | undefined,
+	requestedVersion: string,
+): string | null {
+	if (!packageData || !requestedVersion) return null;
+	const versionsObj = packageData.versions || {};
+	const availableVersions = Object.keys(versionsObj);
+	if (availableVersions.length === 0) return null;
+
+	const distTags = packageData['dist-tags'] || {};
+
+	// 1. Direct dist-tag match
+	if (Object.hasOwn(distTags, requestedVersion)) {
+		return distTags[requestedVersion];
+	}
+
+	// 2. Exact version match
+	if (Object.hasOwn(versionsObj, requestedVersion)) {
+		return requestedVersion;
+	}
+
+	// 3. Clean and match shorthands/ranges (e.g., '2', 'v2', '2.x', '^2', '~2.5')
+	const cleaned = requestedVersion
+		.replace(/^v/i, '')
+		.replace(/[.*]+x$/i, '')
+		.replace(/[\^~]/, '')
+		.trim();
+
+	if (cleaned) {
+		const matchingVersions = availableVersions.filter((v) => {
+			return v === cleaned || v.startsWith(`${cleaned}.`);
+		});
+
+		if (matchingVersions.length > 0) {
+			matchingVersions.sort((a, b) => {
+				const partsA = a.split('-')[0].split('.').map(Number);
+				const partsB = b.split('-')[0].split('.').map(Number);
+				for (let i = 0; i < Math.max(partsA.length, partsB.length); i++) {
+					const valA = partsA[i] || 0;
+					const valB = partsB[i] || 0;
+					if (valA !== valB) return valA - valB;
+				}
+				return a.localeCompare(b);
+			});
+			return matchingVersions.pop() || null;
+		}
+	}
+
+	// 4. Fallback to dist-tag latest or highest available version
+	return distTags.latest || availableVersions.sort().pop() || null;
+}
+
+async function resolveVersionIfShorthand(name: string, version: string): Promise<string> {
+	if (!needsVersionResolution(version)) {
+		return version;
+	}
+	const cacheKey = generateCacheKey('abbreviatedPackument', name);
+	let packument = cacheGet<any>(cacheKey);
+	if (!packument) {
+		try {
+			const res = await fetchWithRetry(`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}`, {
+				headers: { Accept: 'application/vnd.npm.install-v1+json' },
+			});
+			if (res.ok) {
+				packument = await res.json();
+				cacheSet(cacheKey, packument, CACHE_TTL_SHORT);
+			}
+		} catch {
+			// Ignore error and fall back to original version
+		}
+	}
+	if (packument) {
+		const resolved = resolvePackageVersion(packument, version);
+		if (resolved) return resolved;
+	}
+	return version;
 }
 
 // Zod schemas for npm package data
@@ -617,7 +730,8 @@ export async function handleNpmLatest(args: {
 				}
 
 				try {
-					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${versionTag}`);
+					const resolvedVersion = await resolveVersionIfShorthand(name, versionTag);
+					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${resolvedVersion}`);
 
 					if (!response.ok) {
 						let errorMsg = `Failed to fetch package version: ${response.status} ${response.statusText}`;
@@ -772,7 +886,8 @@ export async function handleNpmDeps(args: {
 				}
 
 				try {
-					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${version}`);
+					const resolvedVersion = await resolveVersionIfShorthand(name, version);
+					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${resolvedVersion}`);
 
 					if (!response.ok) {
 						return {
@@ -922,7 +1037,8 @@ export async function handleNpmTypes(args: {
 				}
 
 				try {
-					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${version}`);
+					const resolvedVersion = await resolveVersionIfShorthand(name, version);
+					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${resolvedVersion}`);
 
 					if (!response.ok) {
 						return {
@@ -1820,8 +1936,9 @@ export async function handleNpmCompare(args: {
 				}
 
 				try {
+					const resolvedVersion = await resolveVersionIfShorthand(name, versionTag);
 					// Fetch package version details from registry
-					const pkgResponse = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${versionTag}`);
+					const pkgResponse = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${resolvedVersion}`);
 					if (!pkgResponse.ok) {
 						throw new Error(
 							`Failed to fetch package info for ${name}@${versionTag}: ${pkgResponse.status} ${pkgResponse.statusText}`,
@@ -2754,7 +2871,7 @@ export async function handleNpmPackageReadme(args: {
 					}
 
 					const versionToUse =
-						versionTag === 'latest' ? packageInfo['dist-tags']?.latest : versionTag;
+						resolvePackageVersion(packageInfo, versionTag) || versionTag;
 
 					if (
 						!versionToUse ||
@@ -2785,9 +2902,12 @@ export async function handleNpmPackageReadme(args: {
 					}
 
 					const hasReadme = !!readmeContent;
+					const demarcatedReadme = readmeContent
+						? `<untrusted_external_content source="${readmeSource || 'registry'}" package="${name}" type="readme">\n${readmeContent}\n</untrusted_external_content>`
+						: null;
 
 					const readmeResultData = {
-						readme: readmeContent,
+						readme: demarcatedReadme,
 						hasReadme: hasReadme,
 						readmeSource: readmeSource,
 						versionFetched: versionToUse, // Store the actually fetched version
@@ -2802,7 +2922,7 @@ export async function handleNpmPackageReadme(args: {
 						versionFetched: versionToUse,
 						status: 'success' as const,
 						error: null,
-						data: { readme: readmeContent, hasReadme: hasReadme, readmeSource: readmeSource }, // Return only readme and hasReadme in data field for consistency
+						data: { readme: demarcatedReadme, hasReadme: hasReadme, readmeSource: readmeSource }, // Return only readme and hasReadme in data field for consistency
 						message: `Successfully fetched README for ${name}@${versionToUse}.`,
 					};
 				} catch (error) {
@@ -2826,7 +2946,19 @@ export async function handleNpmPackageReadme(args: {
 		};
 
 		const responseJson = JSON.stringify(finalResponse, null, 2);
-		return { content: [{ type: 'text', text: responseJson }], isError: false };
+		return {
+			content: [
+				{
+					type: 'text',
+					text: responseJson,
+					_meta: {
+						untrustedExternalContent: true,
+						sources: ['npm-registry', 'cdn'],
+					},
+				},
+			],
+			isError: false,
+		};
 	} catch (error) {
 		const errorResponse = JSON.stringify(
 			{
@@ -2927,7 +3059,19 @@ export async function handleNpmSearch(args: {
 		cacheSet(cacheKey, finalResponse, CACHE_TTL_MEDIUM);
 
 		const responseJson = JSON.stringify(finalResponse, null, 2);
-		return { content: [{ type: 'text', text: responseJson }], isError: false };
+		return {
+			content: [
+				{
+					type: 'text',
+					text: responseJson,
+					_meta: {
+						untrustedExternalContent: true,
+						sources: ['npm-registry', 'cdn'],
+					},
+				},
+			],
+			isError: false,
+		};
 	} catch (error) {
 		const errorResponse = JSON.stringify(
 			{
@@ -3469,16 +3613,8 @@ export async function handleNpmDeprecated(args: {
 
 					const mainPkgData = (await mainPkgResponse.json()) as NpmRegistryResponse;
 
-					let versionToFetch = version;
-					if (version === 'latest') {
-						versionToFetch = mainPkgData['dist-tags']?.latest || 'latest';
-						if (versionToFetch === 'latest' && !mainPkgData.versions?.[versionToFetch]) {
-							const availableVersions = Object.keys(mainPkgData.versions || {});
-							if (availableVersions.length > 0) {
-								versionToFetch = availableVersions.sort().pop() || 'latest'; // Basic sort
-							}
-						}
-					}
+					const versionToFetch =
+						resolvePackageVersion(mainPkgData, version) || version;
 
 					const finalPackageNameForOutput = `${name}@${versionToFetch}`;
 					const versionInfo = mainPkgData.versions?.[versionToFetch];
@@ -3732,6 +3868,9 @@ export async function handleNpmChangelogAnalysis(args: {
 						return errorResult; // Do not cache this type of error
 					}
 					const npmData = await npmResponse.json();
+					if (versionQueried) {
+						versionQueried = resolvePackageVersion(npmData, versionQueried) || versionQueried;
+					}
 					if (!isNpmPackageInfo(npmData)) {
 						const errorResult = {
 							packageInput: pkgInput,
@@ -3880,7 +4019,7 @@ export async function handleNpmChangelogAnalysis(args: {
 							repositoryUrl: repositoryUrl,
 							changelogSourceUrl: changelogSourceUrl,
 							changelogContent: changelogContent
-								? `${changelogContent.split('\n').slice(0, 50).join('\n')}...`
+								? `<untrusted_external_content source="${changelogSourceUrl || 'github'}" package="${name}" type="changelog">\n${changelogContent.split('\n').slice(0, 50).join('\n')}...\n</untrusted_external_content>`
 								: null,
 							hasChangelogFile: hasChangelogFile,
 							githubReleases: githubReleases,
@@ -3911,7 +4050,19 @@ export async function handleNpmChangelogAnalysis(args: {
 		};
 
 		const responseJson = JSON.stringify(finalResponse, null, 2);
-		return { content: [{ type: 'text', text: responseJson }], isError: false };
+		return {
+			content: [
+				{
+					type: 'text',
+					text: responseJson,
+					_meta: {
+						untrustedExternalContent: true,
+						sources: ['github-releases', 'github-raw', 'npm-registry'],
+					},
+				},
+			],
+			isError: false,
+		};
 	} catch (error) {
 		const errorResponse = JSON.stringify(
 			{

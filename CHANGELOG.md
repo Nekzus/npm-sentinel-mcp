@@ -14,6 +14,8 @@ All notable changes to this project will be documented in this file. See
 
 ### Features
 
+* **resolver:** add smart SemVer shorthand & range resolution (`express@2`, `v4`, `4.x`, `^4`, `~4.18`) across all version-aware tools
+* **security:** implement OWASP LLM01 indirect prompt injection mitigations via XML demarcation and `_meta` flags
 * **smithery:** merge branch 'alpha' into main (upgrade to smithery v4) ([c05b8ec](https://github.com/Nekzus/npm-sentinel-mcp/commit/c05b8ec145fd7b70f7112c631b3bae0451dd251e))
 * **smithery:** migrate mcp server to smithery v4 declarative stdio architecture ([db0d3f5](https://github.com/Nekzus/npm-sentinel-mcp/commit/db0d3f5e9bbf7e1f6bd2873630c5241d9fbc3532))
 
