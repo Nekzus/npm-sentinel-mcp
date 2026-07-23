@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.22.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.21.0...v1.22.0) (2026-07-23)
+
+
+### Features
+
+* **security:** refactorizar directiva OWASP LLM01 a instrucciones globales del servidor MCP ([dd291bc](https://github.com/Nekzus/npm-sentinel-mcp/commit/dd291bc395de07834f994880260b340e37de7528))
+
 # [1.21.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.20.1...v1.21.0) (2026-07-23)
 
 
