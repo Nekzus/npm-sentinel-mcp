@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.19.0-alpha.22](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.21...v1.19.0-alpha.22) (2026-07-23)
+
+
+### Bug Fixes
+
+* **zod:** replace deprecated .passthrough() with .loose() for Zod v4 schemas ([7351447](https://github.com/Nekzus/npm-sentinel-mcp/commit/7351447e8315bce58a490227b0b5cd7215b26d28))
+
 # [1.19.0-alpha.21](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.20...v1.19.0-alpha.21) (2026-07-23)
 
 
