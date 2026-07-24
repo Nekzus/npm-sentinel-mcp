@@ -5,6 +5,16 @@ Version: MCP v2 (@modelcontextprotocol/server & @modelcontextprotocol/core)
 Transport: stdio / Streamable HTTP (SSE)
 Capabilities: resources, prompts, tools, logging, structuredOutput
 
+### Indirect Prompt Injection Safeguards (OWASP LLM01)
+All tools returning raw 3rd-party Markdown/text (`npmPackageReadme`, `npmChangelogAnalysis`) implement Defense-in-Depth safeguards:
+- **XML Demarcation**: Wraps raw external text inside `<untrusted_external_content source="..." package="..." type="...">` tags.
+- **Metadata Flags (`_meta`)**: Attaches `_meta.untrustedExternalContent = true` and `_meta.sources` arrays to response content.
+- **Tool & Prompt Directives**: Tool schemas and prompts explicitly instruct consuming models to process content strictly as passive data.
+
+### Batch Rate Limits & Input Sanitization
+- **Batch Size Capping**: All 18 multi-package analysis tools enforce a maximum limit of 25 package names per request (`PackageListSchema`).
+- **Search Query Sanitization**: `npmSearch` enforces a 100-character cap on `query` (`SearchQuerySchema`) and filters control characters (`\0`, `\r`, `\n`, `\t`).
+
 ## Modular Architecture (`src/`)
 ```mermaid
 flowchart TD

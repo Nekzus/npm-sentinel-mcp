@@ -21,7 +21,7 @@ We take the security of `npm-sentinel-mcp` seriously. If you discover a security
 
 This MCP server implements strict, multi-layered security controls designed to protect host systems, AI clients, and end users:
 
-- **Strict Input Validation & Sanitization**: All package names and input arguments are validated against strict npm specification rules to block Command Injection, Path Traversal, and Cross-Site Scripting (XSS) vectors.
+- **Strict Input Validation & Sanitization**: All package names and search inputs are strictly validated using Zod schemas. Search queries (`npmSearch`) are capped at 100 characters and filtered for control characters (`\0`, `\r`, `\n`, `\t`). Batch analysis operations (`packages[]`) enforce a strict maximum cap of 25 packages per request to prevent Denial-of-Service and mass registry enumeration.
 - **Prototype Collision Safeguards**: All internal dictionary and map lookups enforce own-property checks (`Object.prototype.hasOwnProperty`) to prevent prototype pollution and unhandled exceptions from reserved property names (e.g., `constructor`, `__proto__`).
 - **Stateless & Read-Only Execution**: All 19 tools perform read-only queries against trusted public endpoints (NPM Registry, OSV.dev, deps.dev, GitHub API). The server does not write, execute, or publish code.
 - **Container & Transport Security**: 

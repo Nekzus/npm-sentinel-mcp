@@ -23,7 +23,7 @@ This server features **Modular ESM Architecture (`src/`)**, **Dual Output Protoc
 - **Self-Contained Vector Icons**: Pre-configured SVG Data URIs (`data:image/svg+xml`) embedded across all 19 tools, resources, and prompts for enhanced client UI presentation.
 - **Advanced Security Scanning**: Recursive dependency checks powered by Google's `deps.dev` and OSV.dev, ecosystem awareness, and accurate version resolution.
 - **Smart Alternatives Filtering (`npmAlternatives`)**: Intelligent search based on functional domain keywords with strict ecosystem plugin/extension filtering (e.g., excludes `express-rate-limit` when searching for alternatives to `express`).
-- **Strict Input Validation**: Protection against Path Traversal, SSRF, and Command Injection via rigorous input sanitization (`isValidNpmPackageName`).
+- **Strict Input Validation & Batch Rate Control**: Input sanitization via Zod against Path Traversal, SSRF, and Command Injection. Search queries (`npmSearch`) are capped at 100 characters and filtered for control characters. Batch analysis tools enforce a strict cap of 25 packages per request to prevent registry enumeration DoS.
 - **Dependency & Transitive Mapping**: Complete dependency tree analysis mapping through `deps.dev`.
 - **Package Quality & Maintenance Metrics**: Real-time scoring using OpenSSF Scorecard, GitHub repository metrics, and npms.io.
 - **Download Trends & Performance**: Real-time download statistics and bundle size analysis.
@@ -38,7 +38,8 @@ This server implements **Defense-in-Depth** controls aligned with OWASP LLM01:20
 1. **XML Data Demarcation**: Content from external packages (`README.md`, GitHub changelogs, release notes) is wrapped inside `<untrusted_external_content source="..." package="..." type="...">` tags so consuming LLM models distinguish untrusted data from instructions.
 2. **Metadata Signaling (`_meta`)**: Responses include `_meta.untrustedExternalContent = true` and `_meta.sources` arrays for programmatic client-side detection and policy enforcement.
 3. **Tool & Prompt Safety Warnings**: Tool descriptions and prompt definitions explicitly instruct LLM agents to treat documentation as passive data and ignore embedded execution commands.
-4. **Prototype Pollution Protection**: Enforces `Object.hasOwn()` checks on dictionary lookups (blocking reserved properties like `constructor` and `__proto__`).
+4. **Batch Size Capping & Query Sanitization**: All 18 multi-package analysis tools enforce a 25-package limit per request (`PackageListSchema`). Search queries are sanitized and capped at 100 characters (`SearchQuerySchema`).
+5. **Prototype Pollution Protection**: Enforces `Object.hasOwn()` checks on dictionary lookups (blocking reserved properties like `constructor` and `__proto__`).
 
 To ensure data accuracy while maintaining high performance:
 - **Automatic Invalidation**: The cache is automatically invalidated whenever `pnpm-lock.yaml`, `package-lock.json`, or `yarn.lock` changes in your workspace.
