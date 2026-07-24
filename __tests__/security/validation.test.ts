@@ -18,6 +18,7 @@ import {
 	handleNpmVersions,
 	handleNpmVulnerabilities,
 } from '../../index';
+import { PackageListSchema, SearchQuerySchema } from '../../src/schemas';
 
 describe('Security: Input Validation', () => {
 	const invalidInputs = [
@@ -102,6 +103,47 @@ describe('Security: Input Validation', () => {
 			const parsed = JSON.parse(content.text);
 			expect(parsed.results[0].status).toBe('error');
 			expect(parsed.results[0].error).toMatch(/Invalid package name|package name.*invalid/i);
+		});
+	});
+
+	describe('SearchQuerySchema validation', () => {
+		test('should reject empty or whitespace-only search query', () => {
+			expect(SearchQuerySchema.safeParse('').success).toBe(false);
+			expect(SearchQuerySchema.safeParse('   ').success).toBe(false);
+		});
+
+		test('should reject query longer than 100 characters', () => {
+			const longQuery = 'a'.repeat(101);
+			expect(SearchQuerySchema.safeParse(longQuery).success).toBe(false);
+		});
+
+		test('should reject query containing control characters', () => {
+			expect(SearchQuerySchema.safeParse('test\0query').success).toBe(false);
+			expect(SearchQuerySchema.safeParse('test\nquery').success).toBe(false);
+		});
+
+		test('should accept valid search query', () => {
+			expect(SearchQuerySchema.safeParse('react state management').success).toBe(true);
+		});
+	});
+
+	describe('PackageListSchema batch limit validation', () => {
+		test('should reject empty package array', () => {
+			expect(PackageListSchema.safeParse([]).success).toBe(false);
+		});
+
+		test('should accept array with 1 to 25 packages', () => {
+			const packages = Array.from({ length: 25 }, (_, i) => `pkg-${i}`);
+			expect(PackageListSchema.safeParse(packages).success).toBe(true);
+		});
+
+		test('should reject array exceeding 25 packages', () => {
+			const packages = Array.from({ length: 26 }, (_, i) => `pkg-${i}`);
+			const result = PackageListSchema.safeParse(packages);
+			expect(result.success).toBe(false);
+			if (!result.success) {
+				expect(result.error.issues[0].message).toMatch(/Maximum of 25 packages allowed/i);
+			}
 		});
 	});
 });

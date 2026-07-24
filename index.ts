@@ -1890,7 +1890,9 @@ export async function handleNpmCompare(args: {
 				try {
 					const resolvedVersion = await resolveVersionIfShorthand(name, versionTag);
 					// Fetch package version details from registry
-					const pkgResponse = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${resolvedVersion}`);
+					const pkgResponse = await fetchWithRetry(
+						`${NPM_REGISTRY_URL}/${name}/${resolvedVersion}`,
+					);
 					if (!pkgResponse.ok) {
 						throw new Error(
 							`Failed to fetch package info for ${name}@${versionTag}: ${pkgResponse.status} ${pkgResponse.statusText}`,
@@ -2822,8 +2824,7 @@ export async function handleNpmPackageReadme(args: {
 						};
 					}
 
-					const versionToUse =
-						resolvePackageVersion(packageInfo, versionTag) || versionTag;
+					const versionToUse = resolvePackageVersion(packageInfo, versionTag) || versionTag;
 
 					if (!versionToUse || !packageInfo.versions?.[versionToUse]) {
 						return {
@@ -3564,8 +3565,7 @@ export async function handleNpmDeprecated(args: {
 
 					const mainPkgData = (await mainPkgResponse.json()) as NpmRegistryResponse;
 
-					const versionToFetch =
-						resolvePackageVersion(mainPkgData, version) || version;
+					const versionToFetch = resolvePackageVersion(mainPkgData, version) || version;
 
 					const finalPackageNameForOutput = `${name}@${versionToFetch}`;
 					const versionInfo = mainPkgData.versions?.[versionToFetch];

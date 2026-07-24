@@ -30,10 +30,13 @@ export function needsVersionResolution(version: string): boolean {
  * Resolves a requested version string (shorthand, tag, range, exact) against package manifest data.
  */
 export function resolvePackageVersion(
-	packageData: {
-		versions?: Record<string, any>;
-		'dist-tags'?: Record<string, string>;
-	} | null | undefined,
+	packageData:
+		| {
+				versions?: Record<string, any>;
+				'dist-tags'?: Record<string, string>;
+		  }
+		| null
+		| undefined,
 	requestedVersion: string,
 ): string | null {
 	if (!packageData || !requestedVersion) return null;
