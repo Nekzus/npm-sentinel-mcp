@@ -21,6 +21,6 @@ We take security vulnerabilities seriously. If you discover a security issue, pl
 
 This server implements several security layers to protect the host system and the user:
 
--   **Input Validation**: All package names and inputs are strictly validated against a regex allowlist to prevent Command Injection, Path Traversal, and SSRF attacks.
+-   **Input Validation & Sanitization**: All package names and search inputs are strictly validated using Zod schemas. Search queries (`npmSearch`) are capped at 100 characters and filtered for control characters (`\0`, `\r`, `\n`, `\t`). Batch analysis operations (`packages[]`) enforce a strict maximum cap of 25 packages per request to prevent Denial-of-Service and mass registry enumeration.
 -   **Dependency Scanning**: The project is regularly audited using `npm audit` and commercial scanning tools.
 -   **Safe Execution**: The Docker container runs as a non-root user.
