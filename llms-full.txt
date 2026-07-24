@@ -16,6 +16,10 @@ All package version querying tools (`npmDeprecated`, `npmLatest`, `npmDeps`, `np
 - Automatically resolves major version shorthands (`express@2`), version prefixes (`v4`), wildcard sub-versions (`4.x`), and SemVer ranges (`^4`, `~4.18`) to the highest matching release.
 - Avoids registry 404 errors when an exact SemVer string is omitted.
 
+### Batch Rate Limits & Input Sanitization
+- **Batch Size Capping**: All 18 multi-package analysis tools enforce a maximum limit of 25 package names per request (`PackageListSchema`).
+- **Search Query Sanitization**: `npmSearch` enforces a 100-character cap on `query` (`SearchQuerySchema`) and filters control characters (`\0`, `\r`, `\n`, `\t`).
+
 ## Architecture
 ```mermaid
 flowchart TD
