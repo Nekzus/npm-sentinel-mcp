@@ -22,6 +22,7 @@ import {
 	handleNpmVulnerabilities,
 } from '../handlers/index.js';
 import { NPM_METRICS_ICON, NPM_REGISTRY_ICON, NPM_SECURITY_ICON } from '../icons.js';
+import { PackageListSchema, SearchQuerySchema } from '../schemas.js';
 
 // Helper schemas for structured outputs (MCP v2)
 const BatchResultOutputSchema = z
@@ -82,7 +83,7 @@ export function registerAllTools(server: McpServer): void {
 		{
 			description: 'Get all available versions of an NPM package',
 			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to get versions for'),
+				packages: PackageListSchema.describe('List of package names to get versions for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
@@ -105,7 +106,7 @@ export function registerAllTools(server: McpServer): void {
 		{
 			description: 'Get the latest version and changelog of an NPM package',
 			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to get latest versions for'),
+				packages: PackageListSchema.describe('List of package names to get latest versions for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
@@ -128,7 +129,7 @@ export function registerAllTools(server: McpServer): void {
 		{
 			description: 'Analyze dependencies and devDependencies of an NPM package',
 			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to analyze dependencies for'),
+				packages: PackageListSchema.describe('List of package names to analyze dependencies for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
@@ -151,7 +152,7 @@ export function registerAllTools(server: McpServer): void {
 		{
 			description: 'Check TypeScript types availability and version for a package',
 			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to check types for'),
+				packages: PackageListSchema.describe('List of package names to check types for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
@@ -174,7 +175,7 @@ export function registerAllTools(server: McpServer): void {
 		{
 			description: 'Get package size information including dependencies and bundle size',
 			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to get size information for'),
+				packages: PackageListSchema.describe('List of package names to get size information for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
@@ -197,9 +198,7 @@ export function registerAllTools(server: McpServer): void {
 		{
 			description: 'Check for known vulnerabilities in packages',
 			inputSchema: z.object({
-				packages: z
-					.array(z.string())
-					.describe('List of package names to check for vulnerabilities'),
+				packages: PackageListSchema.describe('List of package names to check for vulnerabilities'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
@@ -225,7 +224,7 @@ export function registerAllTools(server: McpServer): void {
 		{
 			description: 'Get download trends and popularity metrics for packages',
 			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to get trends for'),
+				packages: PackageListSchema.describe('List of package names to get trends for'),
 				period: z
 					.enum(['last-week', 'last-month', 'last-year'])
 					.describe('Time period for trends. Options: "last-week", "last-month", "last-year"')
@@ -256,7 +255,7 @@ export function registerAllTools(server: McpServer): void {
 		{
 			description: 'Compare multiple NPM packages based on various metrics',
 			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to compare'),
+				packages: PackageListSchema.describe('List of package names to compare'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: CompareResultOutputSchema,
@@ -279,7 +278,7 @@ export function registerAllTools(server: McpServer): void {
 		{
 			description: 'Get maintainers information for NPM packages',
 			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to get maintainers for'),
+				packages: PackageListSchema.describe('List of package names to get maintainers for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
@@ -303,7 +302,7 @@ export function registerAllTools(server: McpServer): void {
 			description:
 				'Get consolidated package score based on quality, maintenance, and popularity metrics',
 			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to get scores for'),
+				packages: PackageListSchema.describe('List of package names to get scores for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
@@ -326,7 +325,7 @@ export function registerAllTools(server: McpServer): void {
 		{
 			description: 'Get the README content for NPM packages',
 			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to get READMEs for'),
+				packages: PackageListSchema.describe('List of package names to get READMEs for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
@@ -352,7 +351,7 @@ export function registerAllTools(server: McpServer): void {
 		{
 			description: 'Search for NPM packages with optional limit',
 			inputSchema: z.object({
-				query: z.string().describe('Search query for packages'),
+				query: SearchQuerySchema.describe('Search query for packages'),
 				limit: z
 					.number()
 					.min(1)
@@ -381,10 +380,9 @@ export function registerAllTools(server: McpServer): void {
 		{
 			description: 'Check license compatibility between multiple packages',
 			inputSchema: z.object({
-				packages: z
-					.array(z.string())
-					.min(1)
-					.describe('List of package names to check for license compatibility'),
+				packages: PackageListSchema.describe(
+					'List of package names to check for license compatibility',
+				),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: LicenseCompatibilityResultOutputSchema,
@@ -410,7 +408,7 @@ export function registerAllTools(server: McpServer): void {
 		{
 			description: 'Get repository statistics for NPM packages',
 			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to get repository stats for'),
+				packages: PackageListSchema.describe('List of package names to get repository stats for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
@@ -433,7 +431,7 @@ export function registerAllTools(server: McpServer): void {
 		{
 			description: 'Check if packages are deprecated',
 			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to check for deprecation'),
+				packages: PackageListSchema.describe('List of package names to check for deprecation'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
@@ -456,7 +454,7 @@ export function registerAllTools(server: McpServer): void {
 		{
 			description: 'Analyze changelog and release history of packages',
 			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to analyze changelogs for'),
+				packages: PackageListSchema.describe('List of package names to analyze changelogs for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
@@ -482,7 +480,7 @@ export function registerAllTools(server: McpServer): void {
 		{
 			description: 'Find alternative packages with similar functionality',
 			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to find alternatives for'),
+				packages: PackageListSchema.describe('List of package names to find alternatives for'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
@@ -505,7 +503,7 @@ export function registerAllTools(server: McpServer): void {
 		{
 			description: 'Analyze package quality metrics',
 			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to analyze'),
+				packages: PackageListSchema.describe('List of package names to analyze'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,
@@ -528,7 +526,7 @@ export function registerAllTools(server: McpServer): void {
 		{
 			description: 'Analyze package maintenance metrics',
 			inputSchema: z.object({
-				packages: z.array(z.string()).describe('List of package names to analyze'),
+				packages: PackageListSchema.describe('List of package names to analyze'),
 				ignoreCache: z.boolean().optional().describe('Force a fresh lookup, ignoring the cache'),
 			}),
 			outputSchema: BatchResultOutputSchema,

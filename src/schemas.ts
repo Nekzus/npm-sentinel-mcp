@@ -215,3 +215,17 @@ export function isValidNpmPackageName(name: string): boolean {
 		!name.startsWith('.')
 	);
 }
+
+export const SearchQuerySchema = z
+	.string()
+	.trim()
+	.min(1, 'Search query cannot be empty')
+	.max(100, 'Search query cannot exceed 100 characters')
+	.refine((val) => !/[\0\r\n\t]/.test(val), {
+		message: 'Search query contains disallowed control characters',
+	});
+
+export const PackageListSchema = z
+	.array(z.string())
+	.min(1, 'At least one package name must be provided')
+	.max(25, 'Maximum of 25 packages allowed per batch request');
