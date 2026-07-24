@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.19.0-alpha.23](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.22...v1.19.0-alpha.23) (2026-07-24)
+
+
+### Features
+
+* **security:** implement search query sanitization, batch size limits and server instructions ([c2838eb](https://github.com/Nekzus/npm-sentinel-mcp/commit/c2838ebedbd9446475616e5a4a4c2ccacb993d67))
+
 # [1.19.0-alpha.22](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.21...v1.19.0-alpha.22) (2026-07-23)
 
 
