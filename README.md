@@ -1,5 +1,7 @@
 # NPM Sentinel MCP
 
+[![MCP Toplist](https://mcptoplist.com/badge/mcp.so%2Fnpm-sentinel-mcp%2FNekzus.svg)](https://mcptoplist.com/server/mcp.so%2Fnpm-sentinel-mcp%2FNekzus)
+
 <div align="center">
 
 [![smithery badge](https://smithery.ai/badge/@Nekzus/npm-sentinel-mcp)](https://smithery.ai/server/@Nekzus/npm-sentinel-mcp)
