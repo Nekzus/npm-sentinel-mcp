@@ -146,33 +146,24 @@ docker build -t nekzus/npm-sentinel-mcp .
 docker run -i --rm -w /projects -v ${PWD}:/projects nekzus/npm-sentinel-mcp node dist/index.js
 ```
 
-### Streamable HTTP (POST) & Cloudflare Workers Integration
+### Web Standard Streamable HTTP & Cloudflare Workers Integration
 
-The package exports a stateless HTTP handler `handleStreamableHttpRequest` designed for serverless platforms (Cloudflare Workers, Vercel, Express, Fastify, Next.js API routes) requiring Streamable HTTP POST transport under MCP v2:
+The package exports `createMcpHttpHandler` and `WebStandardStreamableHTTPServerTransport` for serverless platforms (Cloudflare Workers, Hono, Vercel, Express, Fastify, Next.js API routes) requiring official Web Standard Streamable HTTP transport under MCP v2:
 
 ```typescript
-import { handleStreamableHttpRequest } from '@nekzus/mcp-server/http';
+import { createMcpHttpHandler } from '@nekzus/mcp-server/http';
+
+const handleMcpRequest = createMcpHttpHandler();
 
 export default {
   async fetch(request: Request): Promise<Response> {
-    if (request.method !== 'POST') {
-      return new Response('NPM Sentinel MCP v2 Streamable HTTP Server', { status: 200 });
-    }
-
-    try {
-      const payload = await request.json();
-      const mcpResponse = await handleStreamableHttpRequest(payload);
-
-      return new Response(mcpResponse.body, {
-        status: mcpResponse.status,
-        headers: mcpResponse.headers,
-      });
-    } catch {
-      return new Response(JSON.stringify({ error: 'Invalid JSON-RPC payload' }), { status: 400 });
-    }
+    return handleMcpRequest(request);
   },
 };
 ```
+
+**100% MCP v2 Compliance**: Powered by `WebStandardStreamableHTTPServerTransport`, this handler natively activates all 3 MCP primitives (**Tools**, **Resources**, and **Prompts**) with peak performance, SSE streaming support, and full Web Standard `Request` $\rightarrow$ `Response` compatibility.
+
 
 ## Configuration
 

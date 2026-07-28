@@ -4437,10 +4437,22 @@ function isNpmPackageVersionData(data: unknown): data is z.infer<typeof NpmPacka
 	}
 }
 
-// Run STDIO server when executed directly (for backward compatibility)
-if (process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
+// Run STDIO server when executed directly as CLI main binary
+const isMainModule = (): boolean => {
+	try {
+		if (process.argv[1]) {
+			return fs.realpathSync(path.resolve(process.argv[1])) === fs.realpathSync(path.resolve(import.meta.filename || ''));
+		}
+	} catch {
+		// Fallback if file resolution fails
+	}
+	return false;
+};
+
+if (isMainModule() && process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
 	main().catch((error) => {
 		console.error('Server error:', error);
 		process.exit(1);
 	});
 }
+
