@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.24.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.24.0...v1.24.1) (2026-07-28)
+
+
+### Bug Fixes
+
+* **http:** import WebStandardStreamableHTTPServerTransport directly from @modelcontextprotocol/server ([76ee68c](https://github.com/Nekzus/npm-sentinel-mcp/commit/76ee68c8a092c220ca157b38cbf81bef884b6acc))
+
 # [1.24.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.23.0...v1.24.0) (2026-07-28)
 
 
