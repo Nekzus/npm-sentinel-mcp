@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { needsVersionResolution, resolvePackageVersion } from '../../index.js';
+import { needsVersionResolution, resolvePackageVersion } from '../../src/utils/version-resolver';
 
 describe('needsVersionResolution', () => {
 	test('returns false for known dist-tags', () => {

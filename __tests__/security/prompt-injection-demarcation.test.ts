@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { handleNpmChangelogAnalysis, handleNpmPackageReadme } from '../../index.js';
+import { handleNpmChangelogAnalysis, handleNpmPackageReadme } from '../../index';
 
 describe('Security: Indirect Prompt Injection Demarcation (OWASP LLM01)', () => {
 	describe('handleNpmPackageReadme', () => {

@@ -20,6 +20,7 @@ import {
 	PackageListSchema,
 	SearchQuerySchema,
 } from '../../index';
+import { PackageListSchema, SearchQuerySchema } from '../../src/schemas';
 
 describe('Security: Input Validation', () => {
 	const invalidInputs = [
