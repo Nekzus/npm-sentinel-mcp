@@ -7,6 +7,16 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "main": "./dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./http": {
+      "types": "./dist/src/http.d.ts",
+      "import": "./dist/src/http.js"
+    }
+  },
   "bin": {
     "mcp-server-nekzus": "dist/index.js"
   },
