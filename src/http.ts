@@ -1,7 +1,7 @@
 import {
 	WebStandardStreamableHTTPServerTransport,
 	type WebStandardStreamableHTTPServerTransportOptions,
-} from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
+} from '@modelcontextprotocol/server';
 import { setNpmRegistryUrl } from './config.js';
 import createServer from './server.js';
 
