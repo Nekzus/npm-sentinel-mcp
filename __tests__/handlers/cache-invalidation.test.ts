@@ -1,8 +1,6 @@
-import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { handleNpmVersions } from '../../index';
-import { validateToolResponse } from '../utils/test-helpers';
 
 // Mocks must be defined before imports
 vi.mock('node:fs');
