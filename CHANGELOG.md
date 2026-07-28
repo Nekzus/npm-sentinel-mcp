@@ -3,6 +3,41 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.24.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.23.0...v1.24.0) (2026-07-28)
+
+
+### Bug Fixes
+
+* **audit:** resolve npmVulnerabilities summary output schema and improve npmAlternatives recommendation engine ([bb215cb](https://github.com/Nekzus/npm-sentinel-mcp/commit/bb215cbecd7df37c840a66188b499a94180b5241))
+* **ci:** configure npm OIDC publishing by removing static NPM_TOKEN env var ([4db99e7](https://github.com/Nekzus/npm-sentinel-mcp/commit/4db99e79ad4296a255a547681d145f49dd9f8265))
+* **ci:** configure npm registry-url and NODE_AUTH_TOKEN for semantic-release publish ([ece8745](https://github.com/Nekzus/npm-sentinel-mcp/commit/ece8745de2b6c4795b14b0a64b384f78cc9fb02d))
+* **ci:** restore NPM_TOKEN and registry-url in publish workflow ([e5ae865](https://github.com/Nekzus/npm-sentinel-mcp/commit/e5ae865fcf7910132cf25cbf35f28c19f1f57580))
+* **lint:** clean unused imports and improve optional chaining in index.ts ([a4d0bfb](https://github.com/Nekzus/npm-sentinel-mcp/commit/a4d0bfb12322873251460506b2bd0fb169aa32bc))
+* **linter:** resolve unused options parameter, import sorting, and template literal linter issues in src/http.ts ([79409e7](https://github.com/Nekzus/npm-sentinel-mcp/commit/79409e798062846857ff5258889c026823f2b522))
+* **linter:** use modern Object.hasOwn instead of Object.prototype.hasOwnProperty.call in index.ts and src/http.ts ([bef70c1](https://github.com/Nekzus/npm-sentinel-mcp/commit/bef70c1c490ac3523ed855a330abb2b120c1bb48))
+* **lint:** organize imports and setNpmRegistryUrl export in index.ts ([c49950a](https://github.com/Nekzus/npm-sentinel-mcp/commit/c49950a90566a5371c3b1ccdbe6f5dd4b6652896))
+* **lint:** use optional chaining in handleNpmAlternatives keyword check ([059ca7d](https://github.com/Nekzus/npm-sentinel-mcp/commit/059ca7d639d3bc2bc50fe852066af992ca82951a))
+* **scorecard:** condition Scorecard reason sanitization strictly to score -1 and internal errors ([1180548](https://github.com/Nekzus/npm-sentinel-mcp/commit/118054845eb40e07db3f4cc4fb8b9a47c5eb61f2))
+* **scorecard:** sanitize internal error messages from OpenSSF Scorecard API ([323f19e](https://github.com/Nekzus/npm-sentinel-mcp/commit/323f19e0eac985ee6da931bc715609a96f14f1de))
+* **security:** prevent prototype property collisions (e.g. constructor) across ECOSYSTEM_MAP, KNOWN_ALTERNATIVES_MAP, TOOL_HANDLERS_MAP, and version objects ([3f24e57](https://github.com/Nekzus/npm-sentinel-mcp/commit/3f24e57ca8756209a3c412cc98632d62745d625f))
+* **test:** remove unused imports in cache-invalidation.test.ts ([56184b3](https://github.com/Nekzus/npm-sentinel-mcp/commit/56184b3df58eac618e0b6f055f10e04ccf45840e))
+* **tests:** resolve duplicate schema import in validation.test.ts ([a59fe32](https://github.com/Nekzus/npm-sentinel-mcp/commit/a59fe32cadb10a45d41985253a88044d54d049b0))
+* **zod:** replace deprecated .passthrough() with .loose() for Zod v4 schemas ([7351447](https://github.com/Nekzus/npm-sentinel-mcp/commit/7351447e8315bce58a490227b0b5cd7215b26d28))
+
+
+### Features
+
+* **audit:** enrich npmRepoStats with live GitHub metadata, extract OSV severity levels, and sanitize Scorecard reasons ([c164afa](https://github.com/Nekzus/npm-sentinel-mcp/commit/c164afa78de20a74f94a8f0ea4ac86c374ae129b))
+* **audit:** refine npmAlternatives filtering and standardize empty-array error schema ([4b67a74](https://github.com/Nekzus/npm-sentinel-mcp/commit/4b67a74d3d0af0a8817ab8f52a8b7cf4fb63c9cc))
+* **http:** export stateless Streamable HTTP POST transport handler for Cloudflare Workers and web servers ([07918fe](https://github.com/Nekzus/npm-sentinel-mcp/commit/07918fefc5a1a9479728bb9e14f3df0b48efc426))
+* **mcp:** add SVG Data URI icons and context logging to tools, resources and prompts ([76b83a2](https://github.com/Nekzus/npm-sentinel-mcp/commit/76b83a21d3ae86bdb126d1e28ae0b834ae2ac4f7))
+* **mcp:** implement outputSchema and structuredContent for all 19 tools ([e16f21d](https://github.com/Nekzus/npm-sentinel-mcp/commit/e16f21da0cda32b81cd3bbda897168d448fd1a75))
+* **mcp:** migrate server to MCP SDK v2.0.0-beta.4 ([d1faaa1](https://github.com/Nekzus/npm-sentinel-mcp/commit/d1faaa1190cbbdee05e5f5a1f9cf076583395be9))
+* **resolver:** implement smart SemVer shorthand resolution for version queries ([915ec50](https://github.com/Nekzus/npm-sentinel-mcp/commit/915ec50817cf3b381ef0b07850f66ce6ef00ce13))
+* **security:** implement OWASP LLM01 indirect prompt injection mitigations via XML demarcation and _meta flags ([8f88f9f](https://github.com/Nekzus/npm-sentinel-mcp/commit/8f88f9f2f910475fcce51328f5d80e024ea2d86e))
+* **security:** implement search query sanitization, batch size limits and server instructions ([c2838eb](https://github.com/Nekzus/npm-sentinel-mcp/commit/c2838ebedbd9446475616e5a4a4c2ccacb993d67))
+* **security:** refactorizar directiva OWASP LLM01 a instrucciones globales del servidor MCP ([af85a7b](https://github.com/Nekzus/npm-sentinel-mcp/commit/af85a7b40fcae2e4623b9b4367db796d040a4ed4))
+
 # [1.23.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.22.0...v1.23.0) (2026-07-24)
 
 
