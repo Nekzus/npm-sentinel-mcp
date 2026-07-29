@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.25.0-alpha.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.24.1...v1.25.0-alpha.1) (2026-07-29)
+
+# Changelog
+
+All notable changes to this project will be documented in this file. See
+[Conventional Commits](https://conventionalcommits.org) for commit guidelines.
+
 # [1.19.0-alpha.25](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.24...v1.19.0-alpha.25) (2026-07-29)
 
 
@@ -200,4 +207,3 @@ All notable changes to this project will be documented in this file. See
 ### Features
 
 * **alpha:** implement local scoring engine, HTTP retry client, CDN readme fallback, and setup alpha release pipeline ([875b8f8](https://github.com/Nekzus/npm-sentinel-mcp/commit/875b8f88ccfa98110a9f2237d90f8a7701a6eac8))
-
