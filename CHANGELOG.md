@@ -6,6 +6,14 @@ All notable changes to this project will be documented in this file. See
 ## What's Changed
 
 * fix(ci): add GIT_EDITOR to bypass prompt during signed tag creation in alpha ([0ea1f2108b56ccf29078795d76cc27bcd68126fa](https://github.com/Nekzus/npm-sentinel-mcp/commit/0ea1f2108b56ccf29078795d76cc27bcd68126fa))
+* fix(ci): use commit gpg signing for semantic-release compatibility in alpha ([2f04fa010f5e6f4a42b09edf0fe8f77266c8f63f](https://github.com/Nekzus/npm-sentinel-mcp/commit/2f04fa010f5e6f4a42b09edf0fe8f77266c8f63f))
+* chore(release): 1.25.0-alpha.2 [skip ci] ([a09aef79cd199d013d58630e1d59c573e70c15c6](https://github.com/Nekzus/npm-sentinel-mcp/commit/a09aef79cd199d013d58630e1d59c573e70c15c6))
+
+**Full Changelog**: https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.25.0-alpha.1...1.25.0-alpha.2
+
+## What's Changed
+
+* fix(ci): add GIT_EDITOR to bypass prompt during signed tag creation in alpha ([0ea1f2108b56ccf29078795d76cc27bcd68126fa](https://github.com/Nekzus/npm-sentinel-mcp/commit/0ea1f2108b56ccf29078795d76cc27bcd68126fa))
 
 **Full Changelog**: https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.25.0-alpha.1...1.25.0-alpha.2
 
