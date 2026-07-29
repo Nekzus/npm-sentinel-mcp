@@ -93,6 +93,7 @@ jobs:
                   GH_TOKEN: ${{secrets.GH_TOKEN}}
                   NPM_TOKEN: ${{secrets.NPM_TOKEN}}
                   NPM_CONFIG_PROVENANCE: true
+                  GIT_EDITOR: ":"
 
             # Get the new version from package.json after semantic-release
             - name: Get new version
