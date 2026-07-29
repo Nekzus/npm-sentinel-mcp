@@ -2,7 +2,27 @@
   "branches": ["main", { "name": "alpha", "prerelease": "alpha" }],
   "plugins": [
     "@semantic-release/commit-analyzer",
-    "@semantic-release/release-notes-generator",
+    [
+      "@semantic-release/release-notes-generator",
+      {
+        "preset": "conventionalcommits",
+        "presetConfig": {
+          "types": [
+            { "type": "feat", "section": "What's Changed" },
+            { "type": "fix", "section": "What's Changed" },
+            { "type": "chore", "section": "What's Changed" },
+            { "type": "docs", "section": "What's Changed" },
+            { "type": "style", "section": "What's Changed" },
+            { "type": "refactor", "section": "What's Changed" },
+            { "type": "perf", "section": "What's Changed" },
+            { "type": "test", "section": "What's Changed" }
+          ]
+        },
+        "writerOpts": {
+          "mainTemplate": "## What's Changed\n\n{{#each commitGroups}}\n{{#each commits}}\n* {{header}} {{#if @root.host}}([{{hash}}]({{ @root.host }}/{{ @root.owner }}/{{ @root.repository }}/commit/{{hash}})){{/if}}\n{{/each}}\n{{/each}}\n\n**Full Changelog**: {{host}}/{{owner}}/{{repository}}/compare/{{previousTag}}...{{currentTag}}"
+        }
+      }
+    ],
     [
       "@semantic-release/changelog",
       {
