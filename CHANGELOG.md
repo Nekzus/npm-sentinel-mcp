@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file. See
 
 ## What's Changed
 
+* fix(ci): add GIT_EDITOR to bypass prompt during signed tag creation ([9484a9cbfc75384669e992ac4086a7f62a97d92b](https://github.com/Nekzus/npm-sentinel-mcp/commit/9484a9cbfc75384669e992ac4086a7f62a97d92b))
+* fix(ci): verify automated GPG release signing ([05e756b9355e052d3ec5f85d31279e925c654713](https://github.com/Nekzus/npm-sentinel-mcp/commit/05e756b9355e052d3ec5f85d31279e925c654713))
+* chore(release): 1.25.1 [skip ci] ([bc2b8166cde3f762bab15eab7d60dd0e7694b6f3](https://github.com/Nekzus/npm-sentinel-mcp/commit/bc2b8166cde3f762bab15eab7d60dd0e7694b6f3))
+
+**Full Changelog**: https://github.com/Nekzus/npm-sentinel-mcp/compare/1.25.0...1.25.1
+
+## What's Changed
+
 * fix(ci): verify automated GPG release signing ([05e756b9355e052d3ec5f85d31279e925c654713](https://github.com/Nekzus/npm-sentinel-mcp/commit/05e756b9355e052d3ec5f85d31279e925c654713))
 
 **Full Changelog**: https://github.com/Nekzus/npm-sentinel-mcp/compare/1.25.0...1.25.1
