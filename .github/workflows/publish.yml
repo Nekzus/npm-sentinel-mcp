@@ -85,7 +85,6 @@ jobs:
                 passphrase: ${{ secrets.PASSPHRASE }}
                 git_user_signingkey: true
                 git_commit_gpgsign: true
-                git_tag_gpgsign: true
 
             - name: Semantic Release
               run: pnpm run semantic-release
@@ -93,7 +92,6 @@ jobs:
                   GH_TOKEN: ${{secrets.GH_TOKEN}}
                   NPM_TOKEN: ${{secrets.NPM_TOKEN}}
                   NPM_CONFIG_PROVENANCE: true
-                  GIT_EDITOR: ":"
 
             # Get the new version from package.json after semantic-release
             - name: Get new version
