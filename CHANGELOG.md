@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## What's Changed
+
+* fix(ci): add GIT_EDITOR to bypass prompt during signed tag creation in alpha ([0ea1f2108b56ccf29078795d76cc27bcd68126fa](https://github.com/Nekzus/npm-sentinel-mcp/commit/0ea1f2108b56ccf29078795d76cc27bcd68126fa))
+
+**Full Changelog**: https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.25.0-alpha.1...1.25.0-alpha.2
+
 ## [1.25.0-alpha.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.24.1...v1.25.0-alpha.1) (2026-07-29)
 
 # Changelog
