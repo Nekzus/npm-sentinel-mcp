@@ -10,8 +10,6 @@ All notable changes to this project will be documented in this file. See
 * Dual-Era MCP (2025-11-25 and 2026-07-28) support via createMcpHandler ([989a4c5](https://github.com/Nekzus/npm-sentinel-mcp/commit/989a4c5f40f759384c44e1fe89062f91ab4f155a))
 * Dual-Era STDIO support via serveStdio in CLI entrypoint ([a5c4123](https://github.com/Nekzus/npm-sentinel-mcp/commit/a5c4123268be5c84aebc6941c3c124182e51a120))
 
-### Bug Fixes
-
 # [1.24.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.23.0...v1.24.0) (2026-07-28)
 
 
