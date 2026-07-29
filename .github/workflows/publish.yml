@@ -92,10 +92,10 @@ jobs:
                   GH_TOKEN: ${{secrets.GH_TOKEN}}
                   NPM_TOKEN: ${{secrets.NPM_TOKEN}}
                   NPM_CONFIG_PROVENANCE: true
-                  GIT_AUTHOR_NAME: "Nekzus"
-                  GIT_AUTHOR_EMAIL: "85507589+Nekzus@users.noreply.github.com"
-                  GIT_COMMITTER_NAME: "Nekzus"
-                  GIT_COMMITTER_EMAIL: "85507589+Nekzus@users.noreply.github.com"
+                  GIT_AUTHOR_NAME: ${{ github.actor }}
+                  GIT_AUTHOR_EMAIL: ${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com
+                  GIT_COMMITTER_NAME: ${{ github.actor }}
+                  GIT_COMMITTER_EMAIL: ${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com
 
             # Get the new version from package.json after semantic-release
             - name: Get new version
