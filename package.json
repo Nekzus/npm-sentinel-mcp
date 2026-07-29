@@ -26,7 +26,8 @@
     "llms-full.txt",
     "LICENSE",
     "smithery.yaml",
-    "server.json"
+    "server.json",
+    "glama.json"
   ],
   "scripts": {
     "build": "npm run build:stdio",

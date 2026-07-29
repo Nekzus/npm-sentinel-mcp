@@ -1,8 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import {
-	PackageListSchema,
-	SearchQuerySchema,
-} from '../../src/schemas';
+import { PackageListSchema, SearchQuerySchema } from '../../src/schemas';
 import {
 	handleNpmAlternatives,
 	handleNpmChangelogAnalysis,
