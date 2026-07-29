@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file. See
 
 ## What's Changed
 
+* fix(ci): verify automated GPG release signing ([05e756b9355e052d3ec5f85d31279e925c654713](https://github.com/Nekzus/npm-sentinel-mcp/commit/05e756b9355e052d3ec5f85d31279e925c654713))
+
+**Full Changelog**: https://github.com/Nekzus/npm-sentinel-mcp/compare/1.25.0...1.25.1
+
+## What's Changed
+
 * feat: adopt Dual-Era MCP architecture (2026-07-28 and 2024-11-25) in main ([a1101eb4d3f3774c1617976fba2d40d3dc4d521b](https://github.com/Nekzus/npm-sentinel-mcp/commit/a1101eb4d3f3774c1617976fba2d40d3dc4d521b))
 * docs(changelog): clean up release entries for production main branch ([92e18190b64a77b56ed2feae3801ffd2bc4ac68a](https://github.com/Nekzus/npm-sentinel-mcp/commit/92e18190b64a77b56ed2feae3801ffd2bc4ac68a))
 * docs(changelog): fix missing feature description for release 1.22.0 ([bf2c157b3aada0fc770b952fee2707fb6c694054](https://github.com/Nekzus/npm-sentinel-mcp/commit/bf2c157b3aada0fc770b952fee2707fb6c694054))
