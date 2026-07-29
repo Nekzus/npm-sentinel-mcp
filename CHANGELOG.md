@@ -43,7 +43,7 @@ All notable changes to this project will be documented in this file. See
 * **resolver:** implement smart SemVer shorthand resolution for version queries ([915ec50](https://github.com/Nekzus/npm-sentinel-mcp/commit/915ec50817cf3b381ef0b07850f66ce6ef00ce13))
 * **security:** implement OWASP LLM01 indirect prompt injection mitigations via XML demarcation and _meta flags ([8f88f9f](https://github.com/Nekzus/npm-sentinel-mcp/commit/8f88f9f2f910475fcce51328f5d80e024ea2d86e))
 * **security:** implement search query sanitization, batch size limits and server instructions ([c2838eb](https://github.com/Nekzus/npm-sentinel-mcp/commit/c2838ebedbd9446475616e5a4a4c2ccacb993d67))
-* **security:** refactorizar directiva OWASP LLM01 a instrucciones globales del servidor MCP ([af85a7b](https://github.com/Nekzus/npm-sentinel-mcp/commit/af85a7b40fcae2e4623b9b4367db796d040a4ed4))
+* **security:** refactor OWASP LLM01 directive into MCP server global instructions ([af85a7b](https://github.com/Nekzus/npm-sentinel-mcp/commit/af85a7b40fcae2e4623b9b4367db796d040a4ed4))
 
 # [1.23.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.22.0...v1.23.0) (2026-07-24)
 
@@ -57,7 +57,7 @@ All notable changes to this project will be documented in this file. See
 
 ### Features
 
-* **security:** refactorizar directiva OWASP LLM01 a instrucciones globales del servidor MCP ([dd291bc](https://github.com/Nekzus/npm-sentinel-mcp/commit/dd291bc395de07834f994880260b340e37de7528))
+* **security:** refactor OWASP LLM01 directive into MCP server global instructions ([dd291bc](https://github.com/Nekzus/npm-sentinel-mcp/commit/dd291bc395de07834f994880260b340e37de7528))
 
 ## [1.18.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.18.0...v1.18.1) (2026-07-11)
 
