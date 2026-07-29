@@ -4,10 +4,10 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { CallToolResult } from '@modelcontextprotocol/server';
-import { StdioServerTransport } from '@modelcontextprotocol/server/stdio';
+import { StdioServerTransport, serveStdio } from '@modelcontextprotocol/server/stdio';
 import fetch from 'node-fetch';
 import { z } from 'zod';
-import createServer from './src/server.js';
+import createServer, { createMcpServer } from './src/server.js';
 import { needsVersionResolution, resolvePackageVersion } from './src/utils/version-resolver.js';
 
 // Cache configuration
@@ -4390,33 +4390,20 @@ export async function handleNpmAlternatives(args: {
 export { createServer };
 export default createServer;
 
-// STDIO compatibility for backward compatibility
+// STDIO serving with Dual-Era support (MCP v1 2025-11-25 + MCP v2 2026-07-28)
 async function main() {
-	// Create server with empty configuration
-	const server = createServer({
-		config: {},
-	});
-
-	// Start receiving messages on stdin and sending messages on stdout
-	const transport = new StdioServerTransport();
-	await server.connect(transport);
-
-	process.stdin.on('close', () => {
-		server.close();
-	});
-
-	// Handle uncaught errors
-	process.on('uncaughtException', (error) => {
-		console.error('Fatal error:', error);
-		server.close();
-		process.exit(1);
-	});
-
-	process.on('unhandledRejection', (error) => {
-		console.error('Unhandled rejection:', error);
-		server.close();
-		process.exit(1);
-	});
+	serveStdio(
+		() =>
+			createMcpServer({
+				config: {},
+			}),
+		{
+			legacy: 'serve',
+			onerror: (error) => {
+				console.error('[STDIO Error]', error);
+			},
+		},
+	);
 }
 
 // Type guard for NpmPackageVersionSchema
