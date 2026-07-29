@@ -3,6 +3,27 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## What's Changed
+
+* feat: adopt Dual-Era MCP architecture (2026-07-28 and 2024-11-25) in main ([a1101eb4d3f3774c1617976fba2d40d3dc4d521b](https://github.com/Nekzus/npm-sentinel-mcp/commit/a1101eb4d3f3774c1617976fba2d40d3dc4d521b))
+* docs(changelog): clean up release entries for production main branch ([92e18190b64a77b56ed2feae3801ffd2bc4ac68a](https://github.com/Nekzus/npm-sentinel-mcp/commit/92e18190b64a77b56ed2feae3801ffd2bc4ac68a))
+* docs(changelog): fix missing feature description for release 1.22.0 ([bf2c157b3aada0fc770b952fee2707fb6c694054](https://github.com/Nekzus/npm-sentinel-mcp/commit/bf2c157b3aada0fc770b952fee2707fb6c694054))
+* docs(changelog): purge all non-alpha releases from alpha branch changelog ([20695bfa0856bed67752e1cf2a19134848c1e388](https://github.com/Nekzus/npm-sentinel-mcp/commit/20695bfa0856bed67752e1cf2a19134848c1e388))
+* docs(changelog): purge all pre-release alpha entries from main changelog ([c54ae4356721212a620b79712d57bbb191a84d48](https://github.com/Nekzus/npm-sentinel-mcp/commit/c54ae4356721212a620b79712d57bbb191a84d48))
+* docs(changelog): restore clean production changelog without pre-releases on main ([9be7430ca08d0f3a0be799acda4c638dacd06945](https://github.com/Nekzus/npm-sentinel-mcp/commit/9be7430ca08d0f3a0be799acda4c638dacd06945))
+* docs(changelog): restore dedicated alpha releases history on alpha branch ([eb6e4d91c8ef4eb9031ee0d9caee8cc3962d717a](https://github.com/Nekzus/npm-sentinel-mcp/commit/eb6e4d91c8ef4eb9031ee0d9caee8cc3962d717a))
+* docs(changelog): translate Spanish changelog entries to English ([41a32407d2135b82995d39a380a616a65b6deccd](https://github.com/Nekzus/npm-sentinel-mcp/commit/41a32407d2135b82995d39a380a616a65b6deccd))
+* fix(deps): add conventional-changelog-conventionalcommits to devDependencies for release-notes-generator ([f2584592fc1ed1d0d45fd156a729c8dab3d02d6b](https://github.com/Nekzus/npm-sentinel-mcp/commit/f2584592fc1ed1d0d45fd156a729c8dab3d02d6b))
+* feat: Dual-Era MCP (2025-11-25 and 2026-07-28) support via createMcpHandler ([989a4c5f40f759384c44e1fe89062f91ab4f155a](https://github.com/Nekzus/npm-sentinel-mcp/commit/989a4c5f40f759384c44e1fe89062f91ab4f155a))
+* feat: Dual-Era STDIO support via serveStdio in CLI entrypoint ([a5c4123268be5c84aebc6941c3c124182e51a120](https://github.com/Nekzus/npm-sentinel-mcp/commit/a5c4123268be5c84aebc6941c3c124182e51a120))
+* chore(release): 1.19.0-alpha.24 [skip ci] ([48818e9d87f8b1a82b12a7d93738ad1c3a1656d4](https://github.com/Nekzus/npm-sentinel-mcp/commit/48818e9d87f8b1a82b12a7d93738ad1c3a1656d4))
+* chore(release): 1.19.0-alpha.25 [skip ci] ([605aedc0c344f3bd51812067a914dba2fb6440d1](https://github.com/Nekzus/npm-sentinel-mcp/commit/605aedc0c344f3bd51812067a914dba2fb6440d1))
+* chore(release): 1.25.0-alpha.1 [skip ci] ([97e9f0d7d797d6c951adde363d201b407b667d8e](https://github.com/Nekzus/npm-sentinel-mcp/commit/97e9f0d7d797d6c951adde363d201b407b667d8e))
+* chore: remove unused StdioServerTransport import in index.ts ([033515a612d04de604e4319a3bcfc32ef687548d](https://github.com/Nekzus/npm-sentinel-mcp/commit/033515a612d04de604e4319a3bcfc32ef687548d))
+* docs: update README.md and llms-full.txt with Dual-Era MCP architecture details ([866ef31fc9b4e19a5d01d492d35309b0ccb28b51](https://github.com/Nekzus/npm-sentinel-mcp/commit/866ef31fc9b4e19a5d01d492d35309b0ccb28b51))
+
+**Full Changelog**: https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.24.2...1.25.0
+
 ## [1.24.2](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.24.1...v1.24.2) (2026-07-29)
 
 
