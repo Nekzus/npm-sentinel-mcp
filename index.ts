@@ -4,7 +4,7 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { CallToolResult } from '@modelcontextprotocol/server';
-import { StdioServerTransport, serveStdio } from '@modelcontextprotocol/server/stdio';
+import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import fetch from 'node-fetch';
 import { z } from 'zod';
 import createServer, { createMcpServer } from './src/server.js';
