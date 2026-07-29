@@ -4441,7 +4441,10 @@ function isNpmPackageVersionData(data: unknown): data is z.infer<typeof NpmPacka
 const isMainModule = (): boolean => {
 	try {
 		if (process.argv[1]) {
-			return fs.realpathSync(path.resolve(process.argv[1])) === fs.realpathSync(path.resolve(import.meta.filename || ''));
+			return (
+				fs.realpathSync(path.resolve(process.argv[1])) ===
+				fs.realpathSync(path.resolve(import.meta.filename || ''))
+			);
 		}
 	} catch {
 		// Fallback if file resolution fails
@@ -4455,4 +4458,3 @@ if (isMainModule() && process.env.NODE_ENV !== 'test' && !process.env.VITEST) {
 		process.exit(1);
 	});
 }
-

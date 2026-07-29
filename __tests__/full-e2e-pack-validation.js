@@ -23,7 +23,9 @@ async function runE2EValidation() {
 		throw new Error(`Tarball ${tarballName} was not found at ${tarballPath}`);
 	}
 	const tarballSize = fs.statSync(tarballPath).size;
-	console.log(`✓ Generated production tarball: ${tarballName} (${(tarballSize / 1024).toFixed(1)} KB)`);
+	console.log(
+		`✓ Generated production tarball: ${tarballName} (${(tarballSize / 1024).toFixed(1)} KB)`,
+	);
 
 	// 2. Set up isolated consumer project directory
 	const consumerDir = path.join(projectDir, '.e2e-consumer-test');
@@ -35,11 +37,15 @@ async function runE2EValidation() {
 	console.log('\n🏗️ Step 2: Creating isolated consumer project & installing tarball...');
 	fs.writeFileSync(
 		path.join(consumerDir, 'package.json'),
-		JSON.stringify({
-			name: 'e2e-consumer',
-			version: '1.0.0',
-			type: 'module',
-		}, null, 2),
+		JSON.stringify(
+			{
+				name: 'e2e-consumer',
+				version: '1.0.0',
+				type: 'module',
+			},
+			null,
+			2,
+		),
 	);
 
 	// Install the tarball into consumer project
@@ -54,7 +60,14 @@ async function runE2EValidation() {
 	console.log('🔌 PART 1: STDIO Transport & CLI Binary Verification');
 	console.log('----------------------------------------------------');
 
-	const installedBin = path.join(consumerDir, 'node_modules', '@nekzus', 'mcp-server', 'dist', 'index.js');
+	const installedBin = path.join(
+		consumerDir,
+		'node_modules',
+		'@nekzus',
+		'mcp-server',
+		'dist',
+		'index.js',
+	);
 	const transport = new StdioClientTransport({
 		command: 'node',
 		args: [installedBin],
@@ -99,13 +112,30 @@ async function runE2EValidation() {
 	console.log('🌐 PART 2: WebStandardStreamableHTTPServerTransport Verification');
 	console.log('----------------------------------------------------');
 
-	const httpModulePath = path.join(consumerDir, 'node_modules', '@nekzus', 'mcp-server', 'dist', 'src', 'http.js');
-	const { createMcpHttpHandler, WebStandardStreamableHTTPServerTransport } = await import(`file://${httpModulePath.replace(/\\/g, '/')}`);
+	const httpModulePath = path.join(
+		consumerDir,
+		'node_modules',
+		'@nekzus',
+		'mcp-server',
+		'dist',
+		'src',
+		'http.js',
+	);
+	const { createMcpHttpHandler, WebStandardStreamableHTTPServerTransport } = await import(
+		`file://${httpModulePath.replace(/\\/g, '/')}`
+	);
 
-	if (typeof createMcpHttpHandler !== 'function' || typeof WebStandardStreamableHTTPServerTransport !== 'function') {
-		throw new Error('Failed to import createMcpHttpHandler or WebStandardStreamableHTTPServerTransport from @nekzus/mcp-server/http');
+	if (
+		typeof createMcpHttpHandler !== 'function' ||
+		typeof WebStandardStreamableHTTPServerTransport !== 'function'
+	) {
+		throw new Error(
+			'Failed to import createMcpHttpHandler or WebStandardStreamableHTTPServerTransport from @nekzus/mcp-server/http',
+		);
 	}
-	console.log('✓ Successfully imported createMcpHttpHandler & WebStandardStreamableHTTPServerTransport from @nekzus/mcp-server/http!');
+	console.log(
+		'✓ Successfully imported createMcpHttpHandler & WebStandardStreamableHTTPServerTransport from @nekzus/mcp-server/http!',
+	);
 
 	const handleMcpRequest = createMcpHttpHandler();
 	const defaultHeaders = {
@@ -130,7 +160,9 @@ async function runE2EValidation() {
 		throw new Error(`HTTP tools/list failed with status ${toolsRes.status}`);
 	}
 	const toolsJson = JSON.parse(await toolsRes.text());
-	console.log(`✓ HTTP tools/list returned status 200 with ${toolsJson.result?.tools?.length} tools!`);
+	console.log(
+		`✓ HTTP tools/list returned status 200 with ${toolsJson.result?.tools?.length} tools!`,
+	);
 
 	// Test 2.2: Resources List over HTTP (Primitive 2)
 	console.log('\n📡 HTTP Request 2: `resources/list` (Primitive 2)...');
@@ -149,7 +181,9 @@ async function runE2EValidation() {
 		throw new Error(`HTTP resources/list failed with status ${resRes.status}`);
 	}
 	const resJson = JSON.parse(await resRes.text());
-	console.log(`✓ HTTP resources/list returned status 200 with ${resJson.result?.resources?.length} resources!`);
+	console.log(
+		`✓ HTTP resources/list returned status 200 with ${resJson.result?.resources?.length} resources!`,
+	);
 
 	// Test 2.3: Prompts List over HTTP (Primitive 3)
 	console.log('\n📡 HTTP Request 3: `prompts/list` (Primitive 3)...');
@@ -168,7 +202,9 @@ async function runE2EValidation() {
 		throw new Error(`HTTP prompts/list failed with status ${promptRes.status}`);
 	}
 	const promptJson = JSON.parse(await promptRes.text());
-	console.log(`✓ HTTP prompts/list returned status 200 with ${promptJson.result?.prompts?.length} prompts!`);
+	console.log(
+		`✓ HTTP prompts/list returned status 200 with ${promptJson.result?.prompts?.length} prompts!`,
+	);
 
 	// Test 2.4: Tools Call over HTTP
 	console.log('\n📡 HTTP Request 4: `tools/call` (npmSearch)...');
