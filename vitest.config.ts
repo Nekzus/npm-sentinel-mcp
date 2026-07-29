@@ -5,7 +5,7 @@ export default defineConfig({
 	test: {
 		environment: 'node',
 		include: ['**/__tests__/**/*.ts', '**/?(*.)+(spec|test).ts'],
-		exclude: ['node_modules', 'dist', '**/__tests__/utils/test-helpers.ts'],
+		exclude: ['node_modules', 'dist', 'scratch/**', '**/__tests__/utils/test-helpers.ts'],
 		coverage: {
 			provider: 'v8',
 			reporter: ['text', 'json', 'html', 'json-summary'],
