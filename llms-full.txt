@@ -1,8 +1,8 @@
 # NPM Sentinel MCP Server - Full Protocol & Technical Documentation
 
 ## Protocol Specification
-Version: MCP v2 (@modelcontextprotocol/server & @modelcontextprotocol/core)
-Transport: stdio / Streamable HTTP (SSE)
+Version: MCP Dual-Era (2025-11-25 & 2026-07-28 Specs via @modelcontextprotocol/server & @modelcontextprotocol/core)
+Transport: Dual-Era stdio (serveStdio) / Streamable HTTP (createMcpHandler)
 Capabilities: resources, prompts, tools, logging, structuredOutput
 
 ### Indirect Prompt Injection Safeguards (OWASP LLM01)

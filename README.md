@@ -59,12 +59,25 @@ To ensure data accuracy while maintaining high performance:
 
 ## Installation & Transports
 
-### STDIO & Streamable HTTP Transports
+### Dual-Era MCP Architecture (v1 `2025-11-25` + v2 `2026-07-28`)
 
-This MCP server supports both **STDIO** (standard input/output) and **Streamable HTTP / SSE** transports out of the box.
+This MCP server features native **Dual-Era Protocol Compatibility**, seamlessly serving both modern MCP v2 clients (`2026-07-28`) and legacy MCP v1 clients (`2025-11-25`) out of the box across both **STDIO** and **Streamable HTTP** transports:
 
-- **STDIO Mode**: Default transport for local execution via `npx` or Docker.
-- **Streamable HTTP / SSE Mode**: Decoupled `createServer({ config })` factory exported from `dist/index.js` and `dist/src/server.js` for mounting on Express, Hono, Cloudflare Workers, or Smithery.ai.
+- **STDIO Mode (`npx @nekzus/mcp-server`)**: Powered by `serveStdio({ legacy: "serve" })`. Handles modern `server/discover` probes sessionlessly and conjoins seamlessly with legacy `initialize` handshakes for local execution (Claude Desktop, Cursor, Docker).
+- **Streamable HTTP / SSE Mode (`@nekzus/mcp-server/http`)**: Powered by `createMcpHandler({ legacy: "stateless" })`. Designed for serverless and web-standard runtimes (Cloudflare Workers, Hono, Express, Vercel API Routes, Smithery.ai).
+
+**Example: Mounting HTTP Handler (Cloudflare Workers / Hono / Express)**
+```typescript
+import { createMcpHttpHandler } from '@nekzus/mcp-server/http';
+
+const handleRequest = createMcpHttpHandler();
+
+export default {
+  async fetch(request, env, ctx) {
+    return handleRequest(request);
+  }
+};
+```
 
 **Development Commands:**
 ```bash
@@ -74,13 +87,13 @@ pnpm install
 # Compile TypeScript to dist/
 pnpm run build
 
-# Start STDIO server
+# Start STDIO server (Dual-Era)
 pnpm run start
 
 # Development server with Smithery CLI playground
 pnpm run dev
 
-# Run unit and integration test suite (212+ tests)
+# Run full unit and integration test suite (238 tests)
 pnpm test -- --run
 
 # Run full E2E tarball verification

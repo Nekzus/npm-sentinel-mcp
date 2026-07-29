@@ -3,12 +3,14 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-## [1.24.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.24.0...v1.24.1) (2026-07-28)
+## [1.24.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.24.0...v1.24.1) (2026-07-29)
 
+### Features
+
+* Dual-Era MCP (2025-11-25 and 2026-07-28) support via createMcpHandler ([989a4c5](https://github.com/Nekzus/npm-sentinel-mcp/commit/989a4c5f40f759384c44e1fe89062f91ab4f155a))
+* Dual-Era STDIO support via serveStdio in CLI entrypoint ([a5c4123](https://github.com/Nekzus/npm-sentinel-mcp/commit/a5c4123268be5c84aebc6941c3c124182e51a120))
 
 ### Bug Fixes
-
-* **http:** import WebStandardStreamableHTTPServerTransport directly from @modelcontextprotocol/server ([76ee68c](https://github.com/Nekzus/npm-sentinel-mcp/commit/76ee68c8a092c220ca157b38cbf81bef884b6acc))
 
 # [1.24.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.23.0...v1.24.0) (2026-07-28)
 
@@ -60,6 +62,9 @@ All notable changes to this project will be documented in this file. See
 * **security:** refactorizar directiva OWASP LLM01 a instrucciones globales del servidor MCP ([dd291bc](https://github.com/Nekzus/npm-sentinel-mcp/commit/dd291bc395de07834f994880260b340e37de7528))
 
 # [1.21.0](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.20.1...v1.21.0) (2026-07-23)
+=======
+# [1.19.0-alpha.23](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.22...v1.19.0-alpha.23) (2026-07-24)
+>>>>>>> canary
 
 
 ### Features

@@ -7,7 +7,7 @@ import { registerAllTools } from './tools/index.js';
 
 export { configSchema } from './config.js';
 
-export default function createServer({ config }: { config: z.infer<typeof configSchema> }) {
+export function createMcpServer({ config }: { config: z.infer<typeof configSchema> }) {
 	if (config.NPM_REGISTRY_URL) {
 		setNpmRegistryUrl(config.NPM_REGISTRY_URL);
 	}
@@ -29,5 +29,9 @@ export default function createServer({ config }: { config: z.infer<typeof config
 	registerAllPrompts(server);
 	registerAllTools(server);
 
-	return server.server;
+	return server;
+}
+
+export default function createServer({ config }: { config: z.infer<typeof configSchema> }) {
+	return createMcpServer({ config }).server;
 }
