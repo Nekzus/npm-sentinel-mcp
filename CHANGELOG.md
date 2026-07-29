@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file. See
 
 ## What's Changed
 
+* feat(config): add glama.json schema and update package.json files ([6cc139bb460f7ee3b6a81dcb6ae17d8522c2cf83](https://github.com/Nekzus/npm-sentinel-mcp/commit/6cc139bb460f7ee3b6a81dcb6ae17d8522c2cf83))
+
+**Full Changelog**: https://github.com/Nekzus/npm-sentinel-mcp/compare/1.25.0-alpha.3...1.25.0-alpha.4
+
+## What's Changed
+
 * fix(ci): match semantic-release committer email with gpg key for verified releases in alpha ([b7d68ff977c8e3dfef75706fc0ff906b425cf820](https://github.com/Nekzus/npm-sentinel-mcp/commit/b7d68ff977c8e3dfef75706fc0ff906b425cf820))
 
 **Full Changelog**: https://github.com/Nekzus/npm-sentinel-mcp/compare/1.25.0-alpha.2...1.25.0-alpha.3
