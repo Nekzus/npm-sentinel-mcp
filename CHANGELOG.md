@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.24.2](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.24.1...v1.24.2) (2026-07-29)
+
+
+### Bug Fixes
+
+* **deps:** add conventional-changelog-conventionalcommits to devDependencies for release-notes-generator ([801193b](https://github.com/Nekzus/npm-sentinel-mcp/commit/801193bee26484ad4c2196d1ea1aadbe9f7854e5))
+
 ## [1.24.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.24.0...v1.24.1) (2026-07-28)
 
 
