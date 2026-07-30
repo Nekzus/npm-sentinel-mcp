@@ -20,7 +20,7 @@
           ]
         },
         "writerOpts": {
-          "mainTemplate": "## What's Changed\n\n{{#each commitGroups}}\n{{#each commits}}\n* {{header}} {{#if @root.host}}([{{hash}}]({{ @root.host }}/{{ @root.owner }}/{{ @root.repository }}/commit/{{hash}})){{/if}}\n{{/each}}\n{{/each}}\n\n**Full Changelog**: {{host}}/{{owner}}/{{repository}}/compare/{{previousTag}}...{{currentTag}}"
+          "mainTemplate": "## {{version}}\n\n{{#each commitGroups}}\n{{#each commits}}\n* {{header}} {{#if @root.host}}([{{hash}}]({{ @root.host }}/{{ @root.owner }}/{{ @root.repository }}/commit/{{hash}})){{/if}}\n{{/each}}\n{{/each}}\n\n**Full Changelog**: {{host}}/{{owner}}/{{repository}}/compare/{{previousTag}}...{{currentTag}}"
         }
       }
     ],

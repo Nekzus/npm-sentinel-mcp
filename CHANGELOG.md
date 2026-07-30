@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-## What's Changed
+## 1.25.0-alpha.5
 
 * fix(ci): test verified release signature with signed commit ([eac0833d8cb8aef1c9f4eb82e9c489320bc33574](https://github.com/Nekzus/npm-sentinel-mcp/commit/eac0833d8cb8aef1c9f4eb82e9c489320bc33574))
 * chore(release): 1.25.0-alpha.5 [skip ci] ([f91dc5dec16bf0ec28748fde809bd1f721ec9cf9](https://github.com/Nekzus/npm-sentinel-mcp/commit/f91dc5dec16bf0ec28748fde809bd1f721ec9cf9))
@@ -17,29 +17,23 @@ All notable changes to this project will be documented in this file. See
 
 **Full Changelog**: https://github.com/Nekzus/npm-sentinel-mcp/compare/1.25.0-alpha.4...1.25.0-alpha.5
 
-## What's Changed
+## 1.25.0-alpha.4
 
 * feat(config): add glama.json schema and update package.json files ([6cc139bb460f7ee3b6a81dcb6ae17d8522c2cf83](https://github.com/Nekzus/npm-sentinel-mcp/commit/6cc139bb460f7ee3b6a81dcb6ae17d8522c2cf83))
 
 **Full Changelog**: https://github.com/Nekzus/npm-sentinel-mcp/compare/1.25.0-alpha.3...1.25.0-alpha.4
 
-## What's Changed
+## 1.25.0-alpha.3
 
 * fix(ci): match semantic-release committer email with gpg key for verified releases in alpha ([b7d68ff977c8e3dfef75706fc0ff906b425cf820](https://github.com/Nekzus/npm-sentinel-mcp/commit/b7d68ff977c8e3dfef75706fc0ff906b425cf820))
 
 **Full Changelog**: https://github.com/Nekzus/npm-sentinel-mcp/compare/1.25.0-alpha.2...1.25.0-alpha.3
 
-## What's Changed
+## 1.25.0-alpha.2
 
 * fix(ci): add GIT_EDITOR to bypass prompt during signed tag creation in alpha ([0ea1f2108b56ccf29078795d76cc27bcd68126fa](https://github.com/Nekzus/npm-sentinel-mcp/commit/0ea1f2108b56ccf29078795d76cc27bcd68126fa))
 * fix(ci): use commit gpg signing for semantic-release compatibility in alpha ([2f04fa010f5e6f4a42b09edf0fe8f77266c8f63f](https://github.com/Nekzus/npm-sentinel-mcp/commit/2f04fa010f5e6f4a42b09edf0fe8f77266c8f63f))
 * chore(release): 1.25.0-alpha.2 [skip ci] ([a09aef79cd199d013d58630e1d59c573e70c15c6](https://github.com/Nekzus/npm-sentinel-mcp/commit/a09aef79cd199d013d58630e1d59c573e70c15c6))
-
-**Full Changelog**: https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.25.0-alpha.1...1.25.0-alpha.2
-
-## What's Changed
-
-* fix(ci): add GIT_EDITOR to bypass prompt during signed tag creation in alpha ([0ea1f2108b56ccf29078795d76cc27bcd68126fa](https://github.com/Nekzus/npm-sentinel-mcp/commit/0ea1f2108b56ccf29078795d76cc27bcd68126fa))
 
 **Full Changelog**: https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.25.0-alpha.1...1.25.0-alpha.2
 
