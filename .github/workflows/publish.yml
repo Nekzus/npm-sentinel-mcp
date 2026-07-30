@@ -77,25 +77,16 @@ jobs:
                 VERSION=$(node -p "require('./package.json').version")
                 echo "version=$VERSION" >> $GITHUB_OUTPUT
             
-            # Import GPG key for signed commits and verified release badge (✔)
-            - name: Import GPG key for Verified Releases
-              uses: crazy-max/ghaction-import-gpg@v6
-              with:
-                gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-                passphrase: ${{ secrets.PASSPHRASE }}
-                git_user_signingkey: true
-                git_commit_gpgsign: true
-
             - name: Semantic Release
               run: pnpm run semantic-release
               env:
-                  GH_TOKEN: ${{secrets.GH_TOKEN}}
-                  NPM_TOKEN: ${{secrets.NPM_TOKEN}}
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
                   NPM_CONFIG_PROVENANCE: true
-                  GIT_AUTHOR_NAME: ${{ github.actor }}
-                  GIT_AUTHOR_EMAIL: ${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com
-                  GIT_COMMITTER_NAME: ${{ github.actor }}
-                  GIT_COMMITTER_EMAIL: ${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com
+                  GIT_AUTHOR_NAME: github-actions[bot]
+                  GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+                  GIT_COMMITTER_NAME: github-actions[bot]
+                  GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
 
             # Get the new version from package.json after semantic-release
             - name: Get new version
