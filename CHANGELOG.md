@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file. See
 
 ## What's Changed
 
+* fix(ci): verify automated release signature flow ([bb0af4510b79ce15b1663a036cd3b316d89cc1f2](https://github.com/Nekzus/npm-sentinel-mcp/commit/bb0af4510b79ce15b1663a036cd3b316d89cc1f2))
+
+**Full Changelog**: https://github.com/Nekzus/npm-sentinel-mcp/compare/1.25.0-alpha.4...1.25.0-alpha.5
+
+## What's Changed
+
 * feat(config): add glama.json schema and update package.json files ([6cc139bb460f7ee3b6a81dcb6ae17d8522c2cf83](https://github.com/Nekzus/npm-sentinel-mcp/commit/6cc139bb460f7ee3b6a81dcb6ae17d8522c2cf83))
 
 **Full Changelog**: https://github.com/Nekzus/npm-sentinel-mcp/compare/1.25.0-alpha.3...1.25.0-alpha.4
