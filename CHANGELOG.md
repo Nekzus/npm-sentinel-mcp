@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## 1.25.0-alpha.7
+
+* fix(changelog): format release headers with version numbers ([6469b067286d14cc909b9226e247a5e99752956f](https://github.com/Nekzus/npm-sentinel-mcp/commit/6469b067286d14cc909b9226e247a5e99752956f))
+* chore(release): 1.25.0-alpha.6 [skip ci] ([f0436c6a930efc163f6ab880c402e12241e2c12c](https://github.com/Nekzus/npm-sentinel-mcp/commit/f0436c6a930efc163f6ab880c402e12241e2c12c))
+* chore(release): 1.25.0-alpha.6 [skip ci] ([f6892204b6f3834bcc983a62b65306cae11d7845](https://github.com/Nekzus/npm-sentinel-mcp/commit/f6892204b6f3834bcc983a62b65306cae11d7845))
+
+**Full Changelog**: https://github.com/Nekzus/npm-sentinel-mcp/compare/1.25.0-alpha.6...1.25.0-alpha.7
+
 ## 1.25.0-alpha.5
 
 * fix(ci): test verified release signature with signed commit ([eac0833d8cb8aef1c9f4eb82e9c489320bc33574](https://github.com/Nekzus/npm-sentinel-mcp/commit/eac0833d8cb8aef1c9f4eb82e9c489320bc33574))
