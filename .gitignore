@@ -8,6 +8,10 @@ dist/
 build/
 .smithery/
 
+# Internal Developer Documentation & Cheatsheets (Local only)
+docs/
+*.cheatsheet.md
+
 # Environment variables
 .env
 .env.local
