@@ -108,8 +108,8 @@
   "devDependencies": {
     "@biomejs/biome": "2.5.3",
     "@modelcontextprotocol/client": "^2.0.0",
+    "@semantic-release-extras/verified-git-commit": "^1.0.11",
     "@semantic-release/changelog": "6.0.3",
-    "@semantic-release/git": "10.0.1",
     "@semantic-release/github": "12.0.9",
     "@semantic-release/npm": "13.1.5",
     "@semantic-release/release-notes-generator": "14.1.1",

@@ -33,10 +33,9 @@
     ],
     "@semantic-release/npm",
     [
-      "@semantic-release/git",
+      "@semantic-release-extras/verified-git-commit",
       {
-        "assets": ["package.json", "CHANGELOG.md"],
-        "message": "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}"
+        "assets": ["package.json", "CHANGELOG.md"]
       }
     ],
     "@semantic-release/github"
