@@ -3,62 +3,44 @@
 All notable changes to this project will be documented in this file. See
 [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-## 1.25.0-alpha.7
+## [1.25.0-alpha.7](https://github.com/Nekzus/npm-sentinel-mcp/compare/1.25.0-alpha.6...1.25.0-alpha.7) (2026-07-30)
 
-* fix(changelog): format release headers with version numbers ([6469b067286d14cc909b9226e247a5e99752956f](https://github.com/Nekzus/npm-sentinel-mcp/commit/6469b067286d14cc909b9226e247a5e99752956f))
-* chore(release): 1.25.0-alpha.6 [skip ci] ([f0436c6a930efc163f6ab880c402e12241e2c12c](https://github.com/Nekzus/npm-sentinel-mcp/commit/f0436c6a930efc163f6ab880c402e12241e2c12c))
-* chore(release): 1.25.0-alpha.6 [skip ci] ([f6892204b6f3834bcc983a62b65306cae11d7845](https://github.com/Nekzus/npm-sentinel-mcp/commit/f6892204b6f3834bcc983a62b65306cae11d7845))
+### Bug Fixes
 
-**Full Changelog**: https://github.com/Nekzus/npm-sentinel-mcp/compare/1.25.0-alpha.6...1.25.0-alpha.7
+* **ci:** format release headers with version numbers ([6469b06](https://github.com/Nekzus/npm-sentinel-mcp/commit/6469b067286d14cc909b9226e247a5e99752956f))
 
-## 1.25.0-alpha.5
+## [1.25.0-alpha.6](https://github.com/Nekzus/npm-sentinel-mcp/compare/1.25.0-alpha.5...1.25.0-alpha.6) (2026-07-30)
 
-* fix(ci): test verified release signature with signed commit ([eac0833d8cb8aef1c9f4eb82e9c489320bc33574](https://github.com/Nekzus/npm-sentinel-mcp/commit/eac0833d8cb8aef1c9f4eb82e9c489320bc33574))
-* chore(release): 1.25.0-alpha.5 [skip ci] ([f91dc5dec16bf0ec28748fde809bd1f721ec9cf9](https://github.com/Nekzus/npm-sentinel-mcp/commit/f91dc5dec16bf0ec28748fde809bd1f721ec9cf9))
-* chore(release): 1.25.0-alpha.5 [skip ci] ([893941bb36ee2555446b019142e2fe1049c1db21](https://github.com/Nekzus/npm-sentinel-mcp/commit/893941bb36ee2555446b019142e2fe1049c1db21))
+### Bug Fixes
 
-**Full Changelog**: https://github.com/Nekzus/npm-sentinel-mcp/compare/1.25.0-alpha.5...1.25.0-alpha.6
+* **ci:** test verified release signature with signed commit ([eac0833](https://github.com/Nekzus/npm-sentinel-mcp/commit/eac0833d8cb8aef1c9f4eb82e9c489320bc33574))
 
-## What's Changed
+## [1.25.0-alpha.5](https://github.com/Nekzus/npm-sentinel-mcp/compare/1.25.0-alpha.4...1.25.0-alpha.5) (2026-07-29)
 
-* fix(ci): verify automated release signature flow ([bb0af4510b79ce15b1663a036cd3b316d89cc1f2](https://github.com/Nekzus/npm-sentinel-mcp/commit/bb0af4510b79ce15b1663a036cd3b316d89cc1f2))
+### Bug Fixes
 
-**Full Changelog**: https://github.com/Nekzus/npm-sentinel-mcp/compare/1.25.0-alpha.4...1.25.0-alpha.5
+* **ci:** verify automated release signature flow ([bb0af45](https://github.com/Nekzus/npm-sentinel-mcp/commit/bb0af4510b79ce15b1663a036cd3b316d89cc1f2))
 
-## 1.25.0-alpha.4
-
-* feat(config): add glama.json schema and update package.json files ([6cc139bb460f7ee3b6a81dcb6ae17d8522c2cf83](https://github.com/Nekzus/npm-sentinel-mcp/commit/6cc139bb460f7ee3b6a81dcb6ae17d8522c2cf83))
-
-**Full Changelog**: https://github.com/Nekzus/npm-sentinel-mcp/compare/1.25.0-alpha.3...1.25.0-alpha.4
-
-## 1.25.0-alpha.3
-
-* fix(ci): match semantic-release committer email with gpg key for verified releases in alpha ([b7d68ff977c8e3dfef75706fc0ff906b425cf820](https://github.com/Nekzus/npm-sentinel-mcp/commit/b7d68ff977c8e3dfef75706fc0ff906b425cf820))
-
-**Full Changelog**: https://github.com/Nekzus/npm-sentinel-mcp/compare/1.25.0-alpha.2...1.25.0-alpha.3
-
-## 1.25.0-alpha.2
-
-* fix(ci): add GIT_EDITOR to bypass prompt during signed tag creation in alpha ([0ea1f2108b56ccf29078795d76cc27bcd68126fa](https://github.com/Nekzus/npm-sentinel-mcp/commit/0ea1f2108b56ccf29078795d76cc27bcd68126fa))
-* fix(ci): use commit gpg signing for semantic-release compatibility in alpha ([2f04fa010f5e6f4a42b09edf0fe8f77266c8f63f](https://github.com/Nekzus/npm-sentinel-mcp/commit/2f04fa010f5e6f4a42b09edf0fe8f77266c8f63f))
-* chore(release): 1.25.0-alpha.2 [skip ci] ([a09aef79cd199d013d58630e1d59c573e70c15c6](https://github.com/Nekzus/npm-sentinel-mcp/commit/a09aef79cd199d013d58630e1d59c573e70c15c6))
-
-**Full Changelog**: https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.25.0-alpha.1...1.25.0-alpha.2
-
-## [1.25.0-alpha.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.24.1...v1.25.0-alpha.1) (2026-07-29)
-
-# Changelog
-
-All notable changes to this project will be documented in this file. See
-[Conventional Commits](https://conventionalcommits.org) for commit guidelines.
-
-# [1.19.0-alpha.25](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.24...v1.19.0-alpha.25) (2026-07-29)
-
+## [1.25.0-alpha.4](https://github.com/Nekzus/npm-sentinel-mcp/compare/1.25.0-alpha.3...1.25.0-alpha.4) (2026-07-29)
 
 ### Features
 
-* Dual-Era MCP (2025-11-25 and 2026-07-28) support via createMcpHandler ([989a4c5](https://github.com/Nekzus/npm-sentinel-mcp/commit/989a4c5f40f759384c44e1fe89062f91ab4f155a))
-* Dual-Era STDIO support via serveStdio in CLI entrypoint ([a5c4123](https://github.com/Nekzus/npm-sentinel-mcp/commit/a5c4123268be5c84aebc6941c3c124182e51a120))
+* **config:** add glama.json schema and update package.json files ([6cc139b](https://github.com/Nekzus/npm-sentinel-mcp/commit/6cc139bb460f7ee3b6a81dcb6ae17d8522c2cf83))
+
+## [1.25.0-alpha.3](https://github.com/Nekzus/npm-sentinel-mcp/compare/1.25.0-alpha.2...1.25.0-alpha.3) (2026-07-29)
+
+### Bug Fixes
+
+* **ci:** match semantic-release committer email with gpg key for verified releases in alpha ([b7d68ff](https://github.com/Nekzus/npm-sentinel-mcp/commit/b7d68ff977c8e3dfef75706fc0ff906b425cf820))
+
+## [1.25.0-alpha.2](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.25.0-alpha.1...1.25.0-alpha.2) (2026-07-29)
+
+### Bug Fixes
+
+* **ci:** add GIT_EDITOR to bypass prompt during signed tag creation in alpha ([0ea1f21](https://github.com/Nekzus/npm-sentinel-mcp/commit/0ea1f2108b56ccf29078795d76cc27bcd68126fa))
+* **ci:** use commit gpg signing for semantic-release compatibility in alpha ([2f04fa0](https://github.com/Nekzus/npm-sentinel-mcp/commit/2f04fa010f5e6f4a42b09edf0fe8f77266c8f63f))
+
+## [1.25.0-alpha.1](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.24.1...v1.25.0-alpha.1) (2026-07-29)
 
 # [1.19.0-alpha.24](https://github.com/Nekzus/npm-sentinel-mcp/compare/v1.19.0-alpha.23...v1.19.0-alpha.24) (2026-07-28)
 

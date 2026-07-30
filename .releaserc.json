@@ -9,18 +9,18 @@
         "preset": "conventionalcommits",
         "presetConfig": {
           "types": [
-            { "type": "feat", "section": "What's Changed" },
-            { "type": "fix", "section": "What's Changed" },
-            { "type": "chore", "section": "What's Changed" },
-            { "type": "docs", "section": "What's Changed" },
-            { "type": "style", "section": "What's Changed" },
-            { "type": "refactor", "section": "What's Changed" },
-            { "type": "perf", "section": "What's Changed" },
-            { "type": "test", "section": "What's Changed" }
+            { "type": "feat", "section": "Features" },
+            { "type": "fix", "section": "Bug Fixes" },
+            { "type": "perf", "section": "Performance Improvements" },
+            { "type": "revert", "section": "Reverts" },
+            { "type": "docs", "section": "Documentation" },
+            { "type": "style", "section": "Styles" },
+            { "type": "refactor", "section": "Code Refactoring" },
+            { "type": "test", "section": "Tests" },
+            { "type": "build", "section": "Build System" },
+            { "type": "ci", "section": "Continuous Integration", "hidden": true },
+            { "type": "chore", "hidden": true }
           ]
-        },
-        "writerOpts": {
-          "mainTemplate": "## {{version}}\n\n{{#each commitGroups}}\n{{#each commits}}\n* {{header}} {{#if @root.host}}([{{hash}}]({{ @root.host }}/{{ @root.owner }}/{{ @root.repository }}/commit/{{hash}})){{/if}}\n{{/each}}\n{{/each}}\n\n**Full Changelog**: {{host}}/{{owner}}/{{repository}}/compare/{{previousTag}}...{{currentTag}}"
         }
       }
     ],
