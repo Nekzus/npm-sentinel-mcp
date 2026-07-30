@@ -2,6 +2,10 @@
 .smithery/
 .smithery.yaml
 
+# Internal DevSecOps documentation (exclude from npm package)
+docs/
+*.cheatsheet.md
+
 # Development and build artifacts
 node_modules/
 *.log
