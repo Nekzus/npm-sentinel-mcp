@@ -1,5 +1,4 @@
 import { describe, expect, test } from 'vitest';
-import { PackageListSchema, SearchQuerySchema } from '../../src/schemas';
 import {
 	handleNpmAlternatives,
 	handleNpmChangelogAnalysis,
@@ -19,6 +18,7 @@ import {
 	handleNpmVersions,
 	handleNpmVulnerabilities,
 } from '../../index';
+import { PackageListSchema, SearchQuerySchema } from '../../src/schemas';
 
 describe('Security: Input Validation', () => {
 	const invalidInputs = [
