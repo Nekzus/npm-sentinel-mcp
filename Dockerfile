@@ -1,13 +1,13 @@
 # Multi-stage Dockerfile for @nekzus/mcp-server (NPM Sentinel MCP v2)
-# Optimized for minimal image size, security, and fast builds with pnpm & Node 22
+# Optimized for minimal image size, security, and fast builds with pnpm 11 & Node 22
 
 # ----- Stage 1: Builder -----
 FROM node:22-alpine AS builder
 
 WORKDIR /app
 
-# Enable Corepack for pnpm activation
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Enable Corepack and activate explicit pnpm 11 version
+RUN corepack enable && corepack prepare pnpm@11.17.0 --activate
 
 # Copy dependency manifests and TypeScript config first to leverage Docker Layer Caching
 COPY package.json pnpm-lock.yaml tsconfig.json ./
@@ -21,7 +21,7 @@ RUN pnpm install --frozen-lockfile --ignore-scripts
 # Copy source code and documentation assets
 COPY index.ts ./
 COPY src ./src
-COPY server.json smithery.yaml ./
+COPY server.json smithery.yaml glama.json ./
 COPY README.md LICENSE llms-full.txt ./
 
 # Compile TypeScript to JavaScript (dist/)
@@ -40,14 +40,14 @@ WORKDIR /app
 # Set environment to production
 ENV NODE_ENV=production
 
-# Enable Corepack for pnpm activation
-RUN corepack enable && corepack prepare pnpm@latest --activate
+# Enable Corepack and activate explicit pnpm 11 version
+RUN corepack enable && corepack prepare pnpm@11.17.0 --activate
 
 # Copy package manifests and compiled dist artifacts from builder stage
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/pnpm-lock.yaml ./
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/server.json ./
+COPY --from=builder /app/server.json /app/glama.json /app/smithery.yaml ./
 COPY --from=builder /app/README.md /app/LICENSE /app/llms-full.txt ./
 
 # Install production-only dependencies and prune pnpm store cache
