@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: GitHub Security Advisories (Private)
+    url: https://github.com/Nekzus/npm-sentinel-mcp/security/advisories/new
+    about: Report security vulnerabilities privately to maintainers.
+  - name: Security Policy & Guidelines
+    url: https://github.com/Nekzus/npm-sentinel-mcp/blob/main/SECURITY.md
+    about: Review our security model, Zod schema validation, and OWASP LLM01 prompt injection mitigations.

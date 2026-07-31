@@ -1,0 +1,86 @@
+name: Bug Report
+description: File a bug report to help us improve npm-sentinel-mcp.
+title: "[BUG]: "
+labels: ["bug", "needs-triage"]
+assignees: ["Nekzus"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug! Please ensure you have searched existing issues to avoid creating duplicates.
+
+  - type: input
+    id: summary
+    attributes:
+      label: Bug Summary
+      description: Provide a clear and concise summary of the bug.
+      placeholder: "e.g., npmCompare throws validation error on scope packages"
+    validations:
+      required: true
+
+  - type: textarea
+    id: current_behavior
+    attributes:
+      label: Current Behavior
+      description: Describe what is currently happening.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: Expected Behavior
+      description: Describe what you expected to happen.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps_to_reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: Provide clear, step-by-step instructions to reproduce the behavior.
+      placeholder: |
+        1. Call tool 'npmCompare' with input '...'
+        2. Inspect output
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs & Stack Traces
+      description: Paste any relevant error logs or output snippets here.
+      render: shell
+
+  - type: dropdown
+    id: mcp_client
+    attributes:
+      label: MCP Client / Host Environment
+      description: Select the MCP client or environment you are using to connect to npm-sentinel-mcp.
+      options:
+        - Claude Desktop
+        - Antigravity IDE / Gemini Agent
+        - Cursor / VS Code
+        - Continue.dev
+        - Custom MCP Client / Node.js API
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: System Environment
+      description: Specify Node.js version, OS, and package manager.
+      placeholder: "e.g., Node.js v22.10.0, Windows 11 / Ubuntu 24.04, pnpm v11.10.0"
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: I confirm this is not a confidential security vulnerability report.
+          required: true
+        - label: I have searched existing issues to ensure this bug is not already reported.
+          required: true
