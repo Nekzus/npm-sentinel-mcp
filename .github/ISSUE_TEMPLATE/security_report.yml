@@ -1,0 +1,24 @@
+name: Security Vulnerability Report
+description: Report a security vulnerability privately to the maintainers.
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > [!CAUTION]
+        > **DO NOT REPORT SECURITY VULNERABILITIES PUBLICLY**
+        > 
+        > Please do not submit security vulnerabilities in public GitHub issues. Public disclosure can expose users to risk before a fix is released.
+
+  - type: markdown
+    attributes:
+      value: |
+        ### How to Privately Report a Security Vulnerability
+
+        1. Open a **Private Draft Security Advisory**:
+           [Report a vulnerability on GitHub](https://github.com/Nekzus/npm-sentinel-mcp/security/advisories/new)
+        
+        2. Review our security policy and disclosure SLA:
+           [Read SECURITY.md](https://github.com/Nekzus/npm-sentinel-mcp/blob/main/SECURITY.md)
+
+        We acknowledge receipt of security vulnerability reports within 48 hours and coordinate a fix via a dedicated `hotfix/*` release branch.

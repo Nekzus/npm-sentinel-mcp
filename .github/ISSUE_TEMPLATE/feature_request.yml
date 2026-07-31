@@ -1,0 +1,65 @@
+name: Feature Request / Tool Proposal
+description: Suggest an idea or new MCP tool capability for npm-sentinel-mcp.
+title: "[FEAT]: "
+labels: ["enhancement", "proposal"]
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a new feature! Please describe your proposal clearly to help us evaluate its architecture and implementation.
+
+  - type: input
+    id: summary
+    attributes:
+      label: Feature Summary
+      description: Provide a clear and concise title for the proposed feature or new tool.
+      placeholder: "e.g., Add npmAuditSummary tool for batch vulnerability scanning"
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem_statement
+    attributes:
+      label: Problem Statement
+      description: Is your feature request related to a problem or limitation? Please describe it.
+      placeholder: "I am always frustrated when..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: Proposed Solution
+      description: Describe the solution or new MCP tool design (input parameters, JSON output schema).
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component_scope
+    attributes:
+      label: Component Scope
+      description: Select the primary component affected by this feature.
+      options:
+        - MCP Tool Handler (index.ts / src/tools/)
+        - Input Validation & Zod Schemas (src/schemas/)
+        - CI/CD & DevSecOps Workflows
+        - Repository Documentation & Governance
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Describe any alternative solutions or features you considered.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: I confirm this feature proposal follows Single Responsibility Principle (SRP).
+          required: true
+        - label: I have searched existing issues to ensure this idea has not been proposed before.
+          required: true
