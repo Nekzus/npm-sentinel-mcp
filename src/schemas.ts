@@ -22,43 +22,73 @@ export const NpmMaintainerSchema = z
 	})
 	.loose();
 
+export const NpmPersonSchema = z
+	.union([
+		z.string(),
+		z
+			.object({
+				name: z.string().optional(),
+				email: z.string().optional(),
+				url: z.string().optional(),
+			})
+			.loose(),
+	])
+	.optional();
+
+export const NpmLicenseSchema = z
+	.union([
+		z.string(),
+		z
+			.object({
+				type: z.string().optional(),
+				url: z.string().optional(),
+			})
+			.loose(),
+		z.array(z.any()),
+	])
+	.optional();
+
+export const NpmRepositorySchema = z
+	.union([
+		z.string(),
+		z
+			.object({
+				type: z.string().optional(),
+				url: z.string().optional(),
+				directory: z.string().optional(),
+			})
+			.loose(),
+	])
+	.optional();
+
+export const NpmBugsSchema = z
+	.union([
+		z.string(),
+		z
+			.object({
+				url: z.string().optional(),
+				email: z.string().optional(),
+			})
+			.loose(),
+	])
+	.optional();
+
 export const NpmPackageVersionSchema = z
 	.object({
 		name: z.string(),
 		version: z.string(),
 		description: z.string().optional(),
-		author: z
-			.union([
-				z.string(),
-				z
-					.object({
-						name: z.string().optional(),
-						email: z.string().optional(),
-						url: z.string().optional(),
-					})
-					.loose(),
-			])
-			.optional(),
-		license: z.string().optional(),
-		repository: z
-			.object({
-				type: z.string().optional(),
-				url: z.string().optional(),
-			})
-			.loose()
-			.optional(),
-		bugs: z
-			.object({
-				url: z.string().optional(),
-			})
-			.loose()
-			.optional(),
+		author: NpmPersonSchema,
+		license: NpmLicenseSchema,
+		repository: NpmRepositorySchema,
+		bugs: NpmBugsSchema,
 		homepage: z.string().optional(),
 		dependencies: z.record(z.string(), z.string()).optional(),
 		devDependencies: z.record(z.string(), z.string()).optional(),
 		peerDependencies: z.record(z.string(), z.string()).optional(),
 		types: z.string().optional(),
 		typings: z.string().optional(),
+		exports: z.any().optional(),
 		dist: z
 			.object({ shasum: z.string().optional(), tarball: z.string().optional() })
 			.loose()
@@ -72,19 +102,8 @@ export const NpmPackageInfoSchema = z
 		'dist-tags': z.record(z.string(), z.string()),
 		versions: z.record(z.string(), NpmPackageVersionSchema),
 		time: z.record(z.string(), z.string()).optional(),
-		repository: z
-			.object({
-				type: z.string().optional(),
-				url: z.string().optional(),
-			})
-			.loose()
-			.optional(),
-		bugs: z
-			.object({
-				url: z.string().optional(),
-			})
-			.loose()
-			.optional(),
+		repository: NpmRepositorySchema,
+		bugs: NpmBugsSchema,
 		homepage: z.string().optional(),
 		maintainers: z.array(NpmMaintainerSchema).optional(),
 	})
@@ -95,12 +114,13 @@ export const NpmPackageDataSchema = z
 		name: z.string(),
 		version: z.string(),
 		description: z.string().optional(),
-		license: z.string().optional(),
+		license: NpmLicenseSchema,
 		dependencies: z.record(z.string(), z.string()).optional(),
 		devDependencies: z.record(z.string(), z.string()).optional(),
 		peerDependencies: z.record(z.string(), z.string()).optional(),
 		types: z.string().optional(),
 		typings: z.string().optional(),
+		exports: z.any().optional(),
 	})
 	.loose();
 
@@ -169,16 +189,27 @@ export function isNpmPackageInfo(data: unknown): data is NpmPackageInfo {
 		(!('maintainers' in data) ||
 			(Array.isArray((data as NpmPackageInfo).maintainers) &&
 				((data as NpmPackageInfo).maintainers?.every(
-					(m) =>
-						typeof m === 'object' &&
-						m !== null &&
-						'name' in m &&
-						'email' in m &&
-						typeof m.name === 'string' &&
-						typeof m.email === 'string',
+					(m) => typeof m === 'object' && m !== null && 'name' in m && typeof m.name === 'string',
 				) ??
 					true)))
 	);
+}
+
+export function isNpmPackageVersionData(
+	data: unknown,
+): data is z.infer<typeof NpmPackageVersionSchema> {
+	try {
+		const result = NpmPackageVersionSchema.safeParse(data);
+		if (!result.success) {
+			console.error(
+				'isNpmPackageVersionData validation failed:',
+				JSON.stringify(result.error.issues, null, 2),
+			);
+		}
+		return result.success;
+	} catch {
+		return false;
+	}
 }
 
 export function isNpmPackageData(data: unknown): data is z.infer<typeof NpmPackageDataSchema> {
@@ -229,3 +260,5 @@ export function isValidNpmPackageName(name: string): boolean {
 		!name.startsWith('.')
 	);
 }
+
+export * from './utils/normalize-package.js';
