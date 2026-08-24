@@ -8,6 +8,13 @@ import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import fetch from 'node-fetch';
 import { z } from 'zod';
 import createServer, { createMcpServer } from './src/server.js';
+import {
+	extractAuthorString,
+	extractBugsUrl,
+	extractLicenseString,
+	extractRepositoryUrl,
+	extractTypesPath,
+} from './src/utils/normalize-package.js';
 import { needsVersionResolution, resolvePackageVersion } from './src/utils/version-resolver.js';
 
 // Cache configuration
@@ -17,113 +24,6 @@ export let NPM_REGISTRY_URL = (
 
 export function setNpmRegistryUrl(url: string): void {
 	NPM_REGISTRY_URL = url.replace(/\/$/, '');
-}
-
-// Cache configuration
-const CACHE_TTL_SHORT = 5 * 60 * 1000; // 5 minutes
-const CACHE_TTL_MEDIUM = 60 * 60 * 1000; // 1 hour
-const CACHE_TTL_LONG = 6 * 60 * 60 * 1000; // 6 hours
-const CACHE_TTL_VERY_LONG = 24 * 60 * 60 * 1000; // 24 hours
-const MAX_CACHE_SIZE = 500; // Max number of items in cache
-
-async function resolveVersionIfShorthand(name: string, version: string): Promise<string> {
-	if (!needsVersionResolution(version)) {
-		return version;
-	}
-	const cacheKey = generateCacheKey('abbreviatedPackument', name);
-	let packument = cacheGet<any>(cacheKey);
-	if (!packument) {
-		try {
-			const res = await fetchWithRetry(`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}`, {
-				headers: { Accept: 'application/vnd.npm.install-v1+json' },
-			});
-			if (res.ok) {
-				packument = await res.json();
-				cacheSet(cacheKey, packument, CACHE_TTL_SHORT);
-			}
-		} catch {
-			// Ignore error and fall back to original version
-		}
-	}
-	if (packument) {
-		const resolved = resolvePackageVersion(packument, version);
-		if (resolved) return resolved;
-	}
-	return version;
-}
-
-interface CacheEntry<T> {
-	data: T;
-	expiresAt: number;
-}
-
-const apiCache = new Map<string, CacheEntry<any>>();
-let currentLockfileHash: string | null = null;
-
-function getLockfileHash(): string | null {
-	const lockfiles = ['pnpm-lock.yaml', 'package-lock.json', 'yarn.lock'];
-	for (const lockfile of lockfiles) {
-		const fullPath = path.join(process.cwd(), lockfile);
-		if (fs.existsSync(fullPath)) {
-			try {
-				const content = fs.readFileSync(fullPath);
-				return crypto.createHash('md5').update(content).digest('hex');
-			} catch (e) {
-				console.error(`Error reading lockfile ${lockfile}:`, e);
-			}
-		}
-	}
-	return null;
-}
-
-// Initialize hash
-currentLockfileHash = getLockfileHash();
-
-function checkCacheInvalidation() {
-	const newHash = getLockfileHash();
-	if (newHash !== currentLockfileHash) {
-		console.error('[Cache] Lockfile changed, invalidating all cache entries.');
-		apiCache.clear();
-		currentLockfileHash = newHash;
-	}
-}
-
-function generateCacheKey(
-	toolName: string,
-	...args: (string | number | boolean | undefined | null)[]
-): string {
-	// Simple key generation, ensure consistent order and stringification of args
-	return `${toolName}:${args.map((arg) => String(arg)).join(':')}`;
-}
-
-function cacheGet<T>(key: string): T | undefined {
-	// Check for global invalidation first
-	checkCacheInvalidation();
-
-	const entry = apiCache.get(key);
-	if (entry && entry.expiresAt > Date.now()) {
-		return entry.data as T;
-	}
-	if (entry && entry.expiresAt <= Date.now()) {
-		apiCache.delete(key); // Remove stale entry
-	}
-	return undefined;
-}
-
-function cacheSet<T>(key: string, value: T, ttlMilliseconds: number): void {
-	if (ttlMilliseconds <= 0) return; // Do not cache if TTL is zero or negative
-
-	const expiresAt = Date.now() + ttlMilliseconds;
-	apiCache.set(key, { data: value, expiresAt });
-
-	// Basic FIFO eviction strategy if cache exceeds max size
-	if (apiCache.size > MAX_CACHE_SIZE) {
-		// To make it FIFO, we need to ensure Map iteration order is insertion order (which it is)
-		const oldestKey = apiCache.keys().next().value;
-		if (oldestKey) {
-			apiCache.delete(oldestKey);
-		}
-	}
 }
 
 // HTTP wrapper configuration
@@ -205,6 +105,113 @@ export async function fetchWithRetry(
 	}
 }
 
+// Cache configuration
+const CACHE_TTL_SHORT = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_MEDIUM = 60 * 60 * 1000; // 1 hour
+const CACHE_TTL_LONG = 6 * 60 * 60 * 1000; // 6 hours
+const CACHE_TTL_VERY_LONG = 24 * 60 * 60 * 1000; // 24 hours
+const MAX_CACHE_SIZE = 500; // Max number of items in cache
+
+interface CacheEntry<T> {
+	data: T;
+	expiresAt: number;
+}
+
+const apiCache = new Map<string, CacheEntry<any>>();
+let currentLockfileHash: string | null = null;
+
+function getLockfileHash(): string | null {
+	const lockfiles = ['pnpm-lock.yaml', 'package-lock.json', 'yarn.lock'];
+	for (const lockfile of lockfiles) {
+		const fullPath = path.join(process.cwd(), lockfile);
+		if (fs.existsSync(fullPath)) {
+			try {
+				const content = fs.readFileSync(fullPath);
+				return crypto.createHash('md5').update(content).digest('hex');
+			} catch (e) {
+				console.error(`Error reading lockfile ${lockfile}:`, e);
+			}
+		}
+	}
+	return null;
+}
+
+// Initialize hash
+currentLockfileHash = getLockfileHash();
+
+function checkCacheInvalidation() {
+	const newHash = getLockfileHash();
+	if (newHash !== currentLockfileHash) {
+		console.error('[Cache] Lockfile changed, invalidating all cache entries.');
+		apiCache.clear();
+		currentLockfileHash = newHash;
+	}
+}
+
+function generateCacheKey(
+	toolName: string,
+	...args: (string | number | boolean | undefined | null)[]
+): string {
+	// Simple key generation, ensure consistent order and stringification of args
+	return `${toolName}:${args.map((arg) => String(arg)).join(':')}`;
+}
+
+function cacheGet<T>(key: string): T | undefined {
+	// Check for global invalidation first
+	checkCacheInvalidation();
+
+	const entry = apiCache.get(key);
+	if (entry && entry.expiresAt > Date.now()) {
+		return entry.data as T;
+	}
+	if (entry && entry.expiresAt <= Date.now()) {
+		apiCache.delete(key); // Remove stale entry
+	}
+	return undefined;
+}
+
+function cacheSet<T>(key: string, value: T, ttlMilliseconds: number): void {
+	if (ttlMilliseconds <= 0) return; // Do not cache if TTL is zero or negative
+
+	const expiresAt = Date.now() + ttlMilliseconds;
+	apiCache.set(key, { data: value, expiresAt });
+
+	// Basic FIFO eviction strategy if cache exceeds max size
+	if (apiCache.size > MAX_CACHE_SIZE) {
+		// To make it FIFO, we need to ensure Map iteration order is insertion order (which it is)
+		const oldestKey = apiCache.keys().next().value;
+		if (oldestKey) {
+			apiCache.delete(oldestKey);
+		}
+	}
+}
+
+async function resolveVersionIfShorthand(name: string, version: string): Promise<string> {
+	if (!needsVersionResolution(version)) {
+		return version;
+	}
+	const cacheKey = generateCacheKey('abbreviatedPackument', name);
+	let packument = cacheGet<any>(cacheKey);
+	if (!packument) {
+		try {
+			const res = await fetchWithRetry(`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}`, {
+				headers: { Accept: 'application/vnd.npm.install-v1+json' },
+			});
+			if (res.ok) {
+				packument = await res.json();
+				cacheSet(cacheKey, packument, CACHE_TTL_SHORT);
+			}
+		} catch {
+			// Ignore error and fall back to original version
+		}
+	}
+	if (packument) {
+		const resolved = resolvePackageVersion(packument, version);
+		if (resolved) return resolved;
+	}
+	return version;
+}
+
 // Zod schemas for npm package data
 export const NpmMaintainerSchema = z
 	.object({
@@ -214,43 +221,73 @@ export const NpmMaintainerSchema = z
 	})
 	.loose();
 
+export const NpmPersonSchema = z
+	.union([
+		z.string(),
+		z
+			.object({
+				name: z.string().optional(),
+				email: z.string().optional(),
+				url: z.string().optional(),
+			})
+			.loose(),
+	])
+	.optional();
+
+export const NpmLicenseSchema = z
+	.union([
+		z.string(),
+		z
+			.object({
+				type: z.string().optional(),
+				url: z.string().optional(),
+			})
+			.loose(),
+		z.array(z.any()),
+	])
+	.optional();
+
+export const NpmRepositorySchema = z
+	.union([
+		z.string(),
+		z
+			.object({
+				type: z.string().optional(),
+				url: z.string().optional(),
+				directory: z.string().optional(),
+			})
+			.loose(),
+	])
+	.optional();
+
+export const NpmBugsSchema = z
+	.union([
+		z.string(),
+		z
+			.object({
+				url: z.string().optional(),
+				email: z.string().optional(),
+			})
+			.loose(),
+	])
+	.optional();
+
 export const NpmPackageVersionSchema = z
 	.object({
 		name: z.string(),
 		version: z.string(),
 		description: z.string().optional(),
-		author: z
-			.union([
-				z.string(),
-				z
-					.object({
-						name: z.string().optional(),
-						email: z.string().optional(),
-						url: z.string().optional(),
-					})
-					.loose(),
-			])
-			.optional(),
-		license: z.string().optional(),
-		repository: z
-			.object({
-				type: z.string().optional(),
-				url: z.string().optional(),
-			})
-			.loose()
-			.optional(),
-		bugs: z
-			.object({
-				url: z.string().optional(),
-			})
-			.loose()
-			.optional(),
+		author: NpmPersonSchema,
+		license: NpmLicenseSchema,
+		repository: NpmRepositorySchema,
+		bugs: NpmBugsSchema,
 		homepage: z.string().optional(),
 		dependencies: z.record(z.string(), z.string()).optional(),
 		devDependencies: z.record(z.string(), z.string()).optional(),
 		peerDependencies: z.record(z.string(), z.string()).optional(),
 		types: z.string().optional(),
 		typings: z.string().optional(),
+		exports: z.any().optional(),
 		dist: z
 			.object({ shasum: z.string().optional(), tarball: z.string().optional() })
 			.loose()
@@ -264,19 +301,8 @@ export const NpmPackageInfoSchema = z
 		'dist-tags': z.record(z.string(), z.string()),
 		versions: z.record(z.string(), NpmPackageVersionSchema),
 		time: z.record(z.string(), z.string()).optional(),
-		repository: z
-			.object({
-				type: z.string().optional(),
-				url: z.string().optional(),
-			})
-			.loose()
-			.optional(),
-		bugs: z
-			.object({
-				url: z.string().optional(),
-			})
-			.loose()
-			.optional(),
+		repository: NpmRepositorySchema,
+		bugs: NpmBugsSchema,
 		homepage: z.string().optional(),
 		maintainers: z.array(NpmMaintainerSchema).optional(),
 	})
@@ -287,12 +313,13 @@ export const NpmPackageDataSchema = z
 		name: z.string(),
 		version: z.string(),
 		description: z.string().optional(),
-		license: z.string().optional(),
+		license: NpmLicenseSchema,
 		dependencies: z.record(z.string(), z.string()).optional(),
 		devDependencies: z.record(z.string(), z.string()).optional(),
 		peerDependencies: z.record(z.string(), z.string()).optional(),
 		types: z.string().optional(),
 		typings: z.string().optional(),
+		exports: z.any().optional(),
 	})
 	.loose();
 
@@ -365,13 +392,7 @@ function isNpmPackageInfo(data: unknown): data is NpmPackageInfo {
 		(!('maintainers' in data) ||
 			(Array.isArray((data as NpmPackageInfo).maintainers) &&
 				((data as NpmPackageInfo).maintainers?.every(
-					(m) =>
-						typeof m === 'object' &&
-						m !== null &&
-						'name' in m &&
-						'email' in m &&
-						typeof m.name === 'string' &&
-						typeof m.email === 'string',
+					(m) => typeof m === 'object' && m !== null && 'name' in m && typeof m.name === 'string',
 				) ??
 					true)))
 	);
@@ -514,7 +535,9 @@ export async function handleNpmVersions(args: {
 					};
 				}
 				try {
-					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}`);
+					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}`, {
+						headers: { Accept: 'application/vnd.npm.install-v1+json' },
+					});
 
 					if (!response.ok) {
 						return {
@@ -528,7 +551,7 @@ export async function handleNpmVersions(args: {
 					}
 
 					const data = await response.json();
-					if (!isNpmPackageInfo(data)) {
+					if (!data || typeof data !== 'object' || (!data.versions && !data['dist-tags'])) {
 						return {
 							packageInput: pkgInput,
 							packageName: name,
@@ -540,8 +563,9 @@ export async function handleNpmVersions(args: {
 					}
 
 					const allVersions = Object.keys(data.versions || {});
-					const tags = data['dist-tags'] || {};
-					const latestVersionTag = tags.latest || null;
+					const tags = (data['dist-tags'] as Record<string, string>) || {};
+					const latestVersionTag =
+						tags.latest || (allVersions.length > 0 ? allVersions[allVersions.length - 1] : null);
 
 					const resultData = {
 						allVersions,
@@ -666,7 +690,9 @@ export async function handleNpmLatest(args: {
 
 				try {
 					const resolvedVersion = await resolveVersionIfShorthand(name, versionTag);
-					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${resolvedVersion}`);
+					const response = await fetchWithRetry(
+						`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}/${encodeURIComponent(resolvedVersion)}`,
+					);
 
 					if (!response.ok) {
 						let errorMsg = `Failed to fetch package version: ${response.status} ${response.statusText}`;
@@ -702,17 +728,16 @@ export async function handleNpmLatest(args: {
 						name: data.name,
 						version: data.version,
 						description: data.description || null,
-						author:
-							(typeof data.author === 'string' ? data.author : (data.author as any)?.name) || null,
-						license: data.license || null,
+						author: extractAuthorString(data.author),
+						license: extractLicenseString(data.license),
 						homepage: data.homepage || null,
-						repositoryUrl: data.repository?.url || null,
-						bugsUrl: data.bugs?.url || null,
+						repositoryUrl: extractRepositoryUrl(data.repository),
+						bugsUrl: extractBugsUrl(data.bugs),
 						dependenciesCount: Object.keys(data.dependencies || {}).length,
 						devDependenciesCount: Object.keys(data.devDependencies || {}).length,
 						peerDependenciesCount: Object.keys(data.peerDependencies || {}).length,
 						dist: data.dist || null,
-						types: data.types || data.typings || null,
+						types: extractTypesPath(data),
 					};
 
 					cacheSet(cacheKey, versionData, CACHE_TTL_MEDIUM);
@@ -822,7 +847,9 @@ export async function handleNpmDeps(args: {
 
 				try {
 					const resolvedVersion = await resolveVersionIfShorthand(name, version);
-					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${resolvedVersion}`);
+					const response = await fetchWithRetry(
+						`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}/${encodeURIComponent(resolvedVersion)}`,
+					);
 
 					if (!response.ok) {
 						return {
@@ -973,7 +1000,9 @@ export async function handleNpmTypes(args: {
 
 				try {
 					const resolvedVersion = await resolveVersionIfShorthand(name, version);
-					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${resolvedVersion}`);
+					const response = await fetchWithRetry(
+						`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}/${encodeURIComponent(resolvedVersion)}`,
+					);
 
 					if (!response.ok) {
 						return {
@@ -989,8 +1018,8 @@ export async function handleNpmTypes(args: {
 					const actualVersion = mainPackageData.version || version; // Use version from response
 					const finalPackageName = `${name}@${actualVersion}`;
 
-					const hasBuiltInTypes = Boolean(mainPackageData.types || mainPackageData.typings);
-					const typesPath = mainPackageData.types || mainPackageData.typings || null;
+					const typesPath = extractTypesPath(mainPackageData);
+					const hasBuiltInTypes = Boolean(typesPath);
 
 					const typesPackageName = `@types/${name.replace('@', '').replace('/', '__')}`;
 					let typesPackageInfo: any = {
@@ -1891,7 +1920,7 @@ export async function handleNpmCompare(args: {
 					const resolvedVersion = await resolveVersionIfShorthand(name, versionTag);
 					// Fetch package version details from registry
 					const pkgResponse = await fetchWithRetry(
-						`${NPM_REGISTRY_URL}/${name}/${resolvedVersion}`,
+						`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}/${encodeURIComponent(resolvedVersion)}`,
 					);
 					if (!pkgResponse.ok) {
 						throw new Error(
@@ -1907,7 +1936,7 @@ export async function handleNpmCompare(args: {
 					let monthlyDownloads: number | null = null;
 					try {
 						const downloadsResponse = await fetchWithRetry(
-							`https://api.npmjs.org/downloads/point/last-month/${name}`,
+							`https://api.npmjs.org/downloads/point/last-month/${encodeURIComponent(name)}`,
 						);
 						if (downloadsResponse.ok) {
 							const downloadsData = await downloadsResponse.json();
@@ -1923,7 +1952,9 @@ export async function handleNpmCompare(args: {
 					// Need to fetch the full package info to get to the 'time' field for specific version
 					let publishDate: string | null = null;
 					try {
-						const fullPkgInfoResponse = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}`);
+						const fullPkgInfoResponse = await fetchWithRetry(
+							`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}`,
+						);
 						if (fullPkgInfoResponse.ok) {
 							const fullPkgInfo = await fullPkgInfoResponse.json();
 							if (isNpmPackageInfo(fullPkgInfo) && fullPkgInfo.time) {
@@ -1938,13 +1969,13 @@ export async function handleNpmCompare(args: {
 						name: pkgData.name,
 						version: pkgData.version,
 						description: pkgData.description || null,
-						license: pkgData.license || null,
+						license: extractLicenseString(pkgData.license),
 						dependenciesCount: Object.keys(pkgData.dependencies || {}).length,
 						devDependenciesCount: Object.keys(pkgData.devDependencies || {}).length,
 						peerDependenciesCount: Object.keys(pkgData.peerDependencies || {}).length,
 						monthlyDownloads: monthlyDownloads,
 						publishDate: publishDate,
-						repositoryUrl: pkgData.repository?.url || null,
+						repositoryUrl: extractRepositoryUrl(pkgData.repository),
 					};
 
 					cacheSet(cacheKey, comparisonData, CACHE_TTL_MEDIUM);
@@ -2032,7 +2063,7 @@ export async function getLocalPackageMetrics(
 	if (cached) return cached;
 
 	// 1. Fetch full packument from registry
-	const registryResponse = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}`);
+	const registryResponse = await fetchWithRetry(`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}`);
 	if (!registryResponse.ok) {
 		throw new Error(`Package ${name} not found on registry.`);
 	}
@@ -2048,7 +2079,10 @@ export async function getLocalPackageMetrics(
 
 	const versionData = packageInfo.versions[latestVersion];
 	const hasTypes = Boolean(
-		versionData.types || versionData.typings || versionData.dependencies?.[`@types/${name}`],
+		versionData.types ||
+			versionData.typings ||
+			versionData.dependencies?.[`@types/${name}`] ||
+			extractTypesPath(versionData),
 	);
 	const hasReadme = Boolean(versionData.readme || packageInfo.readme);
 	const dependencyCount = Object.keys(versionData.dependencies || {}).length;
@@ -2057,7 +2091,7 @@ export async function getLocalPackageMetrics(
 	let downloadsLastMonth = 0;
 	try {
 		const downloadsResponse = await fetchWithRetry(
-			`https://api.npmjs.org/downloads/point/last-month/${name}`,
+			`https://api.npmjs.org/downloads/point/last-month/${encodeURIComponent(name)}`,
 		);
 		if (downloadsResponse.ok) {
 			const dlData = await downloadsResponse.json();
@@ -2077,7 +2111,8 @@ export async function getLocalPackageMetrics(
 	};
 	let scorecard: LocalScoreResult['scorecard'];
 
-	const repoUrl = versionData.repository?.url || packageInfo.repository?.url;
+	const repoUrl =
+		extractRepositoryUrl(versionData.repository) || extractRepositoryUrl(packageInfo.repository);
 	if (repoUrl?.includes('github.com')) {
 		const githubMatch = repoUrl.match(/github\.com[:/]([^/]+)\/([^/.]+)/);
 		if (githubMatch) {
@@ -2462,7 +2497,7 @@ export async function handleNpmMaintainers(args: {
 				}
 
 				try {
-					const response = await fetch(`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}`);
+					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}`);
 
 					if (!response.ok) {
 						let errorMsg = `Failed to fetch package info: ${response.status} ${response.statusText}`;
@@ -3110,7 +3145,9 @@ export async function handleNpmLicenseCompatibility(args: {
 
 				try {
 					const resolvedVersion = await resolveVersionIfShorthand(name, versionTag);
-					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/${resolvedVersion}`);
+					const response = await fetchWithRetry(
+						`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}/${encodeURIComponent(resolvedVersion)}`,
+					);
 					if (!response.ok) {
 						let errorMsg = `Failed to fetch package info: ${response.status} ${response.statusText}`;
 						if (response.status === 404) {
@@ -3140,8 +3177,10 @@ export async function handleNpmLicenseCompatibility(args: {
 						};
 					}
 
+					const normalizedLicense = extractLicenseString(versionData.license) || 'UNKNOWN';
+
 					const licenseInfoToCache = {
-						license: versionData.license || 'UNKNOWN', // Default to UNKNOWN if null/undefined
+						license: normalizedLicense,
 						versionFetched: versionData.version,
 					};
 					cacheSet(cacheKey, licenseInfoToCache, CACHE_TTL_VERY_LONG);
@@ -3154,7 +3193,7 @@ export async function handleNpmLicenseCompatibility(args: {
 						status: 'success' as const,
 						error: null,
 						data: {
-							license: versionData.license || 'UNKNOWN', // Default to UNKNOWN if null/undefined
+							license: normalizedLicense,
 						},
 						message: `Successfully fetched license info for ${name}@${versionData.version}.`,
 					};
@@ -3312,7 +3351,9 @@ export async function handleNpmRepoStats(args: {
 				}
 
 				try {
-					const npmResponse = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}/latest`);
+					const npmResponse = await fetchWithRetry(
+						`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}/latest`,
+					);
 					if (!npmResponse.ok) {
 						const errorData = {
 							packageInput: pkgInput,
@@ -3338,7 +3379,7 @@ export async function handleNpmRepoStats(args: {
 						return errorData;
 					}
 
-					const repoUrl = npmData.repository?.url;
+					const repoUrl = extractRepositoryUrl(npmData.repository);
 					if (!repoUrl) {
 						const resultNoRepo = {
 							packageInput: pkgInput,
@@ -3805,7 +3846,9 @@ export async function handleNpmChangelogAnalysis(args: {
 				}
 
 				try {
-					const npmResponse = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}`);
+					const npmResponse = await fetchWithRetry(
+						`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}`,
+					);
 					if (!npmResponse.ok) {
 						const errorResult = {
 							packageInput: pkgInput,
@@ -3832,7 +3875,7 @@ export async function handleNpmChangelogAnalysis(args: {
 						return errorResult; // Do not cache this type of error
 					}
 
-					const repositoryUrl = npmData.repository?.url;
+					const repositoryUrl = extractRepositoryUrl(npmData.repository);
 					if (!repositoryUrl) {
 						const resultNoRepo = {
 							packageInput: pkgInput,
@@ -4407,7 +4450,9 @@ async function main() {
 }
 
 // Type guard for NpmPackageVersionSchema
-function isNpmPackageVersionData(data: unknown): data is z.infer<typeof NpmPackageVersionSchema> {
+export function isNpmPackageVersionData(
+	data: unknown,
+): data is z.infer<typeof NpmPackageVersionSchema> {
 	try {
 		const result = NpmPackageVersionSchema.safeParse(data);
 		if (!result.success) {
