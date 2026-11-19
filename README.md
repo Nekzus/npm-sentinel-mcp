@@ -2,7 +2,6 @@
 
 <div align="center">
 
-[![smithery badge](https://smithery.ai/badge/@Nekzus/npm-sentinel-mcp)](https://smithery.ai/server/@Nekzus/npm-sentinel-mcp)
 [![Github Workflow](https://github.com/nekzus/NPM-Sentinel-MCP/actions/workflows/publish.yml/badge.svg?event=push)](https://github.com/Nekzus/npm-sentinel-mcp/actions/workflows/publish.yml)
 [![npm version](https://img.shields.io/npm/v/@nekzus/mcp-server.svg)](https://www.npmjs.com/package/@nekzus/mcp-server)
 [![npm-month](https://img.shields.io/npm/dm/@nekzus/mcp-server.svg)](https://www.npmjs.com/package/@nekzus/mcp-server)
@@ -64,7 +63,7 @@ To ensure data accuracy while maintaining high performance:
 This MCP server features native **Dual-Era Protocol Compatibility**, seamlessly serving both modern MCP v2 clients (`2026-07-28`) and legacy MCP v1 clients (`2025-11-25`) out of the box across both **STDIO** and **Streamable HTTP** transports:
 
 - **STDIO Mode (`npx @nekzus/mcp-server`)**: Powered by `serveStdio({ legacy: "serve" })`. Handles modern `server/discover` probes sessionlessly and conjoins seamlessly with legacy `initialize` handshakes for local execution (Claude Desktop, Cursor, Docker).
-- **Streamable HTTP / SSE Mode (`@nekzus/mcp-server/http`)**: Powered by `createMcpHandler({ legacy: "stateless" })`. Designed for serverless and web-standard runtimes (Cloudflare Workers, Hono, Express, Vercel API Routes, Smithery.ai).
+- **Streamable HTTP / SSE Mode (`@nekzus/mcp-server/http`)**: Powered by `createMcpHandler({ legacy: "stateless" })`. Designed for serverless and web-standard runtimes (Cloudflare Workers, Hono, Express, Vercel API Routes).
 
 **Example: Mounting HTTP Handler (Cloudflare Workers / Hono / Express)**
 ```typescript
@@ -90,7 +89,7 @@ pnpm run build
 # Start STDIO server (Dual-Era)
 pnpm run start
 
-# Development server with Smithery CLI playground
+# Development server
 pnpm run dev
 
 # Run full unit and integration test suite (238 tests)
@@ -136,19 +135,6 @@ Add this to your `claude_desktop_config.json`:
 - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - Linux: `~/.config/Claude/claude_desktop_config.json`
-
-### Smithery.ai Deployment
-
-```json
-{
-  "mcpServers": {
-    "npm-sentinel": {
-      "type": "http",
-      "url": "https://smithery.ai/server/@Nekzus/npm-sentinel-mcp"
-    }
-  }
-}
-```
 
 ### Docker Usage
 
