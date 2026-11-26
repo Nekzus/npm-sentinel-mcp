@@ -142,4 +142,27 @@ describe('fetchWithRetry', () => {
 		expect(fetchMock).toHaveBeenCalledTimes(2);
 		expect(response.status).toBe(200);
 	});
+
+	test('should abort hanging request when timeoutMs is exceeded', async () => {
+		const { fetchWithRetry } = await import('../../index');
+
+		fetchMock.mockImplementation((_url: string, opts: { signal?: AbortSignal }) => {
+			return new Promise((_resolve, reject) => {
+				if (opts?.signal) {
+					opts.signal.addEventListener('abort', () => {
+						reject(new DOMException('The operation was aborted', 'AbortError'));
+					});
+				}
+			});
+		});
+
+		await expect(
+			fetchWithRetry(
+				'https://example.com/slow',
+				{},
+				{ maxRetries: 0, skipThrottle: true, timeoutMs: 30 },
+			),
+		).rejects.toThrow(/aborted/i);
+		expect(fetchMock).toHaveBeenCalledTimes(1);
+	});
 });

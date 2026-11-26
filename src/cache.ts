@@ -13,6 +13,9 @@ export interface CacheEntry<T> {
 }
 
 export const apiCache = new Map<string, CacheEntry<any>>();
+let currentLockfilePath: string | null = null;
+let currentLockfileMtimeMs: number | null = null;
+let currentLockfileSize: number | null = null;
 let currentLockfileHash: string | null = null;
 
 export function getLockfileHash(): string | null {
@@ -21,13 +24,34 @@ export function getLockfileHash(): string | null {
 		const fullPath = path.join(process.cwd(), lockfile);
 		if (fs.existsSync(fullPath)) {
 			try {
+				const stat = fs.statSync(fullPath);
+				if (
+					stat &&
+					typeof stat.mtimeMs === 'number' &&
+					typeof stat.size === 'number' &&
+					fullPath === currentLockfilePath &&
+					stat.mtimeMs === currentLockfileMtimeMs &&
+					stat.size === currentLockfileSize &&
+					currentLockfileHash !== null
+				) {
+					return currentLockfileHash;
+				}
 				const content = fs.readFileSync(fullPath);
-				return crypto.createHash('md5').update(content).digest('hex');
+				const hash = crypto.createHash('md5').update(content).digest('hex');
+				if (stat && typeof stat.mtimeMs === 'number' && typeof stat.size === 'number') {
+					currentLockfilePath = fullPath;
+					currentLockfileMtimeMs = stat.mtimeMs;
+					currentLockfileSize = stat.size;
+				}
+				return hash;
 			} catch (e) {
 				console.error(`Error reading lockfile ${lockfile}:`, e);
 			}
 		}
 	}
+	currentLockfilePath = null;
+	currentLockfileMtimeMs = null;
+	currentLockfileSize = null;
 	return null;
 }
 
