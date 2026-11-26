@@ -17,7 +17,7 @@ body:
 
         1. Open a **Private Draft Security Advisory**:
            [Report a vulnerability on GitHub](https://github.com/Nekzus/npm-sentinel-mcp/security/advisories/new)
-        
+
         2. Review our security policy and disclosure SLA:
            [Read SECURITY.md](https://github.com/Nekzus/npm-sentinel-mcp/blob/main/SECURITY.md)
 

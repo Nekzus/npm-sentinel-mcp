@@ -21,6 +21,7 @@ To maintain supply chain integrity and code quality, all contributors must adher
 ## 2. Development Workflow
 
 ### Step 1: Clone and Install
+
 ```bash
 git clone https://github.com/Nekzus/npm-sentinel-mcp.git
 cd npm-sentinel-mcp
@@ -28,7 +29,9 @@ pnpm install
 ```
 
 ### Step 2: Create a Feature Branch
+
 Always branch off the `alpha` integration branch for development:
+
 ```bash
 git checkout alpha
 git pull origin alpha
@@ -36,7 +39,9 @@ git checkout -b feat/my-new-mcp-tool
 ```
 
 ### Step 3: Local Verification
+
 Before opening a Pull Request, verify that all linting, formatting, and unit tests pass cleanly:
+
 ```bash
 pnpm run lint
 pnpm run test
@@ -44,4 +49,5 @@ pnpm run build:stdio
 ```
 
 ### Step 4: Submit a Pull Request
+
 Push your branch to GitHub and open a Pull Request targeting the `alpha` branch. Fill out the PR template checklist completely.
