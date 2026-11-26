@@ -41,6 +41,7 @@ This server implements **Defense-in-Depth** controls aligned with OWASP LLM01:20
 5. **Prototype Pollution Protection**: Enforces `Object.hasOwn()` checks on dictionary lookups (blocking reserved properties like `constructor` and `__proto__`).
 
 To ensure data accuracy while maintaining high performance:
+
 - **Automatic Invalidation**: The cache is automatically invalidated whenever `pnpm-lock.yaml`, `package-lock.json`, or `yarn.lock` changes in your workspace.
 - **Force Refresh**: All tools accept an optional `ignoreCache: true` parameter to bypass the cache and force a fresh lookup from the NPM registry.
 
@@ -66,19 +67,21 @@ This MCP server features native **Dual-Era Protocol Compatibility**, seamlessly 
 - **Streamable HTTP / SSE Mode (`@nekzus/mcp-server/http`)**: Powered by `createMcpHandler({ legacy: "stateless" })`. Designed for serverless and web-standard runtimes (Cloudflare Workers, Hono, Express, Vercel API Routes).
 
 **Example: Mounting HTTP Handler (Cloudflare Workers / Hono / Express)**
+
 ```typescript
 import { createMcpHttpHandler } from '@nekzus/mcp-server/http';
 
 const handleRequest = createMcpHttpHandler();
 
 export default {
-  async fetch(request, env, ctx) {
-    return handleRequest(request);
-  }
+	async fetch(request, env, ctx) {
+		return handleRequest(request);
+	},
 };
 ```
 
 **Development Commands:**
+
 ```bash
 # Install dependencies
 pnpm install
@@ -132,6 +135,7 @@ Add this to your `claude_desktop_config.json`:
 ```
 
 **Configuration File Locations:**
+
 - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - Linux: `~/.config/Claude/claude_desktop_config.json`
@@ -156,22 +160,21 @@ import { createMcpHttpHandler } from '@nekzus/mcp-server/http';
 const handleMcpRequest = createMcpHttpHandler();
 
 export default {
-  async fetch(request: Request): Promise<Response> {
-    return handleMcpRequest(request);
-  },
+	async fetch(request: Request): Promise<Response> {
+		return handleMcpRequest(request);
+	},
 };
 ```
 
 **100% MCP v2 Compliance**: Powered by `WebStandardStreamableHTTPServerTransport`, this handler natively activates all 3 MCP primitives (**Tools**, **Resources**, and **Prompts**) with peak performance, SSE streaming support, and full Web Standard `Request` $\rightarrow$ `Response` compatibility.
 
-
 ## Configuration
 
 The server supports the following configuration parameters:
 
-| Environment Variable | Config Object Property | Default | Description |
-| -------------------- | ---------------------- | ------- | ----------- |
-| `NPM_REGISTRY_URL` | `config.NPM_REGISTRY_URL` | `https://registry.npmjs.org` | URL of the NPM registry to use for all requests |
+| Environment Variable | Config Object Property    | Default                      | Description                                     |
+| -------------------- | ------------------------- | ---------------------------- | ----------------------------------------------- |
+| `NPM_REGISTRY_URL`   | `config.NPM_REGISTRY_URL` | `https://registry.npmjs.org` | URL of the NPM registry to use for all requests |
 
 ---
 
@@ -223,78 +226,97 @@ Accessible via MCP `getPrompt` requests:
 All 19 tools define `inputSchema`, `outputSchema`, `annotations` (`title`, `readOnlyHint`), and `icons`:
 
 #### 1. `npmLatest`
+
 - Get latest version information, release dates, SRI integrity hashes, and dist-tags.
 - **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
 #### 2. `npmVersions`
+
 - Get full version history with release dates and deprecation statuses.
 - **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
 #### 3. `npmDeps`
+
 - Complete dependency tree analysis including direct dependencies and full transitive graph mapping via `deps.dev`.
 - **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
 #### 4. `npmTypes`
+
 - Verify TypeScript support (native `index.d.ts` declaration files vs `@types/*` DefinitelyTyped packages).
 - **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
 #### 5. `npmSize`
+
 - Package bundle size, minified size, and gzip impact analysis.
 - **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
 #### 6. `npmVulnerabilities`
+
 - Instant transitive vulnerability scanning powered by Google's `deps.dev` and OSV.dev advisories.
 - **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
 #### 7. `npmTrends`
+
 - Historical download statistics over customizable time ranges (`last-week`, `last-month`, `last-year`).
 - **Input**: `packages` (`string[]`), `period` (`"last-week"` \| `"last-month"` \| `"last-year"`), `ignoreCache` (`boolean`, optional)
 
 #### 8. `npmCompare`
+
 - Side-by-side metric comparison across multiple packages.
 - **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
 #### 9. `npmMaintainers`
+
 - List of package maintainers, public emails, and publishing activity.
 - **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
 #### 10. `npmScore`
+
 - Consolidated score combining quality, popularity, maintenance, and OpenSSF Scorecard.
 - **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
 #### 11. `npmPackageReadme`
+
 - Retrieve full formatted raw README markdown content from NPM registry / CDN.
 - **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
 #### 12. `npmSearch`
+
 - Search NPM registry packages by query with rich metadata (scores, publisher, keywords).
 - **Input**: `query` (`string`), `limit` (`number`, optional)
 
 #### 13. `npmLicenseCompatibility`
+
 - Analyze license compatibility across multiple packages (MIT, Apache-2.0, GPL, etc.).
 - **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
 #### 14. `npmRepoStats`
+
 - Repository statistics (GitHub stars, forks, open issues) combined with OpenSSF Scorecard checks.
 - **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
 #### 15. `npmDeprecated`
+
 - Detect deprecation status on package and recursive sub-dependencies.
 - **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
 #### 16. `npmChangelogAnalysis`
+
 - Extract release notes and GitHub release history.
 - **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
 #### 17. `npmAlternatives`
+
 - Smart functional alternative suggestions filtering out ecosystem plugins (e.g. excludes `express-rate-limit` for `express`).
 - **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
 #### 18. `npmQuality`
+
 - Package code quality score (0–1).
 - **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 
 #### 19. `npmMaintenance`
+
 - Package maintenance activity score (0–1).
 - **Input**: `packages` (`string[]`), `ignoreCache` (`boolean`, optional)
 

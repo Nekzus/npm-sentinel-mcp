@@ -1,7 +1,3 @@
-# Smithery artifacts (exclude from npm package)
-.smithery/
-.smithery.yaml
-
 # Internal DevSecOps documentation (exclude from npm package)
 docs/
 *.cheatsheet.md

@@ -26,15 +26,14 @@
     "README.md",
     "llms-full.txt",
     "LICENSE",
-    "smithery.yaml",
     "server.json",
     "glama.json"
   ],
   "scripts": {
-    "build": "npm run build:stdio",
+    "build": "pnpm run build:stdio",
     "build:stdio": "tsc && shx chmod +x dist/*.js",
     "prepare": "husky",
-    "dev": "npx @smithery/cli dev",
+    "dev": "tsx watch index.ts",
     "start": "node dist/index.js",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -44,7 +43,7 @@
     "commit": "git-cz",
     "semantic-release": "semantic-release",
     "watch": "tsc --watch",
-    "prepublishOnly": "npm run build:stdio",
+    "prepublishOnly": "pnpm run build:stdio",
     "changelog:init": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0"
   },
   "keywords": [
@@ -93,45 +92,32 @@
   },
   "homepage": "https://github.com/Nekzus/npm-sentinel-mcp#readme",
   "dependencies": {
-    "@modelcontextprotocol/core": "^2.0.0",
-    "@modelcontextprotocol/server": "^2.0.0",
-    "@smithery/sdk": "4.3.0",
+    "@modelcontextprotocol/core": "^2.4.0",
+    "@modelcontextprotocol/server": "^2.4.0",
     "node-fetch": "3.3.2",
-    "zod": "^4.4.3"
-  },
-  "overrides": {
-    "hono": "^4.11.7",
-    "qs": "^6.14.1",
-    "form-data": "^4.0.4",
-    "undici": "^5.28.5",
-    "lodash": "^4.17.23"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.3",
+    "@biomejs/biome": "2.6.9",
     "@commitlint/cli": "^21.2.1",
     "@commitlint/config-conventional": "^21.2.0",
-    "@modelcontextprotocol/client": "^2.0.0",
+    "@modelcontextprotocol/client": "^2.4.0",
     "@semantic-release-extras/verified-git-commit": "^1.0.11",
     "@semantic-release/changelog": "6.0.3",
     "@semantic-release/github": "12.0.9",
     "@semantic-release/npm": "13.1.5",
     "@semantic-release/release-notes-generator": "14.1.1",
-    "@smithery/cli": "4.11.1",
-    "@types/node": "26.1.1",
+    "@types/node": "^20.19.0",
     "@vitest/coverage-v8": "4.1.10",
-    "chalk": "^5.6.2",
     "conventional-changelog-conventionalcommits": "^10.2.1",
-    "cors": "^2.8.6",
     "cz-conventional-changelog": "3.0.1",
-    "express": "^5.2.1",
     "husky": "^9.1.7",
     "lint-staged": "^17.2.0",
     "semantic-release": "25.0.5",
     "shx": "0.4.0",
     "tsx": "4.19.4",
     "typescript": "7.0.2",
-    "vitest": "4.1.10",
-    "zod-to-json-schema": "^3.25.0"
+    "vitest": "4.1.10"
   },
   "config": {
     "commitizen": {

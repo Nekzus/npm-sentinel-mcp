@@ -10,7 +10,7 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@11.17.0 --activate
 
 # Copy dependency manifests and TypeScript config first to leverage Docker Layer Caching
-COPY package.json pnpm-lock.yaml tsconfig.json ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
 
 # Install native build tools (python3, make, g++) for native bindings if required
 RUN apk add --no-cache python3 make g++ libsecret-dev
@@ -21,7 +21,7 @@ RUN pnpm install --frozen-lockfile --ignore-scripts
 # Copy source code and documentation assets
 COPY index.ts ./
 COPY src ./src
-COPY server.json smithery.yaml glama.json ./
+COPY server.json glama.json ./
 COPY README.md LICENSE llms-full.txt ./
 
 # Compile TypeScript to JavaScript (dist/)
@@ -46,8 +46,9 @@ RUN corepack enable && corepack prepare pnpm@11.17.0 --activate
 # Copy package manifests and compiled dist artifacts from builder stage
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/pnpm-lock.yaml ./
+COPY --from=builder /app/pnpm-workspace.yaml ./
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/server.json /app/glama.json /app/smithery.yaml ./
+COPY --from=builder /app/server.json /app/glama.json ./
 COPY --from=builder /app/README.md /app/LICENSE /app/llms-full.txt ./
 
 # Install production-only dependencies and prune pnpm store cache
