@@ -7,10 +7,16 @@ export const configSchema = z.object({
 	NPM_REGISTRY_URL: z.string().optional().describe('URL of the NPM registry to use'),
 });
 
-export let NPM_REGISTRY_URL = 'https://registry.npmjs.org';
+export let NPM_REGISTRY_URL = (
+	process.env.NPM_REGISTRY_URL || 'https://registry.npmjs.org'
+).replace(/\/+$/, '');
+
+export function getNpmRegistryUrl(): string {
+	return NPM_REGISTRY_URL;
+}
 
 export function setNpmRegistryUrl(url: string): void {
-	NPM_REGISTRY_URL = url.replace(/\/$/, '');
+	NPM_REGISTRY_URL = url.replace(/\/+$/, '');
 }
 
 export function getPackageRootAndVersion(): { packageRoot: string; serverVersion: string } {

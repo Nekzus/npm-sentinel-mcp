@@ -7,6 +7,7 @@ import type { CallToolResult } from '@modelcontextprotocol/server';
 import { serveStdio } from '@modelcontextprotocol/server/stdio';
 import fetch from 'node-fetch';
 import { z } from 'zod';
+import { getNpmRegistryUrl, NPM_REGISTRY_URL, setNpmRegistryUrl } from './src/config.js';
 import createServer, { createMcpServer } from './src/server.js';
 import {
 	extractAuthorString,
@@ -17,23 +18,36 @@ import {
 } from './src/utils/normalize-package.js';
 import { needsVersionResolution, resolvePackageVersion } from './src/utils/version-resolver.js';
 
-// Cache configuration
-export let NPM_REGISTRY_URL = (
-	process.env.NPM_REGISTRY_URL || 'https://registry.npmjs.org'
-).replace(/\/$/, '');
-
-export function setNpmRegistryUrl(url: string): void {
-	NPM_REGISTRY_URL = url.replace(/\/$/, '');
-}
+export { getNpmRegistryUrl, NPM_REGISTRY_URL, setNpmRegistryUrl };
 
 // HTTP wrapper configuration
 const HTTP_MAX_RETRIES = 3;
 const HTTP_INITIAL_BACKOFF_MS = 1000;
 const HTTP_MAX_CONCURRENT_REQUESTS = 5;
+const HTTP_REQUEST_TIMEOUT_MS = 15_000;
 const DEFAULT_HEADERS = {
 	Accept: 'application/json',
 	'User-Agent': 'NPM-Sentinel-MCP/1.x',
 };
+
+const GITHUB_SLUG_REGEX = /^[a-zA-Z0-9._-]+$/;
+
+function isValidGitHubSlug(value: string): boolean {
+	return GITHUB_SLUG_REGEX.test(value) && value !== '.' && value !== '..';
+}
+
+export function wrapUntrustedContent(
+	source: string,
+	pkg: string,
+	type: 'readme' | 'changelog',
+	content: string,
+): string {
+	const sanitizedContent = content.replace(
+		/<\/untrusted_external_content/gi,
+		'&lt;/untrusted_external_content',
+	);
+	return `<untrusted_external_content source="${source}" package="${pkg}" type="${type}">\n${sanitizedContent}\n</untrusted_external_content>`;
+}
 
 // Semaphore for concurrency control
 let activeRequests = 0;
@@ -61,9 +75,10 @@ function releaseSlot(): void {
 export async function fetchWithRetry(
 	url: string,
 	options: any = {},
-	config: { maxRetries?: number; skipThrottle?: boolean } = {},
+	config: { maxRetries?: number; skipThrottle?: boolean; timeoutMs?: number } = {},
 ): Promise<any> {
 	const maxRetries = config.maxRetries ?? HTTP_MAX_RETRIES;
+	const timeoutMs = config.timeoutMs ?? HTTP_REQUEST_TIMEOUT_MS;
 	const mergedHeaders = { ...DEFAULT_HEADERS, ...(options.headers || {}) };
 	const mergedOptions = { ...options, headers: mergedHeaders };
 
@@ -73,8 +88,14 @@ export async function fetchWithRetry(
 
 	try {
 		for (let attempt = 0; attempt <= maxRetries; attempt++) {
+			const controller = new AbortController();
+			const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+			const signal = options.signal
+				? AbortSignal.any([options.signal, controller.signal])
+				: controller.signal;
+
 			try {
-				const response = await fetch(url, mergedOptions);
+				const response = await fetch(url, { ...mergedOptions, signal });
 
 				if (response.status === 429 || (response.status >= 500 && response.status < 600)) {
 					if (attempt < maxRetries) {
@@ -88,16 +109,20 @@ export async function fetchWithRetry(
 				}
 				return response;
 			} catch (err) {
+				if (options.signal?.aborted) {
+					throw err;
+				}
 				if (attempt < maxRetries) {
 					const waitMs = HTTP_INITIAL_BACKOFF_MS * 2 ** attempt;
 					await new Promise((resolve) => setTimeout(resolve, waitMs));
 					continue;
 				}
 				throw err;
+			} finally {
+				clearTimeout(timeoutId);
 			}
 		}
-		// Fallback
-		return await fetch(url, mergedOptions);
+		throw new Error('Max retries reached');
 	} finally {
 		if (!config.skipThrottle) {
 			releaseSlot();
@@ -118,6 +143,9 @@ interface CacheEntry<T> {
 }
 
 const apiCache = new Map<string, CacheEntry<any>>();
+let currentLockfilePath: string | null = null;
+let currentLockfileMtimeMs: number | null = null;
+let currentLockfileSize: number | null = null;
 let currentLockfileHash: string | null = null;
 
 function getLockfileHash(): string | null {
@@ -126,13 +154,34 @@ function getLockfileHash(): string | null {
 		const fullPath = path.join(process.cwd(), lockfile);
 		if (fs.existsSync(fullPath)) {
 			try {
+				const stat = fs.statSync(fullPath);
+				if (
+					stat &&
+					typeof stat.mtimeMs === 'number' &&
+					typeof stat.size === 'number' &&
+					fullPath === currentLockfilePath &&
+					stat.mtimeMs === currentLockfileMtimeMs &&
+					stat.size === currentLockfileSize &&
+					currentLockfileHash !== null
+				) {
+					return currentLockfileHash;
+				}
 				const content = fs.readFileSync(fullPath);
-				return crypto.createHash('md5').update(content).digest('hex');
+				const hash = crypto.createHash('md5').update(content).digest('hex');
+				if (stat && typeof stat.mtimeMs === 'number' && typeof stat.size === 'number') {
+					currentLockfilePath = fullPath;
+					currentLockfileMtimeMs = stat.mtimeMs;
+					currentLockfileSize = stat.size;
+				}
+				return hash;
 			} catch (e) {
 				console.error(`Error reading lockfile ${lockfile}:`, e);
 			}
 		}
 	}
+	currentLockfilePath = null;
+	currentLockfileMtimeMs = null;
+	currentLockfileSize = null;
 	return null;
 }
 
@@ -194,7 +243,7 @@ async function resolveVersionIfShorthand(name: string, version: string): Promise
 	let packument = cacheGet<any>(cacheKey);
 	if (!packument) {
 		try {
-			const res = await fetchWithRetry(`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}`, {
+			const res = await fetchWithRetry(`${getNpmRegistryUrl()}/${encodeURIComponent(name)}`, {
 				headers: { Accept: 'application/vnd.npm.install-v1+json' },
 			});
 			if (res.ok) {
@@ -535,9 +584,12 @@ export async function handleNpmVersions(args: {
 					};
 				}
 				try {
-					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}`, {
-						headers: { Accept: 'application/vnd.npm.install-v1+json' },
-					});
+					const response = await fetchWithRetry(
+						`${getNpmRegistryUrl()}/${encodeURIComponent(name)}`,
+						{
+							headers: { Accept: 'application/vnd.npm.install-v1+json' },
+						},
+					);
 
 					if (!response.ok) {
 						return {
@@ -691,7 +743,7 @@ export async function handleNpmLatest(args: {
 				try {
 					const resolvedVersion = await resolveVersionIfShorthand(name, versionTag);
 					const response = await fetchWithRetry(
-						`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}/${encodeURIComponent(resolvedVersion)}`,
+						`${getNpmRegistryUrl()}/${encodeURIComponent(name)}/${encodeURIComponent(resolvedVersion)}`,
 					);
 
 					if (!response.ok) {
@@ -848,7 +900,7 @@ export async function handleNpmDeps(args: {
 				try {
 					const resolvedVersion = await resolveVersionIfShorthand(name, version);
 					const response = await fetchWithRetry(
-						`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}/${encodeURIComponent(resolvedVersion)}`,
+						`${getNpmRegistryUrl()}/${encodeURIComponent(name)}/${encodeURIComponent(resolvedVersion)}`,
 					);
 
 					if (!response.ok) {
@@ -1001,7 +1053,7 @@ export async function handleNpmTypes(args: {
 				try {
 					const resolvedVersion = await resolveVersionIfShorthand(name, version);
 					const response = await fetchWithRetry(
-						`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}/${encodeURIComponent(resolvedVersion)}`,
+						`${getNpmRegistryUrl()}/${encodeURIComponent(name)}/${encodeURIComponent(resolvedVersion)}`,
 					);
 
 					if (!response.ok) {
@@ -1030,7 +1082,7 @@ export async function handleNpmTypes(args: {
 
 					try {
 						const typesResponse = await fetchWithRetry(
-							`${NPM_REGISTRY_URL}/${typesPackageName}/latest`,
+							`${getNpmRegistryUrl()}/${encodeURIComponent(typesPackageName)}/latest`,
 						);
 						if (typesResponse.ok) {
 							const typesData = (await typesResponse.json()) as NpmPackageData;
@@ -1343,7 +1395,9 @@ export async function fetchRepoStatsFromDepsDev(
 // Helper to resolve 'latest' tag to actual version number
 async function resolveLatestVersion(packageName: string): Promise<string | null> {
 	try {
-		const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${packageName}/latest`);
+		const response = await fetchWithRetry(
+			`${getNpmRegistryUrl()}/${encodeURIComponent(packageName)}/latest`,
+		);
 		if (!response.ok) return null;
 		const data = (await response.json()) as any;
 		return data.version || null;
@@ -1920,7 +1974,7 @@ export async function handleNpmCompare(args: {
 					const resolvedVersion = await resolveVersionIfShorthand(name, versionTag);
 					// Fetch package version details from registry
 					const pkgResponse = await fetchWithRetry(
-						`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}/${encodeURIComponent(resolvedVersion)}`,
+						`${getNpmRegistryUrl()}/${encodeURIComponent(name)}/${encodeURIComponent(resolvedVersion)}`,
 					);
 					if (!pkgResponse.ok) {
 						throw new Error(
@@ -1953,7 +2007,7 @@ export async function handleNpmCompare(args: {
 					let publishDate: string | null = null;
 					try {
 						const fullPkgInfoResponse = await fetchWithRetry(
-							`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}`,
+							`${getNpmRegistryUrl()}/${encodeURIComponent(name)}`,
 						);
 						if (fullPkgInfoResponse.ok) {
 							const fullPkgInfo = await fullPkgInfoResponse.json();
@@ -2063,7 +2117,9 @@ export async function getLocalPackageMetrics(
 	if (cached) return cached;
 
 	// 1. Fetch full packument from registry
-	const registryResponse = await fetchWithRetry(`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}`);
+	const registryResponse = await fetchWithRetry(
+		`${getNpmRegistryUrl()}/${encodeURIComponent(name)}`,
+	);
 	if (!registryResponse.ok) {
 		throw new Error(`Package ${name} not found on registry.`);
 	}
@@ -2118,22 +2174,24 @@ export async function getLocalPackageMetrics(
 		if (githubMatch) {
 			const [, owner, repo] = githubMatch;
 			const cleanRepo = repo.replace(/\.git$/, '');
-			try {
-				const depsDevData = await fetchRepoStatsFromDepsDev(owner, cleanRepo, ignoreCache);
-				if (depsDevData) {
-					github = {
-						starsCount: depsDevData.starsCount,
-						forksCount: depsDevData.forksCount,
-						subscribersCount: 0,
-						openIssuesCount: depsDevData.openIssuesCount,
-						hasGitHubData: true,
-					};
-					scorecard = depsDevData.scorecard;
+			if (isValidGitHubSlug(owner) && isValidGitHubSlug(cleanRepo)) {
+				try {
+					const depsDevData = await fetchRepoStatsFromDepsDev(owner, cleanRepo, ignoreCache);
+					if (depsDevData) {
+						github = {
+							starsCount: depsDevData.starsCount,
+							forksCount: depsDevData.forksCount,
+							subscribersCount: 0,
+							openIssuesCount: depsDevData.openIssuesCount,
+							hasGitHubData: true,
+						};
+						scorecard = depsDevData.scorecard;
+					}
+				} catch (ghError) {
+					console.debug(
+						`Could not fetch deps.dev project data for ${owner}/${cleanRepo}: ${ghError}`,
+					);
 				}
-			} catch (ghError) {
-				console.debug(
-					`Could not fetch deps.dev project data for ${owner}/${cleanRepo}: ${ghError}`,
-				);
 			}
 		}
 	}
@@ -2497,7 +2555,9 @@ export async function handleNpmMaintainers(args: {
 				}
 
 				try {
-					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}`);
+					const response = await fetchWithRetry(
+						`${getNpmRegistryUrl()}/${encodeURIComponent(name)}`,
+					);
 
 					if (!response.ok) {
 						let errorMsg = `Failed to fetch package info: ${response.status} ${response.statusText}`;
@@ -2726,8 +2786,8 @@ export async function fetchReadmeFromCDN(
 	version: string,
 ): Promise<string | null> {
 	const cdnUrls = [
-		`https://cdn.jsdelivr.net/npm/${packageName}@${version}/README.md`,
-		`https://unpkg.com/${packageName}@${version}/README.md`,
+		`https://cdn.jsdelivr.net/npm/${encodeURIComponent(packageName)}@${encodeURIComponent(version)}/README.md`,
+		`https://unpkg.com/${encodeURIComponent(packageName)}@${encodeURIComponent(version)}/README.md`,
 	];
 
 	for (const cdnUrl of cdnUrls) {
@@ -2829,7 +2889,9 @@ export async function handleNpmPackageReadme(args: {
 				}
 
 				try {
-					const response = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}`);
+					const response = await fetchWithRetry(
+						`${getNpmRegistryUrl()}/${encodeURIComponent(name)}`,
+					);
 					if (!response.ok) {
 						let errorMsg = `Failed to fetch package info: ${response.status} ${response.statusText}`;
 						if (response.status === 404) {
@@ -2887,7 +2949,12 @@ export async function handleNpmPackageReadme(args: {
 
 					const hasReadme = !!readmeContent;
 					const demarcatedReadme = readmeContent
-						? `<untrusted_external_content source="${readmeSource || 'registry'}" package="${name}" type="readme">\n${readmeContent}\n</untrusted_external_content>`
+						? wrapUntrustedContent(
+								readmeSource || 'registry',
+								name,
+								'readme',
+								String(readmeContent),
+							)
 						: null;
 
 					const readmeResultData = {
@@ -2986,7 +3053,7 @@ export async function handleNpmSearch(args: {
 		}
 
 		const response = await fetchWithRetry(
-			`${NPM_REGISTRY_URL}/-/v1/search?text=${encodeURIComponent(query)}&size=${limit}`,
+			`${getNpmRegistryUrl()}/-/v1/search?text=${encodeURIComponent(query)}&size=${limit}`,
 		);
 		if (!response.ok) {
 			throw new Error(`Failed to search packages: ${response.status} ${response.statusText}`);
@@ -3146,7 +3213,7 @@ export async function handleNpmLicenseCompatibility(args: {
 				try {
 					const resolvedVersion = await resolveVersionIfShorthand(name, versionTag);
 					const response = await fetchWithRetry(
-						`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}/${encodeURIComponent(resolvedVersion)}`,
+						`${getNpmRegistryUrl()}/${encodeURIComponent(name)}/${encodeURIComponent(resolvedVersion)}`,
 					);
 					if (!response.ok) {
 						let errorMsg = `Failed to fetch package info: ${response.status} ${response.statusText}`;
@@ -3352,7 +3419,7 @@ export async function handleNpmRepoStats(args: {
 
 				try {
 					const npmResponse = await fetchWithRetry(
-						`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}/latest`,
+						`${getNpmRegistryUrl()}/${encodeURIComponent(name)}/latest`,
 					);
 					if (!npmResponse.ok) {
 						const errorData = {
@@ -3408,6 +3475,18 @@ export async function handleNpmRepoStats(args: {
 					}
 					const [, owner, repo] = githubMatch;
 					const cleanRepo = repo.replace(/\.git$/, '');
+					if (!isValidGitHubSlug(owner) || !isValidGitHubSlug(cleanRepo)) {
+						const resultInvalidGitHub = {
+							packageInput: pkgInput,
+							packageName: name,
+							status: 'not_github_repo' as const,
+							error: null,
+							data: { repositoryUrl: repoUrl },
+							message: `Repository URL found (${repoUrl}) contains invalid GitHub owner or repository characters.`,
+						};
+						cacheSet(cacheKey, resultInvalidGitHub, CACHE_TTL_LONG);
+						return resultInvalidGitHub;
+					}
 
 					const depsDevData = await fetchRepoStatsFromDepsDev(owner, cleanRepo, args.ignoreCache);
 
@@ -3593,7 +3672,9 @@ export async function handleNpmDeprecated(args: {
 				// console.debug(`[handleNpmDeprecated] Cache miss for ${cacheKey}`);
 
 				try {
-					const mainPkgResponse = await fetchWithRetry(`${NPM_REGISTRY_URL}/${name}`);
+					const mainPkgResponse = await fetchWithRetry(
+						`${getNpmRegistryUrl()}/${encodeURIComponent(name)}`,
+					);
 					if (!mainPkgResponse.ok) {
 						return {
 							package: initialPackageNameForOutput,
@@ -3644,7 +3725,7 @@ export async function handleNpmDeprecated(args: {
 							try {
 								// console.debug(`[handleNpmDeprecated] Checking dependency: ${depName}@${depSemVer}`);
 								const depInfoResponse = await fetchWithRetry(
-									`${NPM_REGISTRY_URL}/${encodeURIComponent(depName)}`,
+									`${getNpmRegistryUrl()}/${encodeURIComponent(depName)}`,
 								);
 
 								if (!depInfoResponse.ok) {
@@ -3847,7 +3928,7 @@ export async function handleNpmChangelogAnalysis(args: {
 
 				try {
 					const npmResponse = await fetchWithRetry(
-						`${NPM_REGISTRY_URL}/${encodeURIComponent(name)}`,
+						`${getNpmRegistryUrl()}/${encodeURIComponent(name)}`,
 					);
 					if (!npmResponse.ok) {
 						const errorResult = {
@@ -3907,6 +3988,19 @@ export async function handleNpmChangelogAnalysis(args: {
 
 					const [, owner, repo] = githubMatch;
 					const repoNameForUrl = repo.replace(/\.git$/, '');
+					if (!isValidGitHubSlug(owner) || !isValidGitHubSlug(repoNameForUrl)) {
+						const resultInvalidGitHub = {
+							packageInput: pkgInput,
+							packageName: name,
+							versionQueried: versionQueried,
+							status: 'not_github_repo' as const,
+							error: null,
+							data: { repositoryUrl: repositoryUrl },
+							message: `Repository URL (${repositoryUrl}) contains invalid GitHub owner or repository characters.`,
+						};
+						cacheSet(cacheKey, resultInvalidGitHub, CACHE_TTL_MEDIUM);
+						return resultInvalidGitHub;
+					}
 
 					const changelogFiles = [
 						'CHANGELOG.md',
@@ -3925,18 +4019,24 @@ export async function handleNpmChangelogAnalysis(args: {
 					let hasChangelogFile = false;
 
 					for (const branch of ['main', 'master']) {
-						for (const file of changelogFiles) {
-							try {
+						const branchResults = await Promise.allSettled(
+							changelogFiles.map(async (file) => {
 								const rawChangelogUrl = `https://raw.githubusercontent.com/${owner}/${repoNameForUrl}/${branch}/${file}`;
 								const response = await fetchWithRetry(rawChangelogUrl, {}, { maxRetries: 0 });
 								if (response.ok) {
-									changelogContent = await response.text();
-									changelogSourceUrl = rawChangelogUrl;
-									hasChangelogFile = true;
-									break;
+									const text = await response.text();
+									return { rawChangelogUrl, text };
 								}
-							} catch {
-								// Sigue intentando
+								return null;
+							}),
+						);
+
+						for (const res of branchResults) {
+							if (res.status === 'fulfilled' && res.value) {
+								changelogContent = res.value.text;
+								changelogSourceUrl = res.value.rawChangelogUrl;
+								hasChangelogFile = true;
+								break;
 							}
 						}
 						if (hasChangelogFile) break;
@@ -4010,7 +4110,12 @@ export async function handleNpmChangelogAnalysis(args: {
 							repositoryUrl: repositoryUrl,
 							changelogSourceUrl: changelogSourceUrl,
 							changelogContent: changelogContent
-								? `<untrusted_external_content source="${changelogSourceUrl || 'github'}" package="${name}" type="changelog">\n${changelogContent.split('\n').slice(0, 50).join('\n')}...\n</untrusted_external_content>`
+								? wrapUntrustedContent(
+										changelogSourceUrl || 'github',
+										name,
+										'changelog',
+										`${changelogContent.split('\n').slice(0, 50).join('\n')}...`,
+									)
 								: null,
 							hasChangelogFile: hasChangelogFile,
 							githubReleases: githubReleases,
@@ -4181,7 +4286,7 @@ export async function handleNpmAlternatives(args: {
 
 					try {
 						const pkgManifestResponse = await fetchWithRetry(
-							`${NPM_REGISTRY_URL}/${encodeURIComponent(originalPackageName)}/latest`,
+							`${getNpmRegistryUrl()}/${encodeURIComponent(originalPackageName)}/latest`,
 						);
 						if (pkgManifestResponse.ok) {
 							const pkgManifest = (await pkgManifestResponse.json()) as any;
@@ -4238,7 +4343,7 @@ export async function handleNpmAlternatives(args: {
 					if (Array.isArray(knownCandidates) && knownCandidates.length > 0) {
 						try {
 							const knownResponse = await fetchWithRetry(
-								`${NPM_REGISTRY_URL}/-/v1/search?text=${encodeURIComponent(knownCandidates.join(' '))}&size=20`,
+								`${getNpmRegistryUrl()}/-/v1/search?text=${encodeURIComponent(knownCandidates.join(' '))}&size=20`,
 							);
 							if (knownResponse.ok) {
 								const knownData = (await knownResponse.json()) as NpmSearchResponse;
@@ -4290,7 +4395,7 @@ export async function handleNpmAlternatives(args: {
 						}
 
 						const searchResponse = await fetchWithRetry(
-							`${NPM_REGISTRY_URL}/-/v1/search?text=${encodeURIComponent(searchQuery)}&size=30`,
+							`${getNpmRegistryUrl()}/-/v1/search?text=${encodeURIComponent(searchQuery)}&size=30`,
 						);
 
 						if (!searchResponse.ok) {
@@ -4319,7 +4424,7 @@ export async function handleNpmAlternatives(args: {
 						if (validAlternativesRaw.length === 0 && searchQuery !== originalPackageName) {
 							try {
 								const fallbackResponse = await fetchWithRetry(
-									`${NPM_REGISTRY_URL}/-/v1/search?text=${encodeURIComponent(
+									`${getNpmRegistryUrl()}/-/v1/search?text=${encodeURIComponent(
 										originalPackageName,
 									)}&size=30`,
 								);

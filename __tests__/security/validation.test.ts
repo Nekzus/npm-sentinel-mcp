@@ -146,4 +146,17 @@ describe('Security: Input Validation', () => {
 			}
 		});
 	});
+
+	describe('Registry URL configuration normalization', () => {
+		test('should strip trailing slash in setNpmRegistryUrl', async () => {
+			const { getNpmRegistryUrl, setNpmRegistryUrl } = await import('../../index');
+			const originalUrl = getNpmRegistryUrl();
+			try {
+				setNpmRegistryUrl('https://npm.pkg.github.com///');
+				expect(getNpmRegistryUrl()).toBe('https://npm.pkg.github.com');
+			} finally {
+				setNpmRegistryUrl(originalUrl);
+			}
+		});
+	});
 });
