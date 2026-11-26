@@ -4,163 +4,154 @@
 name: npm-mcp-server
 
 on:
-    push:
-        branches: [main, alpha]
-    pull_request:
-        branches: [main, alpha]
+  push:
+    branches: [main, alpha]
+  pull_request:
+    branches: [main, alpha]
 
 jobs:
-    quality:
-        runs-on: ${{matrix.os}}
-        timeout-minutes: 10
+  quality:
+    permissions:
+      contents: read
+    runs-on: ${{matrix.os}}
+    timeout-minutes: 10
 
-        strategy:
-            matrix:
-                node-version: [22.x, lts/*]
-                os: [ubuntu-latest]
+    strategy:
+      matrix:
+        node-version: [22.x, lts/*]
+        os: [ubuntu-latest]
 
-        steps:
-            - uses: actions/checkout@v4
-            - name: Install system dependencies
-              run: |
-                sudo apt-get update
-                sudo apt-get install -y libsecret-1-0
-            - name: Install pnpm
-              uses: pnpm/action-setup@v4
-            - name: Use Node.js ${{matrix.node-version}}
-              uses: actions/setup-node@v4
-              with:
-                  node-version: ${{matrix.node-version}}
-                  cache: 'pnpm'
-            - run: pnpm install --frozen-lockfile
-            - name: Lint
-              run: pnpm run lint
-            - name: Test
-              run: pnpm run test
-            - name: Build STDIO
-              run: pnpm run build:stdio
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsecret-1-0
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+      - name: Use Node.js ${{matrix.node-version}}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{matrix.node-version}}
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Lint
+        run: pnpm run lint
+      - name: Test
+        run: pnpm exec vitest run
+      - name: Build STDIO
+        run: pnpm run build:stdio
 
-    publish:
-        permissions:
-            contents: write
-            id-token: write
-        runs-on: ubuntu-latest
-        timeout-minutes: 15
-        if: ${{github.ref == 'refs/heads/main' || github.ref == 'refs/heads/alpha'}}
-        needs: [quality]
-        steps:
-            - uses: actions/checkout@v4
-              with:
-                fetch-depth: 0
-            - name: Install system dependencies
-              run: |
-                sudo apt-get update
-                sudo apt-get install -y libsecret-1-0
-            - name: Install pnpm
-              uses: pnpm/action-setup@v4
-            - name: Use Node.js lts/*
-              uses: actions/setup-node@v4
-              with:
-                  node-version: 'lts/*'
-                  cache: 'pnpm'
-            
-            - run: pnpm install --frozen-lockfile
-            
-            # Save the version before semantic-release
-            - name: Save current version
-              id: prev_version
-              run: |
-                VERSION=$(node -p "require('./package.json').version")
-                echo "version=$VERSION" >> $GITHUB_OUTPUT
-            
-            - name: Semantic Release
-              run: pnpm run semantic-release
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-                  NPM_CONFIG_PROVENANCE: true
-                  GIT_AUTHOR_NAME: github-actions[bot]
-                  GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
-                  GIT_COMMITTER_NAME: github-actions[bot]
-                  GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+  publish:
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: ${{github.ref == 'refs/heads/main' || github.ref == 'refs/heads/alpha'}}
+    needs: [quality]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsecret-1-0
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+      - name: Use Node.js lts/*
+        uses: actions/setup-node@v4
+        with:
+          node-version: "lts/*"
+          cache: "pnpm"
 
-            # Get the new version from package.json after semantic-release
-            - name: Get new version
-              id: get_version
-              run: |
-                NEW_VERSION=$(node -p "require('./package.json').version")
-                PREV_VERSION="${{ steps.prev_version.outputs.version }}"
-                echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
-                if [ "$NEW_VERSION" = "$PREV_VERSION" ]; then
-                  echo "released=false" >> $GITHUB_OUTPUT
-                  echo "ℹ️ No new version released by semantic-release."
-                else
-                  echo "released=true" >> $GITHUB_OUTPUT
-                  echo "📦 New version released: $NEW_VERSION"
-                fi
-                
-            # Update server.json version and SHA256 (like the example workflow)
-            - name: Update server.json version and SHA256
-              if: steps.get_version.outputs.released == 'true'
-              run: |
-                VERSION=$(node -p "require('./package.json').version")
-                echo "📦 Updating server.json with version: $VERSION"
-                
-                # Replace {{VERSION}} with actual version in server.json using temp file
-                sed "s/{{VERSION}}/$VERSION/g" server.json > server.json.tmp
-                mv server.json.tmp server.json
-                
-                echo "✅ server.json updated successfully"
-                echo "📋 Final server.json version:"
-                cat server.json | jq '.version, .packages[0].version'
-            
-            # Build STDIO version for npm package
-            - name: Build STDIO version for npm package
-              if: steps.get_version.outputs.released == 'true'
-              run: |
-                pnpm run build:stdio
-                
-            # Verify npm package contents
-            - name: Verify npm package contents
-              if: steps.get_version.outputs.released == 'true'
-              run: |
-                echo "=== NPM Package Contents ==="
-                ls -la dist/
-                echo "=== Version in compiled code ==="
-                grep -n "version:" dist/index.js | head -1
-                  
-            # Install MCP Publisher for registry publishing
-            - name: Install MCP Publisher
-              if: steps.get_version.outputs.released == 'true'
-              run: |
-                curl -L "https://github.com/modelcontextprotocol/registry/releases/download/v1.7.9/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
-                
-            # Login to MCP Registry using GitHub OIDC
-            - name: Login to MCP Registry
-              if: steps.get_version.outputs.released == 'true'
-              run: ./mcp-publisher login github-oidc
-              
-            # Publish to MCP Registry
-            - name: Publish to MCP Registry
-              if: steps.get_version.outputs.released == 'true'
-              run: ./mcp-publisher publish
-                  
-            # Verify Smithery deployment readiness
-            - name: Verify Smithery deployment readiness
-              if: steps.get_version.outputs.released == 'true'
-              run: |
-                echo "=== Required files for Smithery deploy ==="
-                echo "smithery.yaml:"
-                cat smithery.yaml
-                echo ""
-                echo "package.json module field:"
-                node -p "require('./package.json').module"
-                echo ""
-                echo "✅ Smithery deployment files verified!"
-                
-            # Set Dockerfile version label from package.json
-            - name: Set Dockerfile version label from package.json
-              if: steps.get_version.outputs.released == 'true'
-              run: |
-                VERSION=$(node -p "require('./package.json').version")
-                sed -i "s/LABEL version=\"[^\"]*\"/LABEL version=\"$VERSION\"/" Dockerfile
+      - run: pnpm install --frozen-lockfile
+
+      # Save the version before semantic-release
+      - name: Save current version
+        id: prev_version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Semantic Release
+        run: pnpm run semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: true
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+
+      # Get the new version from package.json after semantic-release
+      - name: Get new version
+        id: get_version
+        run: |
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          PREV_VERSION="${{ steps.prev_version.outputs.version }}"
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          if [ "$NEW_VERSION" = "$PREV_VERSION" ]; then
+            echo "released=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ No new version released by semantic-release."
+          else
+            echo "released=true" >> $GITHUB_OUTPUT
+            echo "📦 New version released: $NEW_VERSION"
+          fi
+
+      # Update server.json version and SHA256 (like the example workflow)
+      - name: Update server.json version and SHA256
+        if: steps.get_version.outputs.released == 'true'
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "📦 Updating server.json with version: $VERSION"
+
+          # Replace {{VERSION}} with actual version in server.json using temp file
+          sed "s/{{VERSION}}/$VERSION/g" server.json > server.json.tmp
+          mv server.json.tmp server.json
+
+          echo "✅ server.json updated successfully"
+          echo "📋 Final server.json version:"
+          cat server.json | jq '.version, .packages[0].version'
+
+      # Build STDIO version for npm package
+      - name: Build STDIO version for npm package
+        if: steps.get_version.outputs.released == 'true'
+        run: |
+          pnpm run build:stdio
+
+      # Verify npm package contents
+      - name: Verify npm package contents
+        if: steps.get_version.outputs.released == 'true'
+        run: |
+          echo "=== NPM Package Contents ==="
+          ls -la dist/
+          echo "=== Version in compiled code ==="
+          grep -n "version:" dist/index.js | head -1
+
+      # Install MCP Publisher for registry publishing
+      - name: Install MCP Publisher
+        if: steps.get_version.outputs.released == 'true'
+        run: |
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/download/v1.7.9/mcp-publisher_$(uname -s | tr '[:upper:]' '[:lower:]')_$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar xz mcp-publisher
+
+      # Login to MCP Registry using GitHub OIDC
+      - name: Login to MCP Registry
+        if: steps.get_version.outputs.released == 'true'
+        run: ./mcp-publisher login github-oidc
+
+      # Publish to MCP Registry
+      - name: Publish to MCP Registry
+        if: steps.get_version.outputs.released == 'true'
+        run: ./mcp-publisher publish
+
+      # Set Dockerfile version label from package.json
+      - name: Set Dockerfile version label from package.json
+        if: steps.get_version.outputs.released == 'true'
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          sed -i "s/LABEL version=\"[^\"]*\"/LABEL version=\"$VERSION\"/" Dockerfile

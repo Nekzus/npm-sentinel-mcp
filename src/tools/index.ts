@@ -25,40 +25,55 @@ import { NPM_METRICS_ICON, NPM_REGISTRY_ICON, NPM_SECURITY_ICON } from '../icons
 import { PackageListSchema, SearchQuerySchema } from '../schemas.js';
 
 // Helper schemas for structured outputs (MCP v2)
-const BatchResultOutputSchema = z
-	.object({
-		results: z.array(z.record(z.string(), z.unknown())).optional(),
-		summary: z.union([z.string(), z.record(z.string(), z.unknown())]).optional(),
-		message: z.string().optional(),
-	})
-	.loose();
+const BatchItemResultSchema = z.object({
+	packageInput: z.string().optional(),
+	packageName: z.string().optional(),
+	package: z.string().optional(),
+	versionQueried: z.string().optional(),
+	versionFetched: z.union([z.string().describe('Resolved package version'), z.null()]).optional(),
+	isDependency: z.boolean().optional(),
+	status: z.string().optional(),
+	error: z
+		.union([z.string().describe('Error message if the operation failed'), z.null()])
+		.optional(),
+	data: z.json().nullable().optional(),
+	vulnerabilities: z.array(z.json()).optional(),
+	count: z.number().optional(),
+	message: z.string().optional(),
+});
 
-const SearchResultOutputSchema = z
-	.object({
-		query: z.string().optional(),
-		limitUsed: z.number().optional(),
-		totalResults: z.number().optional(),
-		resultsCount: z.number().optional(),
-		results: z.array(z.record(z.string(), z.unknown())).optional(),
-		message: z.string().optional(),
-	})
-	.loose();
+const BatchResultOutputSchema = z.object({
+	queryPackages: z.array(z.string()).optional(),
+	query: z.record(z.string(), z.json()).optional(),
+	results: z.array(BatchItemResultSchema).optional(),
+	summary: z.union([z.string(), z.record(z.string(), z.json())]).optional(),
+	message: z.string().optional(),
+});
 
-const CompareResultOutputSchema = z
-	.object({
-		queryPackages: z.array(z.string()).optional(),
-		results: z.array(z.record(z.string(), z.unknown())).optional(),
-		message: z.string().optional(),
-	})
-	.loose();
+const SearchResultOutputSchema = z.object({
+	query: z.string().optional(),
+	limitUsed: z.number().optional(),
+	totalResults: z.number().optional(),
+	resultsCount: z.number().optional(),
+	results: z.array(z.record(z.string(), z.json())).optional(),
+	message: z.string().optional(),
+});
 
-const LicenseCompatibilityResultOutputSchema = z
-	.object({
-		packagesAnalyzed: z.array(z.string()).optional(),
-		compatibility: z.record(z.string(), z.unknown()).optional(),
-		licenseDetails: z.array(z.record(z.string(), z.unknown())).optional(),
-	})
-	.loose();
+const CompareResultOutputSchema = z.object({
+	queryPackages: z.array(z.string()).optional(),
+	results: z.array(BatchItemResultSchema).optional(),
+	message: z.string().optional(),
+});
+
+const LicenseCompatibilityResultOutputSchema = z.object({
+	queryPackages: z.array(z.string()).optional(),
+	packagesAnalyzed: z.array(z.string()).optional(),
+	results: z.array(BatchItemResultSchema).optional(),
+	analysis: z.record(z.string(), z.json()).optional(),
+	compatibility: z.record(z.string(), z.json()).optional(),
+	licenseDetails: z.array(z.record(z.string(), z.json())).optional(),
+	message: z.string().optional(),
+});
 
 export async function withStructuredOutput(
 	handlerPromise: Promise<CallToolResult>,

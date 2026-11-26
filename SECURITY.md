@@ -24,7 +24,7 @@ This MCP server implements strict, multi-layered security controls designed to p
 - **Strict Input Validation & Sanitization**: All package names and search inputs are strictly validated using Zod schemas. Search queries (`npmSearch`) are capped at 100 characters and filtered for control characters (`\0`, `\r`, `\n`, `\t`). Batch analysis operations (`packages[]`) enforce a strict maximum cap of 25 packages per request to prevent Denial-of-Service and mass registry enumeration.
 - **Prototype Collision Safeguards**: All internal dictionary and map lookups enforce own-property checks (`Object.prototype.hasOwnProperty`) to prevent prototype pollution and unhandled exceptions from reserved property names (e.g., `constructor`, `__proto__`).
 - **Stateless & Read-Only Execution**: All 19 tools perform read-only queries against trusted public endpoints (NPM Registry, OSV.dev, deps.dev, GitHub API). The server does not write, execute, or publish code.
-- **Container & Transport Security**: 
+- **Container & Transport Security**:
   - **STDIO Mode**: Zero open network ports listening locally by default.
   - **Docker Image**: Multi-stage build running strictly under a non-root user (`USER node`).
   - **Streamable HTTP POST**: Fully stateless HTTP execution without memory session retention.
